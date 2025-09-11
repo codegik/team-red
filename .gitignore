@@ -24,3 +24,21 @@ hs_err_pid*
 replay_pid*
 .idea
 
+
+*.iml
+.classpath
+.project
+git.properties
+target/
+logs/
+bin/
+_build/
+__pycache__
+.settings/
+.metadata
+.DS_Store
+node_modules
+!ocaml/oop/bin
+.metals
+metals.sbt
+
