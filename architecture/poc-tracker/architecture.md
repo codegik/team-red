@@ -197,7 +197,7 @@ The architecture combines static file delivery (frontend), API Gateway with auth
 - PostgreSQL supports powerful SQL queries, joins, aggregations, subqueries, window functions, and advanced indexing.
 - PostgreSQL enforces a well-defined schema, ensuring data quality and structure.
 
-### EKS vs EC2
+### EKS vs ECS
 - EKS runs Kubernetes for you — AWS manages the control plane (API server, etcd, scheduler).
 - EKS integrates natively with Cluster Autoscaler and Horizontal Pod Autoscaler, adjusting resources automatically.
 - EKS is designed for containerized microservices, making it easier to run modern architectures.
