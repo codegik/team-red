@@ -112,6 +112,51 @@ The architecture combines static file delivery (frontend), API Gateway with auth
 - Annual video compilation creation
 - User authentication and authorization
 
+## 5.4 📱 End-to-End Mobile Flows
+
+Native apps are clients only: no local database, no background jobs. All storage, search, reports, and video generation run on the backend.
+
+### 5.4.1 Login & Auth (OIDC + PKCE)
+
+User opens Android (Kotlin/Compose) or iOS (Swift/SwiftUI).
+App resolves tenant (subdomain or discovery API) → gets Keycloak realm/base URLs.
+OIDC via AppAuth (system browser / ASWebAuthenticationSession) with PKCE.
+Access/Refresh tokens stored in secure storage (Android EncryptedSharedPreferences; iOS Keychain).
+All REST/WS calls use Bearer token; refresh via standard OIDC flow; logout clears secure storage.
+
+### 5.4.2 Search POCs
+
+User types → client debounces.
+App calls Search API (Gateway → Search svc → OpenSearch) scoped by tenant_id claim.
+Results are paginated.
+Offline behavior: read-only placeholder with “retry” (no local cache write).
+
+### 5.4.3 Real-time Dojo (WebSocket)
+
+Client opens WS (Gateway/Ingress → Dojo service) including tenant_id + user claims.
+Real-time operations delivered via WS; client handles reconnect with exponential backoff.
+Server is the source of truth; client maintains in-memory state only.
+
+### 5.4.4 Uploads / Reports / Video
+
+App requests pre-signed S3 URL; uploads directly (multipart for large files).
+Job status polled via API or notified by push when ready.
+Downloads with pre-signed GET; transient in-memory usage (no persistent cache).
+
+## 5.5 🔒 Mobile Security
+
+OIDC/OAuth2 with short-lived access tokens + refresh rotation.
+Secure storage only for tokens (no PII at rest on device).
+Best-effort jailbreak/root checks; sensitive screens may enable screenshot masking (tenant-configurable).
+Certificate pinning optional (rotated via AppConfig).
+No credentials in logs; minimal analytics payloads.
+
+## 5.6 🔔 Push Notifications
+
+SNS → FCM (Android) e SNS → APNs (iOS).
+Topics by tenant/feature (e.g. tenant-{id}-dojo, tenant-{id}-jobs).
+Deep links to specific screens (dojo session, job detail).
+
 
 # 6. 🧭 Trade-offs
 
@@ -330,6 +375,15 @@ We don't have migration for this architecture since its a new system.
 - Verify system behavior during PGsync failures
 - Execute in isolated production environment during low-traffic periods
 
+## Mobile testing (NEW)
+
+- Unit Android: ViewModel/repository with JUnit.
+- Unit iOS: XCTest with async/await; mocks per protocol.
+- UI Android: Espresso for flows (login, search, dojo).
+- UI iOS: XCUITest with LaunchArguments for mocks.
+- Network/Contract: MockWebServer (Android) / URLProtocol stub (iOS); Pact consumer tests for contracts with the backend.
+- Performance: Cold start and WS connection times measured in CI (staging).
+- Accessibility: Basic TalkBack/VoiceOver per critical screen.
 
 # 9. 👀 Observability strategy
 
@@ -395,9 +449,20 @@ Monitor business KPIs to detect regressions:
 - API: RESTful APIs with Spring Web and WebSocket support
 
 **Mobile Applications**:
-- Android: Kotlin with Jetpack Compose
-- iOS: Swift with SwiftUI
-- Communication: HTTPS and WebSocket for real-time features
+- Android
+    - Language/UI: Kotlin + Jetpack Compose
+    - Auth: AppAuth (OIDC + PKCE)
+    - Networking (REST): Retrofit + OkHttp + Moshi
+    - WebSocket: OkHttp WebSocket
+    - Secure storage: EncryptedSharedPreferences
+    - Push: FCM
+- iOS
+    - Language/UI: Swift + SwiftUI
+    - Auth: AppAuth (OIDC + PKCE)
+    - Networking (REST): URLSession + Codable
+    - WebSocket: URLSessionWebSocketTask
+    - Secure storage: Keychain
+    - Push: APNs
 
 **Infrastructure**:
 - CloudFront + S3
@@ -414,4 +479,3 @@ Monitor business KPIs to detect regressions:
 - Details more the technology stack
 - Create a solution for the video generation
 - Add uml diagrams for data store designs
-- Add Mobile details spread over the architecture items
