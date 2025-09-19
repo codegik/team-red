@@ -272,6 +272,11 @@ Deep links to specific screens (dojo session, job detail).
 - Amazon Route 53 provides DNS resolution and routing.
 - AWS Global Accelerator ensures optimized global network routing, directing traffic to the nearest healthy endpoint across regions.
 
+### Application Load Balancer (ALB) + Web Application Firewall (WAF)
+- WAF should be attached to component that handles HTTP/HTTPs
+- WAF inspects and filter incoming requests to ALB
+- ALB distribute incoming requests to API Gateway
+
 ### API Gateway (in each AZ)
 - Manages API requests.
 - Provides features like request validation, throttling, and routing to backend microservices.
