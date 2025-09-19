@@ -313,6 +313,10 @@ Each tenant has isolated storage & caching components for data separation and pe
 - Provides in-memory caching.
 - Reduces load on Aurora/Postgres by serving frequent queries.
 
+**PGSync**
+- Uses CDC (database change capture) to replicate data.
+- Converts SQL rows into JSON and pushes into OpenSearch indices.
+
 **OpenSearch**
 - Used for full-text search, log analytics, or real-time indexing.
 - Each tenant has a primary node + read replicas for scalability.
