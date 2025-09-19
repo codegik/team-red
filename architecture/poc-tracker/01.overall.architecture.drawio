@@ -2001,12 +2001,12 @@
       </root>
     </mxGraphModel>
   </diagram>
-  <diagram name="Copy of uc.manage.permissions.poc" id="HQNjIiIVx8CK0HF03oGQ">
+  <diagram name="uc.monitor.logs.poc" id="HQNjIiIVx8CK0HF03oGQ">
     <mxGraphModel dx="2466" dy="1503" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" background="none" math="0" shadow="0">
       <root>
         <mxCell id="Rzp2ybsAgJLSjvvEjxY0-0" />
         <mxCell id="Rzp2ybsAgJLSjvvEjxY0-1" parent="Rzp2ybsAgJLSjvvEjxY0-0" />
-        <mxCell id="Rzp2ybsAgJLSjvvEjxY0-2" value="Manage Permissions" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="Rzp2ybsAgJLSjvvEjxY0-1">
+        <mxCell id="Rzp2ybsAgJLSjvvEjxY0-2" value="Monitor Access logs" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="Rzp2ybsAgJLSjvvEjxY0-1">
           <mxGeometry x="207.5" y="-52" width="265" height="615" as="geometry" />
         </mxCell>
         <mxCell id="Rzp2ybsAgJLSjvvEjxY0-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=1;" edge="1" parent="Rzp2ybsAgJLSjvvEjxY0-1" source="Rzp2ybsAgJLSjvvEjxY0-4" target="Rzp2ybsAgJLSjvvEjxY0-5">
