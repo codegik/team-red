@@ -435,11 +435,14 @@ Monitor business KPIs to detect regressions:
 - Report Generation Time
 - Video Compilation Time
 
-# 10. 💿 Data Store Designs (TBD: need to create diagrams)
+# 10. 💿 Data Store Designs
 
 - **Primary Database**: PostgreSQL (RDS Multi-AZ) for transactional data
     - Tenant-specific schemas for data isolation
     - POC metadata, user profiles, and tenant configurations
+
+![img.er.png](img.er.png)
+
 - **Search Database**: Elasticsearch cluster for POC search functionality
     - Indexed by name, language, tags, and content
 - **Cache Layer**: Redis (ElastiCache) for session management and frequent queries
@@ -447,8 +450,6 @@ Monitor business KPIs to detect regressions:
     - Separate buckets per tenant for isolation
 - **Time-series Data**: CloudWatch for metrics and monitoring data
 - **Message Queue**: SQS for asynchronous processing and video generation jobs
-
-![img.er.png](img.er.png)
 
 # 11. 🥞 Technology Stack (TBD: need to detail more)
 
@@ -483,9 +484,7 @@ Monitor business KPIs to detect regressions:
 - Monitoring: CloudWatch, X-Ray, Prometheus/Grafana
 
 
-
 # TODO
-- Add uml diagrams for use cases
 - Details more the technology stack
 - Create a solution for the video generation
 - Add uml diagrams for data store designs
