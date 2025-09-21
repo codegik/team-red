@@ -448,6 +448,7 @@ Monitor business KPIs to detect regressions:
 - **Time-series Data**: CloudWatch for metrics and monitoring data
 - **Message Queue**: SQS for asynchronous processing and video generation jobs
 
+![img.er.png](img.er.png)
 
 # 11. 🥞 Technology Stack (TBD: need to detail more)
 
