@@ -561,6 +561,10 @@ The system will leverage the following AWS services:
 - Potential uncanny-valley effect — choose/high-grade avatar models carefully.
 - Vendor/API dependency and potential pricing changes.
 
+## 13. UML Diagram
+
+![img.uml.er-microservices.png](img.uml.er-microservices.png)
+
 
 # TODO
 - Add uml diagrams for use cases
