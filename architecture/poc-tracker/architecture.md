@@ -463,11 +463,12 @@ Monitor business KPIs to detect regressions:
 - Report Generation Time
 - Video Compilation Time
 
-# 10. 💿 Data Store Designs (TBD: need to create diagrams)
+# 10. 💿 Data Store Designs
 
 - **Primary Database**: PostgreSQL (RDS Multi-AZ) for transactional data
     - Tenant-specific schemas for data isolation
     - POC metadata, user profiles, and tenant configurations
+    - [Go to UML Diagram](#13-uml-diagram)
 - **Search Database**: Elasticsearch cluster for POC search functionality
     - Indexed by name, language, tags, and content
 - **Cache Layer**: Redis (ElastiCache) for session management and frequent queries
