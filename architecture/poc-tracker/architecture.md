@@ -83,7 +83,7 @@ This is an AWS-based architecture that supports multi-tenancy (Tenant A, Tenant 
 The architecture combines static file delivery (frontend), API Gateway with authentication (backend APIs), and Kubernetes-managed microservices (EKS worker nodes) with supporting databases, caches, and search services.
 
 
-![img.overall.architecture.png](img.overall.architecture.png)
+![img.overall.architecture.svg](img.overall.architecture.svg)
 
 ## 5.2 🗂️ Deployment
 

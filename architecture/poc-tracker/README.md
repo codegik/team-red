@@ -27,5 +27,5 @@ The backend is developed using Java, ensuring a robust and scalable architecture
 Click on the image below to see the overall architecture.
 
 <a href="architecture.md">
-  <img src="img.overall.architecture.png" alt="Overall Architecture" width="300"/>
+  <img src="img.overall.architecture.svg" alt="Overall Architecture" width="300"/>
 </a>
