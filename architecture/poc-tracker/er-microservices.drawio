@@ -1,144 +1,129 @@
-<mxfile host="65bd71144e">
-    <diagram id="er1" name="ER Microservices">
-        <mxGraphModel dx="3030" dy="1413" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
-            <root>
-                <mxCell id="0"/>
-                <mxCell id="1" parent="0"/>
-                <mxCell id="g_identity" value="Identity Service (tenants, users)" style="swimlane;rounded=1;fontSize=12;" parent="1" vertex="1">
-                    <mxGeometry x="80" y="70" width="720" height="500" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_tenant" value="&lt;b&gt;tenant&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;name (text)&lt;br/&gt;slug UNIQUE (text)&lt;br/&gt;created_at (timestamptz)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_identity" vertex="1">
-                    <mxGeometry x="80" y="70" width="220" height="140" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_user" value="&lt;b&gt;user&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;email UNIQUE (text)&lt;br/&gt;name (text)&lt;br/&gt;created_at (timestamptz)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_identity" vertex="1">
-                    <mxGeometry x="90" y="310" width="220" height="140" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_user_tenant" value="&lt;b&gt;user_tenant&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;user_id FK→user.id&lt;br/&gt;tenant_id FK→tenant.id&lt;br/&gt;role (enum)&lt;br/&gt;UNIQUE(user_id,tenant_id)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;arcSize=20;" parent="g_identity" vertex="1">
-                    <mxGeometry x="390" y="100" width="220" height="140" as="geometry"/>
-                </mxCell>
-                <mxCell id="e1" style="endArrow=block;rounded=0;strokeColor=#666;" parent="g_identity" source="t_user_tenant" target="t_user" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e2" style="endArrow=block;rounded=0;strokeColor=#666;" parent="g_identity" source="t_user_tenant" target="t_tenant" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e4" style="endArrow=block;rounded=0;strokeColor=#666;" parent="g_identity" source="t_user_tenant" target="t_user" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="AMAAwSErz6Yx0VqT8GsB-3" value="Text" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="e4" vertex="1" connectable="0">
-                    <mxGeometry x="-0.3362" relative="1" as="geometry">
-                        <mxPoint y="1" as="offset"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="g_poc" value="POC Service (pocs, tags, languages)" style="swimlane;rounded=1;fontSize=12;" parent="1" vertex="1">
-                    <mxGeometry x="860" y="70" width="590" height="590" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_poc" value="&lt;b&gt;poc&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;tenant_id FK→tenant.id&lt;br/&gt;owner_user_id FK→user.id&lt;br/&gt;title (text)&lt;br/&gt;description (text)&lt;br/&gt;status (enum)&lt;br/&gt;created_at/updated_at&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_poc" vertex="1">
-                    <mxGeometry x="20" y="60" width="220" height="140" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_tag" value="&lt;b&gt;tag&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;tenant_id FK→tenant.id&lt;br/&gt;name (text)&lt;br/&gt;color (text)&lt;br/&gt;UNIQUE(tenant_id,name)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_poc" vertex="1">
-                    <mxGeometry x="260" y="60" width="220" height="140" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_poc_tag" value="&lt;b&gt;poc_tag&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;poc_id FK→poc.id&lt;br/&gt;tag_id FK→tag.id&lt;br/&gt;PRIMARY KEY (poc_id,tag_id)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_poc" vertex="1">
-                    <mxGeometry x="260" y="220" width="220" height="140" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_poc_lang" value="&lt;b&gt;poc_language&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;poc_id FK→poc.id&lt;br/&gt;language_id FK→language.id&lt;br/&gt;PRIMARY KEY (poc_id,language_id)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_poc" vertex="1">
-                    <mxGeometry x="30" y="375" width="220" height="140" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_poc_media" value="&lt;b&gt;poc_media&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;poc_id FK→poc.id&lt;br/&gt;type (enum)&lt;br/&gt;s3_uri (text)&lt;br/&gt;caption (text)&lt;br/&gt;created_at (timestamptz)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_poc" vertex="1">
-                    <mxGeometry x="20" y="220" width="220" height="140" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_language" value="&lt;b&gt;language&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;name (text)&lt;br/&gt;code (text)&lt;br/&gt;UNIQUE(code)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_poc" vertex="1">
-                    <mxGeometry x="270" y="370" width="220" height="140" as="geometry"/>
-                </mxCell>
-                <mxCell id="e8" style="endArrow=block;rounded=0;strokeColor=#666;" parent="g_poc" source="t_poc_lang" target="t_language" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="g_video" value="Video Service (video jobs/templates/outputs)" style="swimlane;rounded=1;fontSize=12;" parent="1" vertex="1">
-                    <mxGeometry x="190" y="610" width="520" height="360" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_vtemplate" value="&lt;b&gt;video_template&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;tenant_id FK→tenant.id&lt;br/&gt;name, version&lt;br/&gt;definition_s3_uri&lt;br/&gt;default_music_s3_uri&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_video" vertex="1">
-                    <mxGeometry x="67" y="215" width="194" height="130" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_vjob" value="&lt;b&gt;video_job&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;tenant_id FK→tenant.id&lt;br/&gt;requested_by FK→user.id&lt;br/&gt;template_id FK→video_template.id&lt;br/&gt;time_window_start/end&lt;br/&gt;status (enum), progress&lt;br/&gt;outputs_manifest_s3_uri&lt;br/&gt;thumbnail_s3_uri&lt;br/&gt;failure_reason (text)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_video" vertex="1">
-                    <mxGeometry x="54" y="50" width="220" height="140" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_vscene" value="&lt;b&gt;video_scene_asset&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;video_job_id FK→video_job.id&lt;br/&gt;type (enum)&lt;br/&gt;s3_uri (text)&lt;br/&gt;order, duration_ms&lt;br/&gt;meta_json (jsonb)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_video" vertex="1">
-                    <mxGeometry x="290" y="210" width="220" height="140" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_voutput" value="&lt;b&gt;video_output&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;video_job_id FK→video_job.id&lt;br/&gt;format (enum)&lt;br/&gt;s3_uri (text)&lt;br/&gt;bytes, duration_ms&lt;br/&gt;width,height,bitrate_kbps&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_video" vertex="1">
-                    <mxGeometry x="290" y="60" width="220" height="130" as="geometry"/>
-                </mxCell>
-                <mxCell id="g_report" value="Reporting Service (report jobs/templates/outputs)" style="swimlane;rounded=1;fontSize=12;" parent="1" vertex="1">
-                    <mxGeometry x="-270" y="70" width="310" height="610" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_rtemplate" value="&lt;b&gt;report_template&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;tenant_id FK→tenant.id&lt;br/&gt;name, version&lt;br/&gt;definition_s3_uri&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_report" vertex="1">
-                    <mxGeometry x="25" y="50" width="220" height="140" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_rjob" value="&lt;b&gt;report_job&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;tenant_id FK→tenant.id&lt;br/&gt;requested_by FK→user.id&lt;br/&gt;template_id FK→report_template.id&lt;br/&gt;time_window_start/end&lt;br/&gt;status (enum), progress&lt;br/&gt;output_s3_uri&lt;br/&gt;failure_reason (text)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_report" vertex="1">
-                    <mxGeometry x="25" y="260" width="220" height="140" as="geometry"/>
-                </mxCell>
-                <mxCell id="e19" style="endArrow=block;rounded=0;strokeColor=#666;" parent="g_report" source="t_rjob" target="t_rtemplate" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="t_rout" value="&lt;b&gt;report_output&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;report_job_id FK→report_job.id&lt;br/&gt;format (enum)&lt;br/&gt;s3_uri (text)&lt;br/&gt;bytes (bigint)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_report" vertex="1">
-                    <mxGeometry x="25" y="435" width="220" height="140" as="geometry"/>
-                </mxCell>
-                <mxCell id="e20" style="endArrow=block;rounded=0;strokeColor=#666;" parent="g_report" source="t_rout" target="t_rjob" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e3" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_poc" target="t_tenant" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e5" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_poc_tag" target="t_poc" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e6" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_poc_tag" target="t_tag" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e7" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_poc_lang" target="t_poc" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e9" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_poc_media" target="t_poc" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e10" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_vjob" target="t_tenant" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e11" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_vjob" target="t_user" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e12" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_vjob" target="t_vtemplate" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e13" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_vscene" target="t_vjob" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e14" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_voutput" target="t_vjob" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e15" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_vmeta" target="t_vjob" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e16" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_rtemplate" target="t_tenant" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e17" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_rjob" target="t_tenant" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="e18" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_rjob" target="t_user" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry"/>
-                </mxCell>
-                <mxCell id="2" value="" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_poc" target="t_user_tenant" edge="1">
-                    <mxGeometry relative="1" as_="geometry" as="geometry">
-                        <mxPoint x="1090" y="102" as="sourcePoint"/>
-                        <mxPoint x="390" y="238" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="t_vmeta" value="&lt;b&gt;video_metadata&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;video_job_id FK→video_job.id&lt;br/&gt;key (text)&lt;br/&gt;value (text)&lt;br/&gt;UNIQUE(video_job_id,key)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="1" vertex="1">
-                    <mxGeometry x="-170" y="770" width="220" height="140" as="geometry"/>
-                </mxCell>
-            </root>
-        </mxGraphModel>
-    </diagram>
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36" version="28.2.3">
+  <diagram id="er1" name="ER Microservices">
+    <mxGraphModel dx="2492" dy="751" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="g_identity" value="Identity Service (tenants, users)" style="swimlane;rounded=1;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="110" y="60" width="570" height="500" as="geometry" />
+        </mxCell>
+        <mxCell id="t_tenant" value="&lt;b&gt;tenant&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;name (text)&lt;br/&gt;slug UNIQUE (text)&lt;br/&gt;created_at (timestamptz)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_identity" vertex="1">
+          <mxGeometry x="60" y="60" width="220" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="t_user" value="&lt;b&gt;user&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;email UNIQUE (text)&lt;br/&gt;name (text)&lt;br/&gt;created_at (timestamptz)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_identity" vertex="1">
+          <mxGeometry x="90" y="310" width="220" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="t_user_tenant" value="&lt;b&gt;user_tenant&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;user_id FK→user.id&lt;br/&gt;tenant_id FK→tenant.id&lt;br/&gt;role (enum)&lt;br/&gt;UNIQUE(user_id,tenant_id)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;arcSize=20;" parent="g_identity" vertex="1">
+          <mxGeometry x="320" y="50" width="220" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" style="endArrow=block;rounded=0;strokeColor=#666;" parent="g_identity" source="t_user_tenant" target="t_user" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="endArrow=block;rounded=0;strokeColor=#666;" parent="g_identity" source="t_user_tenant" target="t_tenant" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="endArrow=block;rounded=0;strokeColor=#666;" parent="g_identity" source="t_user_tenant" target="t_user" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="g_poc" value="POC Service" style="swimlane;rounded=1;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="850" y="60" width="590" height="590" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="" style="edgeStyle=none;html=1;" parent="g_poc" source="t_poc" target="t_poc_lang" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t_poc" value="&lt;b&gt;poc&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;tenant_id FK→tenant.id&lt;br/&gt;owner_user_id FK→user.id&lt;br/&gt;title (text)&lt;br/&gt;description (text)&lt;br/&gt;status (enum)&lt;br/&gt;created_at/updated_at&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_poc" vertex="1">
+          <mxGeometry x="20" y="220" width="220" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="t_tag" value="&lt;b&gt;tag&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;tenant_id FK→tenant.id&lt;br/&gt;name (text)&lt;br/&gt;color (text)&lt;br/&gt;UNIQUE(tenant_id,name)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_poc" vertex="1">
+          <mxGeometry x="310" y="410" width="220" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="t_poc_tag" value="&lt;b&gt;poc_tag&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;poc_id FK→poc.id&lt;br/&gt;tag_id FK→tag.id&lt;br/&gt;PRIMARY KEY (poc_id,tag_id)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_poc" vertex="1">
+          <mxGeometry x="310" y="220" width="220" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="t_poc_lang" value="&lt;b&gt;poc_language&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;poc_id FK→poc.id&lt;br/&gt;language_id FK→language.id&lt;br/&gt;PRIMARY KEY (poc_id,language_id)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_poc" vertex="1">
+          <mxGeometry x="20" y="40" width="220" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="t_poc_media" value="&lt;b&gt;poc_media&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;poc_id FK→poc.id&lt;br/&gt;type (enum)&lt;br/&gt;s3_uri (text)&lt;br/&gt;caption (text)&lt;br/&gt;created_at (timestamptz)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_poc" vertex="1">
+          <mxGeometry x="20" y="410" width="220" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="t_language" value="&lt;b&gt;language&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;name (text)&lt;br/&gt;code (text)&lt;br/&gt;UNIQUE(code)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_poc" vertex="1">
+          <mxGeometry x="300" y="40" width="220" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" style="endArrow=block;rounded=0;strokeColor=#666;" parent="g_poc" source="t_poc_lang" target="t_language" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="5" style="edgeStyle=none;html=1;" parent="g_poc" source="t_poc_media" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="g_video" value="Video Service" style="swimlane;rounded=1;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="150" y="610" width="520" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="t_vtemplate" value="&lt;b&gt;video_template&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;tenant_id FK→tenant.id&lt;br/&gt;name, version&lt;br/&gt;definition_s3_uri&lt;br/&gt;default_music_s3_uri&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_video" vertex="1">
+          <mxGeometry x="67" y="215" width="194" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="t_vjob" value="&lt;b&gt;video_job&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;tenant_id FK→tenant.id&lt;br/&gt;requested_by FK→user.id&lt;br/&gt;template_id FK→video_template.id&lt;br/&gt;time_window_start/end&lt;br/&gt;status (enum), progress&lt;br/&gt;outputs_manifest_s3_uri&lt;br/&gt;thumbnail_s3_uri&lt;br/&gt;failure_reason (text)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_video" vertex="1">
+          <mxGeometry x="54" y="50" width="220" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="t_voutput" value="&lt;b&gt;video_output&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;video_job_id FK→video_job.id&lt;br/&gt;format (enum)&lt;br/&gt;s3_uri (text)&lt;br/&gt;bytes, duration_ms&lt;br/&gt;width,height,bitrate_kbps&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_video" vertex="1">
+          <mxGeometry x="290" y="60" width="220" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="g_report" value="Reporting Service" style="swimlane;rounded=1;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="-270" y="60" width="310" height="610" as="geometry" />
+        </mxCell>
+        <mxCell id="t_rtemplate" value="&lt;b&gt;report_template&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;tenant_id FK→tenant.id&lt;br/&gt;name, version&lt;br/&gt;definition_s3_uri&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_report" vertex="1">
+          <mxGeometry x="25" y="50" width="220" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="t_rjob" value="&lt;b&gt;report_job&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;tenant_id FK→tenant.id&lt;br/&gt;requested_by FK→user.id&lt;br/&gt;template_id FK→report_template.id&lt;br/&gt;time_window_start/end&lt;br/&gt;status (enum), progress&lt;br/&gt;output_s3_uri&lt;br/&gt;failure_reason (text)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_report" vertex="1">
+          <mxGeometry x="25" y="260" width="220" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" style="endArrow=block;rounded=0;strokeColor=#666;" parent="g_report" source="t_rjob" target="t_rtemplate" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="t_rout" value="&lt;b&gt;report_output&lt;/b&gt;&lt;br/&gt;&lt;div style=&#39;font-size:10px;text-align:left;padding-top:4px&#39;&gt;id PK (uuid)&lt;br/&gt;report_job_id FK→report_job.id&lt;br/&gt;format (enum)&lt;br/&gt;s3_uri (text)&lt;br/&gt;bytes (bigint)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#666;fillColor=#f5f5f5;" parent="g_report" vertex="1">
+          <mxGeometry x="25" y="435" width="220" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" style="endArrow=block;rounded=0;strokeColor=#666;" parent="g_report" source="t_rout" target="t_rjob" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_poc" target="t_tenant" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_poc_tag" target="t_poc" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_poc_tag" target="t_tag" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_vjob" target="t_tenant" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_vjob" target="t_user" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_vjob" target="t_vtemplate" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_voutput" target="t_vjob" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_rtemplate" target="t_tenant" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_rjob" target="t_tenant" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_rjob" target="t_user" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry" />
+        </mxCell>
+        <mxCell id="2" value="" style="endArrow=block;rounded=0;strokeColor=#666;" parent="1" source="t_poc" target="t_user_tenant" edge="1">
+          <mxGeometry relative="1" as_="geometry" as="geometry">
+            <mxPoint x="1090" y="102" as="sourcePoint" />
+            <mxPoint x="390" y="238" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
 </mxfile>
