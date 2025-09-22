@@ -384,7 +384,7 @@ We don't have migration for this architecture since its a new system.
 - Verify system behavior during PGsync failures
 - Execute in isolated production environment during low-traffic periods
 
-## Mobile testing (NEW)
+## Mobile testing
 
 - Unit Android: ViewModel/repository with JUnit.
 - Unit iOS: XCTest with async/await; mocks per protocol.
@@ -482,9 +482,100 @@ Monitor business KPIs to detect regressions:
 - Monitoring: CloudWatch, X-Ray, Prometheus/Grafana
 
 
+# 12. 🎬 Solution for **Video Generation**
+
+## 12.1 Purpose
+
+Automatically compile an **annual video** per user (scoped to their tenant) that showcases all POCs created/updated within a chosen timeframe (default: last year). Videos are branded per tenant, follow configurable templates, and can optionally include narration, background music, captions, and on-screen metrics.
+
+
+## 12.2 Script-to-Video with AI Avatars (or Video-to-Video Transformation)
+
+This approach uses a written script and AI-generated presenters (avatars) or transforms existing footage. The AI synthesizes speech from the script, lip-syncs avatars, and composes scenes with backgrounds and on-screen elements per instructions.
+
+**Pros**:
+- Automated, scalable, and cost-effective video production.
+- Consistent brand messaging and professional output.
+- Ability to personalize content for individual clients.
+- Reduced manual effort and human error.
+
+**Cons**:
+- Initial setup and integration complexity with AI video generation APIs/SDKs.
+- Potential for 'uncanny valley' effect with AI avatars, requiring careful selection of avatar models.
+- Reliance on external AI video generation services, subject to their pricing and API changes.
+
+## 12.3 Decision: Recommended AI Video Generation Approach
+
+Given annual recurring generation with client-specific data and the need for automation and consistency, we recommend Script-to-Video with AI Avatars.Given the requirement for annual video generation, potentially with client-specific information, and the need for a scalable and automated solution, the Script-to-Video with AI Avatars approach is recommended.
+
+
+This decision is based on the following rationale:
+
+
+- Automation and Scalability: This method is highly amenable to automation. With a structured script and client data from Keycloak, the system can programmatically generate videos without significant manual intervention. This aligns perfectly with the AWS Batch execution model for annual runs.
+- Consistency and Professionalism: For client-facing content, consistency in presentation and a professional appearance are crucial. AI avatars ensure a standardized look and feel across all generated videos, regardless of the underlying data.
+- Multilingual Capabilities: If future requirements include generating videos for diverse linguistic audiences, the script-to-video approach with AI avatars offers robust multilingual support, simplifying localization efforts.
+- Integration with Client Data: Client information from Keycloak can be seamlessly integrated into scripts to personalize video content, making each video relevant to the specific client.
+- Reduced Production Overhead: By minimizing the need for human actors, filming, and extensive editing, this approach significantly reduces the operational overhead and costs associated with video production.
+
+
+While Text-to-Video offers greater creative freedom, its current limitations in consistency and computational cost make it less suitable for a regularly scheduled, automated production pipeline. Image-to-Video is excellent for animating static content but may not provide the narrative depth or personalization required for client communications.
+
+Therefore, the Script-to-Video with AI Avatars approach provides the best balance of automation, quality, scalability, and cost-effectiveness for the proposed system.
+
+
+
+
+**Rationale**:
+- Automation & Scalability: Fully automatable from tenant/user data (e.g., Keycloak) + templates.
+- Consistency & Professionalism: Standardized look/feel across tenants and timeframes.
+- Multilingual: Straightforward localization.
+- Personalization: Inject per-tenant/user metrics directly into scripts.
+- Reduced Overhead: No filming crews; less editing.
+
+While pure Text-to-Video enables more creativity, today it tends to be less consistent and more compute-intensive for scheduled pipelines. Image-to-Video is powerful for animating static assets but does not offer the same narrative depth or personalization.
+
+## 12.4 System Architecture (AWS Components)
+
+The system will leverage the following AWS services:
+
+- AWS Batch: For orchestrating and executing annual video generation jobs. This provides managed compute capacity and job scheduling.
+- Amazon S3: For storing input scripts, client data, and the final generated video files. S3 offers high durability, availability, and scalability.
+- AWS Lambda: Potentially used for triggering AWS Batch jobs, pre-processing client data, or post-processing generated videos (e.g., sending notifications).
+- Amazon EC2 (within AWS Batch): The underlying compute instances for video generation tasks, configured with necessary AI/ML libraries and tools.
+- Keycloak: External identity and access management system for client data, integrated securely with the AWS environment.
+
+![img.video-generator.drawio.png](img.video-generator.drawio.png)
+
+
+## 12.5 Detailed Implementation Plan (High-Level)
+
+1. Data Ingestion: Client data from Keycloak will be securely accessed and transformed into structured scripts or templates for video generation.
+2. Video Generation Service: A containerized application (e.g., Docker image) running on AWS Batch will take the processed scripts and utilize an AI video generation SDK/API (implementing the Script-to-Video with AI Avatars approach) to produce video files.
+3. Storage: Generated video files will be uploaded to a designated S3 bucket.
+4. Notification/Delivery: Upon successful generation, a notification mechanism (e.g., AWS SNS/SQS) can trigger further actions, such as sending download links to clients or updating a content management system.
+
+
+## 12.6 Consequences
+
+**Positive**:
+
+- Automated, scalable, and cost-effective video production.
+- Consistent brand and professional delivery.
+- Easy personalization per tenant/user and language.
+
+**Negative**:
+
+- Initial integration with AI avatar SDKs/APIs.
+- Potential uncanny-valley effect — choose/high-grade avatar models carefully.
+- Vendor/API dependency and potential pricing changes.
+
+## 13. UML Diagram
+
+![img.uml.er-microservices.png](img.uml.er-microservices.png)
+
 
 # TODO
 - Add uml diagrams for use cases
 - Details more the technology stack
-- Create a solution for the video generation
 - Add uml diagrams for data store designs
