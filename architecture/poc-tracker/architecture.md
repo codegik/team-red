@@ -808,7 +808,3 @@ The system will leverage the following AWS services:
 ## 13. UML Diagram
 
 ![img.uml.er-microservices.png](img.uml.er-microservices.png)
-
-# TODO
-- Details more the technology stack
-- Add uml diagrams for data store designs
