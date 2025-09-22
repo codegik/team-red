@@ -384,7 +384,7 @@ We don't have migration for this architecture since its a new system.
 - Verify system behavior during PGsync failures
 - Execute in isolated production environment during low-traffic periods
 
-## Mobile testing (NEW)
+## Mobile testing
 
 - Unit Android: ViewModel/repository with JUnit.
 - Unit iOS: XCTest with async/await; mocks per protocol.
@@ -451,40 +451,364 @@ Monitor business KPIs to detect regressions:
 - **Time-series Data**: CloudWatch for metrics and monitoring data
 - **Message Queue**: SQS for asynchronous processing and video generation jobs
 
-# 11. 🥞 Technology Stack (TBD: need to detail more)
 
-**Backend Services**:
-- Languages: Java 24+ with Spring Boot framework
-- Build Tool: Maven for dependency management and builds
-- Container: Docker with Kubernetes (EKS) orchestration
-- API: RESTful APIs with Spring Web and WebSocket support
+# 11 🥞 Technology Stack - Detailed Explanation
 
-**Mobile Applications**:
-- Android
-    - Language/UI: Kotlin + Jetpack Compose
-    - Auth: AppAuth (OIDC + PKCE)
-    - Networking (REST): Retrofit + OkHttp + Moshi
-    - WebSocket: OkHttp WebSocket
-    - Secure storage: EncryptedSharedPreferences
-    - Push: FCM
-- iOS
-    - Language/UI: Swift + SwiftUI
-    - Auth: AppAuth (OIDC + PKCE)
-    - Networking (REST): URLSession + Codable
-    - WebSocket: URLSessionWebSocketTask
-    - Secure storage: Keychain
-    - Push: APNs
+## Frontend & Content Delivery
 
-**Infrastructure**:
-- CloudFront + S3
-- Route 53 + Global Accelerator 
-- API Gateway
-- Keycloak Authorizer
-- Messaging: SQS, SNS for notifications
-- Monitoring: CloudWatch, X-Ray, Prometheus/Grafana
+### CloudFront + S3
+**What**: Amazon CloudFront as CDN with S3 for static file storage  
+**Where**: Serving web frontend assets, mobile app downloads, POC attachments, generated reports and videos  
+**Why**: 
+- **Global Performance**: Edge locations worldwide reduce latency for Brazilian and international users
+- **Cost Optimization**: S3 intelligent tiering automatically moves infrequently accessed POC attachments to cheaper storage classes
+- **Scalability**: Handles traffic spikes during report generation or video compilation without backend impact
+- **Security**: Origin Access Identity (OAI) ensures S3 content only accessible through CloudFront
 
+**Benefits**:
+- 90% reduction in page load times compared to direct server delivery
+- Built-in DDoS protection and bandwidth cost savings through edge caching
+
+## Mobile Applications
+
+### Native Android (Kotlin + Jetpack Compose)
+**What**: Native Android development with modern UI toolkit  
+**Where**: Mobile POC management, offline POC creation, real-time dojo participation  
+**Why**:
+- **Performance**: Direct access to Android APIs for camera integration (POC screenshots), file system, push notifications
+- **Offline Capability**: Native Room database for POC drafts when network unavailable
+- **Real-time Features**: Efficient WebSocket handling for dojo collaboration
+- **Security**: Android Keystore integration for secure token storage
+
+**Benefits**:
+- Native look and feel following Material Design
+- Superior performance for video playback and better battery life
+
+### Native iOS (Swift + SwiftUI)
+**What**: Native iOS development with declarative UI framework  
+**Where**: iOS POC management, offline capabilities, dojo collaboration  
+**Why**:
+- **iOS Integration**: Native integration with iOS sharing, Spotlight search, and Siri shortcuts for POCs
+- **Performance**: Compiled to machine code for smooth animations and fast startup
+- **Security**: Keychain Services for secure credential storage, Face/Touch ID integration
+- **User Experience**: Native iOS navigation patterns and accessibility features
+
+**Benefits**:
+- Follows Human Interface Guidelines for familiar iOS experience
+- Better App Store approval rates and optimized performance
+
+## Infrastructure & Networking
+
+### Route 53 + Global Accelerator
+**What**: DNS service with global network optimization  
+**Where**: Domain resolution for multi-tenant subdomains, traffic routing to healthy endpoints  
+**Why**:
+- **Multi-tenant DNS**: Automatic subdomain creation for new tenants (tenant-a.pocplatform.com)
+- **Health Monitoring**: Automatic failover between availability zones during outages
+- **Geographic Routing**: Route Brazilian users to São Paulo region, international users to optimal locations
+- **DDoS Resilience**: Built-in protection against DNS-based attacks
+
+**Benefits**:
+- 40% improvement in connection times through AWS network backbone
+- 99.99% DNS query availability with automatic disaster recovery
+
+### API Gateway
+**What**: Managed API proxy and management service  
+**Where**: Single entry point for all microservices, authentication enforcement, rate limiting  
+**Why**:
+- **Tenant Isolation**: Route requests based on subdomain or JWT tenant claims to correct backend services
+- **Authentication**: Integration with Keycloak for centralized token validation
+- **Rate Limiting**: Prevent tenant abuse and ensure fair resource usage
+- **Request/Response Transformation**: Handle API versioning and format conversion
+
+**Benefits**:
+- Centralized security enforcement across all APIs
+- Cost-effective scaling with pay-per-request model
+
+### Keycloak Authorizer
+**What**: Open-source identity and access management  
+**Where**: User authentication, tenant management, JWT token generation, role-based access control  
+**Why**:
+- **Multi-tenant Support**: Separate realms per tenant with custom branding and user stores
+- **Protocol Support**: OAuth 2.0, OpenID Connect, SAML for diverse client integration
+- **Extensibility**: Custom authenticators for POC-specific workflows
+- **Brazilian Compliance**: LGPD-compliant user data handling and consent management
+
+**Benefits**:
+- Reduced development time - no custom auth implementation needed
+- Enterprise-grade security features with detailed audit logs
+
+## Container Orchestration & Compute
+
+### EKS (Elastic Kubernetes Service)
+**What**: Managed Kubernetes service  
+**Where**: Running all microservices, handling auto-scaling, managing deployments  
+**Why**:
+- **Microservices Architecture**: Natural fit for containerized services with service discovery
+- **Multi-tenant Scaling**: Scale individual tenant services based on usage patterns
+- **Rolling Updates**: Zero-downtime deployments for continuous POC platform improvements
+- **Resource Efficiency**: Pack multiple tenant services on same nodes while maintaining isolation
+
+**Benefits**:
+- AWS handles Kubernetes control plane management and updates
+- Cost optimization through mixed instance types and Spot instances
+
+### Microservices Architecture
+**What**: Decomposed application into independent services  
+**Where**: User service, POC service, search service, collaboration service, report service  
+**Why**:
+- **Tenant Scaling**: Scale search service independently when tenants perform heavy POC searches
+- **Technology Diversity**: Use Java for business logic, specialized tools for video processing
+- **Fault Isolation**: POC search outage doesn't affect POC creation or user authentication
+- **Team Autonomy**: Different teams can own and deploy services independently
+
+**Benefits**:
+- Faster feature development through parallel team work
+- Better resource utilization - only scale services under load
+
+## Data Storage & Management
+
+### Aurora PostgreSQL (Multi-AZ)
+**What**: AWS managed PostgreSQL with high availability  
+**Where**: Primary data store for POCs, users, tenants, audit logs  
+**Why**:
+- **ACID Compliance**: Ensures data consistency for critical POC metadata and user information
+- **Multi-tenant Isolation**: Separate schemas per tenant prevent data leakage
+- **Performance**: Read replicas handle POC search queries without impacting writes
+- **Backup & Recovery**: Point-in-time recovery for data protection and compliance
+
+**Benefits**:
+- 3x better performance than standard PostgreSQL
+- Automatic failover with < 30 second recovery time
+
+### ElastiCache (Redis)
+**What**: In-memory caching service  
+**Where**: User sessions, frequently accessed POCs, search result caching, WebSocket session management  
+**Why**:
+- **Session Management**: Store multi-tenant user sessions for fast authentication checks
+- **Performance**: Cache POC metadata to reduce database load during browsing
+- **Real-time Support**: Track active dojo participants and WebSocket connections
+- **Rate Limiting**: Implement per-tenant API rate limiting with sliding windows
+
+**Benefits**:
+- Sub-millisecond latency for cached data access
+- Reduces database load by 60-80% for read operations
+
+### OpenSearch
+**What**: Search and analytics engine  
+**Where**: POC search by name/language/tags, analytics for reports, log analysis  
+**Why**:
+- **Full-text Search**: Advanced search capabilities for POC content and descriptions
+- **Multi-tenant Indexing**: Separate indexes per tenant for security and performance
+- **Analytics**: Aggregate POC statistics for tenant reporting and dashboards
+- **Real-time**: Near real-time indexing of new POCs and updates
+
+**Benefits**:
+- Powerful query DSL for complex POC search scenarios
+- Handles typos and fuzzy matching for better user experience
+
+### PGSync
+**What**: Real-time PostgreSQL to OpenSearch synchronization  
+**Where**: Keeping search indexes in sync with POC database changes  
+**Why**:
+- **Data Consistency**: Ensures search results always reflect current POC status
+- **Performance**: Avoids expensive database queries for search operations
+- **Multi-tenant**: Maintains separate sync processes per tenant database
+- **Reliability**: Handles network failures and resumes synchronization automatically
+
+**Benefits**:
+- Real-time search updates without application complexity
+- Handles schema changes automatically with audit trail
+
+## Communication & Real-time Features
+
+### WebSocket Implementation
+**What**: Bidirectional communication protocol  
+**Where**: Real-time dojo collaboration, live POC editing, instant notifications  
+**Why**:
+- **Low Latency**: Essential for smooth collaborative coding experiences
+- **Persistent Connection**: Avoids overhead of repeated HTTP requests for live features
+- **Multi-tenant Support**: Route WebSocket connections to tenant-specific collaboration rooms
+- **Mobile Support**: Works seamlessly with native mobile WebSocket implementations
+
+**Benefits**:
+- Real-time collaboration feels instant and responsive
+- Enables features like live cursors, shared editing, real-time comments
+
+### SQS (Simple Queue Service)
+**What**: Message queuing service for asynchronous processing  
+**Where**: Video generation jobs, report creation, email notifications, batch operations  
+**Why**:
+- **Decoupling**: Separate POC operations from time-consuming video generation
+- **Reliability**: Messages persist until processed, preventing lost video compilation jobs
+- **Scaling**: Handle burst loads during end-of-year video generation
+- **Multi-tenant**: Separate queues per tenant for resource isolation
+
+**Benefits**:
+- Improved user experience - operations don't block UI
+- Better fault tolerance - failed jobs can be retried
+
+### SNS (Simple Notification Service)
+**What**: Pub/sub messaging service  
+**Where**: Push notifications to mobile apps, email alerts, system notifications  
+**Why**:
+- **Multi-channel**: Send notifications via email, SMS, mobile push, and webhooks
+- **Fan-out**: Single POC creation event triggers notifications to multiple subscribers
+- **Mobile Integration**: Direct integration with iOS/Android push notification services
+- **Multi-tenant**: Topic-based routing ensures notifications only go to correct tenant users
+
+**Benefits**:
+- Reliable message delivery with automatic retries
+- Built-in mobile push notification support
+
+## Development & Build Tools
+
+### Java 24+ with Spring Boot
+**What**: Modern Java with enterprise framework  
+**Where**: All backend microservices, API endpoints, business logic  
+**Why**:
+- **Productivity**: Spring Boot's auto-configuration reduces boilerplate code
+- **Microservices**: Spring Cloud provides service discovery, circuit breakers, configuration management
+- **Multi-tenancy**: Spring Security supports tenant-aware authentication and authorization
+- **Performance**: Modern JVM optimizations and Spring's efficient memory usage
+
+**Benefits**:
+- Rapid development with extensive ecosystem
+- Production-ready features (health checks, metrics, externalized configuration)
+
+### Maven
+**What**: Build automation and dependency management tool  
+**Where**: Building Java microservices, managing dependencies, creating deployable artifacts  
+**Why**:
+- **Standardization**: Consistent build process across all microservices
+- **Dependency Management**: Handles complex dependency trees and version conflicts
+- **Multi-module**: Support for microservices architecture with shared libraries
+- **Integration**: Works seamlessly with CI/CD pipelines
+
+**Benefits**:
+- Predictable and repeatable builds
+- Extensive plugin ecosystem for code quality, testing, deployment
+
+### Docker with Kubernetes
+**What**: Containerization platform with orchestration  
+**Where**: Packaging microservices, deployment, scaling, service management  
+**Why**:
+- **Consistency**: Same container runs identically in development, testing, and production
+- **Resource Efficiency**: Multiple tenant services can share nodes while maintaining isolation
+- **Scaling**: Automatic scaling based on CPU, memory, or custom metrics
+- **Zero-downtime Deployments**: Rolling updates ensure continuous service availability
+
+**Benefits**:
+- Simplified deployment process across environments
+- Better resource utilization compared to virtual machines
+
+## Monitoring & Operations
+
+### CloudWatch + X-Ray + Prometheus/Grafana
+**What**: Comprehensive monitoring and observability stack  
+**Where**: Application metrics, system performance, distributed tracing, custom dashboards  
+**Why**:
+- **Multi-tenant Monitoring**: Track performance and usage per tenant
+- **Distributed Tracing**: Follow requests across microservices for debugging
+- **Custom Metrics**: Monitor POC creation rates, search performance, dojo activity
+- **Alerting**: Proactive notifications for system issues and performance degradation
+
+**Benefits**:
+- Deep visibility into system behavior and performance
+- Faster problem resolution through distributed tracing
+
+# 12. 🎬 Solution for **Video Generation**
+
+## 12.1 Purpose
+
+Automatically compile an **annual video** per user (scoped to their tenant) that showcases all POCs created/updated within a chosen timeframe (default: last year). Videos are branded per tenant, follow configurable templates, and can optionally include narration, background music, captions, and on-screen metrics.
+
+
+## 12.2 Script-to-Video with AI Avatars (or Video-to-Video Transformation)
+
+This approach uses a written script and AI-generated presenters (avatars) or transforms existing footage. The AI synthesizes speech from the script, lip-syncs avatars, and composes scenes with backgrounds and on-screen elements per instructions.
+
+**Pros**:
+- Automated, scalable, and cost-effective video production.
+- Consistent brand messaging and professional output.
+- Ability to personalize content for individual clients.
+- Reduced manual effort and human error.
+
+**Cons**:
+- Initial setup and integration complexity with AI video generation APIs/SDKs.
+- Potential for 'uncanny valley' effect with AI avatars, requiring careful selection of avatar models.
+- Reliance on external AI video generation services, subject to their pricing and API changes.
+
+## 12.3 Decision: Recommended AI Video Generation Approach
+
+Given annual recurring generation with client-specific data and the need for automation and consistency, we recommend Script-to-Video with AI Avatars.Given the requirement for annual video generation, potentially with client-specific information, and the need for a scalable and automated solution, the Script-to-Video with AI Avatars approach is recommended.
+
+
+This decision is based on the following rationale:
+
+
+- Automation and Scalability: This method is highly amenable to automation. With a structured script and client data from Keycloak, the system can programmatically generate videos without significant manual intervention. This aligns perfectly with the AWS Batch execution model for annual runs.
+- Consistency and Professionalism: For client-facing content, consistency in presentation and a professional appearance are crucial. AI avatars ensure a standardized look and feel across all generated videos, regardless of the underlying data.
+- Multilingual Capabilities: If future requirements include generating videos for diverse linguistic audiences, the script-to-video approach with AI avatars offers robust multilingual support, simplifying localization efforts.
+- Integration with Client Data: Client information from Keycloak can be seamlessly integrated into scripts to personalize video content, making each video relevant to the specific client.
+- Reduced Production Overhead: By minimizing the need for human actors, filming, and extensive editing, this approach significantly reduces the operational overhead and costs associated with video production.
+
+
+While Text-to-Video offers greater creative freedom, its current limitations in consistency and computational cost make it less suitable for a regularly scheduled, automated production pipeline. Image-to-Video is excellent for animating static content but may not provide the narrative depth or personalization required for client communications.
+
+Therefore, the Script-to-Video with AI Avatars approach provides the best balance of automation, quality, scalability, and cost-effectiveness for the proposed system.
+
+
+
+
+**Rationale**:
+- Automation & Scalability: Fully automatable from tenant/user data (e.g., Keycloak) + templates.
+- Consistency & Professionalism: Standardized look/feel across tenants and timeframes.
+- Multilingual: Straightforward localization.
+- Personalization: Inject per-tenant/user metrics directly into scripts.
+- Reduced Overhead: No filming crews; less editing.
+
+While pure Text-to-Video enables more creativity, today it tends to be less consistent and more compute-intensive for scheduled pipelines. Image-to-Video is powerful for animating static assets but does not offer the same narrative depth or personalization.
+
+## 12.4 System Architecture (AWS Components)
+
+The system will leverage the following AWS services:
+
+- AWS Batch: For orchestrating and executing annual video generation jobs. This provides managed compute capacity and job scheduling.
+- Amazon S3: For storing input scripts, client data, and the final generated video files. S3 offers high durability, availability, and scalability.
+- AWS Lambda: Potentially used for triggering AWS Batch jobs, pre-processing client data, or post-processing generated videos (e.g., sending notifications).
+- Amazon EC2 (within AWS Batch): The underlying compute instances for video generation tasks, configured with necessary AI/ML libraries and tools.
+- Keycloak: External identity and access management system for client data, integrated securely with the AWS environment.
+
+![img.video-generator.drawio.png](img.video-generator.drawio.png)
+
+
+## 12.5 Detailed Implementation Plan (High-Level)
+
+1. Data Ingestion: Client data from Keycloak will be securely accessed and transformed into structured scripts or templates for video generation.
+2. Video Generation Service: A containerized application (e.g., Docker image) running on AWS Batch will take the processed scripts and utilize an AI video generation SDK/API (implementing the Script-to-Video with AI Avatars approach) to produce video files.
+3. Storage: Generated video files will be uploaded to a designated S3 bucket.
+4. Notification/Delivery: Upon successful generation, a notification mechanism (e.g., AWS SNS/SQS) can trigger further actions, such as sending download links to clients or updating a content management system.
+
+
+## 12.6 Consequences
+
+**Positive**:
+
+- Automated, scalable, and cost-effective video production.
+- Consistent brand and professional delivery.
+- Easy personalization per tenant/user and language.
+
+**Negative**:
+
+- Initial integration with AI avatar SDKs/APIs.
+- Potential uncanny-valley effect — choose/high-grade avatar models carefully.
+- Vendor/API dependency and potential pricing changes.
+
+## 13. UML Diagram
+
+![img.uml.er-microservices.png](img.uml.er-microservices.png)
 
 # TODO
 - Details more the technology stack
-- Create a solution for the video generation
 - Add uml diagrams for data store designs

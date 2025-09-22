@@ -20,7 +20,7 @@ Such system must be secure and have proper login and be able to support Realtime
 
 ## Solution
 
-The solution is a mobile and web app built with React Native for cross-platform compatibility, allowing users to register, search, and manage their POCs efficiently. 
+The solution is a mobile and web app built with Kotlin and Swift for a native experience, allowing users to register, search, and manage their POCs efficiently. 
 
 The backend is developed using Java, ensuring a robust and scalable architecture.
 
