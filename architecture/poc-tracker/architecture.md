@@ -744,10 +744,10 @@ Given annual recurring generation with client-specific data and the need for aut
 This decision is based on the following rationale:
 
 
-- Automation and Scalability: This method is highly amenable to automation. With a structured script and client data from Keycloak, the system can programmatically generate videos without significant manual intervention. This aligns perfectly with the AWS Batch execution model for annual runs.
+- Automation and Scalability: This method is highly amenable to automation. With a structured script and client data from the source code in POCs, the system can programmatically generate videos without significant manual intervention. This aligns perfectly with the AWS Batch execution model for annual runs.
 - Consistency and Professionalism: For client-facing content, consistency in presentation and a professional appearance are crucial. AI avatars ensure a standardized look and feel across all generated videos, regardless of the underlying data.
 - Multilingual Capabilities: If future requirements include generating videos for diverse linguistic audiences, the script-to-video approach with AI avatars offers robust multilingual support, simplifying localization efforts.
-- Integration with Client Data: Client information from Keycloak can be seamlessly integrated into scripts to personalize video content, making each video relevant to the specific client.
+- Integration with Client Data: Client information from source code in POCs can be seamlessly integrated into scripts to personalize video content, making each video relevant to the specific client.
 - Reduced Production Overhead: By minimizing the need for human actors, filming, and extensive editing, this approach significantly reduces the operational overhead and costs associated with video production.
 
 
@@ -759,7 +759,6 @@ Therefore, the Script-to-Video with AI Avatars approach provides the best balanc
 
 
 **Rationale**:
-- Automation & Scalability: Fully automatable from tenant/user data (e.g., Keycloak) + templates.
 - Consistency & Professionalism: Standardized look/feel across tenants and timeframes.
 - Multilingual: Straightforward localization.
 - Personalization: Inject per-tenant/user metrics directly into scripts.
@@ -770,19 +769,17 @@ While pure Text-to-Video enables more creativity, today it tends to be less cons
 ## 12.4 System Architecture (AWS Components)
 
 The system will leverage the following AWS services:
-
-- AWS Batch: For orchestrating and executing annual video generation jobs. This provides managed compute capacity and job scheduling.
 - Amazon S3: For storing input scripts, client data, and the final generated video files. S3 offers high durability, availability, and scalability.
-- AWS Lambda: Potentially used for triggering AWS Batch jobs, pre-processing client data, or post-processing generated videos (e.g., sending notifications).
-- Amazon EC2 (within AWS Batch): The underlying compute instances for video generation tasks, configured with necessary AI/ML libraries and tools.
-- Keycloak: External identity and access management system for client data, integrated securely with the AWS environment.
+- EKS Service(Cron Job): Potentially used for triggering AWS Batch jobs, pre-processing client data, or post-processing generated videos (e.g., sending notifications).
+- API/IA: AI-powered script-to-video platforms, synchronizes the avatar’s lip movements, and composes the scene with backgrounds, graphics, and on-screen metrics.      
+
 
 ![img.video-generator.drawio.png](img.video-generator.drawio.png)
 
 
 ## 12.5 Detailed Implementation Plan (High-Level)
 
-1. Data Ingestion: Client data from Keycloak will be securely accessed and transformed into structured scripts or templates for video generation.
+1. Data Ingestion: Client data from source code in POCs will be securely accessed and transformed into structured scripts or templates for video generation.
 2. Video Generation Service: A containerized application (e.g., Docker image) running on AWS Batch will take the processed scripts and utilize an AI video generation SDK/API (implementing the Script-to-Video with AI Avatars approach) to produce video files.
 3. Storage: Generated video files will be uploaded to a designated S3 bucket.
 4. Notification/Delivery: Upon successful generation, a notification mechanism (e.g., AWS SNS/SQS) can trigger further actions, such as sending download links to clients or updating a content management system.
@@ -802,12 +799,34 @@ The system will leverage the following AWS services:
 - Potential uncanny-valley effect — choose/high-grade avatar models carefully.
 - Vendor/API dependency and potential pricing changes.
 
-## 13. UML Diagram
+# 13. UML Diagram
 
 ![img.uml.er-microservices.png](img.uml.er-microservices.png)
 
+## 13.1 Identity Service
 
-# TODO
-- Add uml diagrams for use cases
-- Details more the technology stack
-- Add uml diagrams for data store designs
+The Identity Service manages user authentication, authorization, and account details.
+It issues secure tokens that other services validate to grant access.
+All communication across microservices relies on these tokens for trust.
+This ensures consistent identity management and role control throughout the system.
+
+## 13.2 POC Service
+
+The POC Service is the central store for all Proofs of Concept, including metadata, tags, and languages.
+It allows users to register, organize, and update their projects over time.
+When new POCs or metrics are created, it emits events consumed by other services.
+This makes it the foundation for both reporting and video generation processes.
+
+## 13.3 Report Service
+
+The Report Service aggregates data and metrics from the POC Service to generate insights.
+It builds structured datasets and visual summaries for user reports.
+These reports can be exported directly or reused by the Video Service as input.
+By consuming POC events, it always reflects the most recent project activity.
+
+## 13.4 Video Service
+
+The Video Service transforms scripts and report data into narrated videos using AI avatars.
+It integrates with external providers to generate realistic speech and presentation.
+Reports and datasets from the Report Service are combined with scripts to create videos.
+Once rendered, it stores and shares the final media back to the user.
