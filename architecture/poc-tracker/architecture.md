@@ -102,15 +102,43 @@ The architecture combines static file delivery (frontend), API Gateway with auth
 
 ![img.deployment.tenant.png](img.deployment.tenant.png)
 
-## 5.3 🗂️ Use Cases  (TBD: need to create the diagrams)
+## 5.3 🗂️ Use Cases
 
 - User registration and tenant onboarding
+
+![01.overall.architecture-uc.user.all.poc.drawio.png](imgs/user/01.overall.architecture-uc.user.all.poc.drawio.png)
+
 - POC creation, editing, and management
+
+![01.overall.architecture-uc.all.pocs.drawio.png](imgs/poc/01.overall.architecture-uc.all.pocs.drawio.png)
+
 - Search POCs by name, language, and tags
+
+![01.overall.architecture-uc.all.searchs.poc.drawio.png](imgs/poc/search/01.overall.architecture-uc.all.searchs.poc.drawio.png)
+
 - Real-time dojo collaboration
+
+![01.overall.architecture-uc.all.dojo.poc.drawio.png](imgs/dojos/01.overall.architecture-uc.all.dojo.poc.drawio.png)
+
 - Report generation and analytics
+
+![01.overall.architecture-uc.all.report.poc.drawio.png](imgs/reports/01.overall.architecture-uc.all.report.poc.drawio.png)
+
 - Annual video compilation creation
+
+![01.overall.architecture-uc.generate.retrospective.video.poc.drawio.png](imgs/video/01.overall.architecture-uc.generate.retrospective.video.poc.drawio.png)
+
+- Annual video compilation sharing
+
+![01.overall.architecture-uc.share.video.poc.drawio.png](imgs/video/01.overall.architecture-uc.share.video.poc.drawio.png)
+
 - User authentication and authorization
+
+![01.overall.architecture-uc.manage.permissions.poc.drawio.png](imgs/admin/01.overall.architecture-uc.manage.permissions.poc.drawio.png)
+
+- Admin and tenant management
+
+![01.overall.architecture-uc.monitor.logs.poc.drawio.png](imgs/admin/01.overall.architecture-uc.monitor.logs.poc.drawio.png)
 
 ## 5.4 📱 End-to-End Mobile Flows
 
