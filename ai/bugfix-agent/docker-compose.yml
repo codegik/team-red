@@ -1,0 +1,25 @@
+services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - ${SSL_CERT_FILE}:/cacerts.pem:ro
+    environment:
+      - JENKINS_OPTS=--httpPort=8080
+      - JAVA_OPTS=-Djavax.net.ssl.trustStore=/opt/java/openjdk/lib/security/cacerts -Djavax.net.ssl.trustStorePassword=changeit
+    user: root
+    command: >
+      bash -c "
+      if [ -f /cacerts.pem ]; then \
+        keytool -import -trustcacerts -keystore /opt/java/openjdk/lib/security/cacerts -storepass changeit -alias macos-certs -file /cacerts.pem -noprompt; \
+      fi && \
+      /usr/local/bin/jenkins.sh
+      "
+
+volumes:
+  jenkins_home:
