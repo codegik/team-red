@@ -16,38 +16,24 @@ object Main extends ZIOAppDefault {
         val n = req.queryOrElse[Int]("n", 0)
         val l = req.queryOrElse[Int]("l", 0)
         val r = req.queryOrElse[Int]("r", 0)
-        val key = s"bitonic:n=$n-l=$l-r=$r"
-        (for {
-          bitonic <- ZIO.service[Bitonic.Impl]
-          bitonicArray <- bitonic.bitonicArray(n, l, r)
-          _ <- ZIO.logInfo(s"Bitonic array generated: ${bitonicArray.mkString("Array(", ", ", ")")}")
-          redis <- ZIO.service[Redis]
-          cached <- redis.get(key).returning[String]
-          _ <- ZIO.logInfo(s"Cache lookup for key '$key': ${cached.getOrElse("MISS")}")
-          result <- cached match {
-            case Some(g) => ZIO.succeed((g, true))
-            case None =>
-              val g = bitonicArray.mkString("Array(", ", ", ")")
-              redis.set(key, g, Some(5.minutes)).as((g, false))
-          }
-          (bitonic, wasCached) = result
-          _ <- ZIO.logInfo(s"Bitonic Array: $bitonic (cached: $wasCached)")
-          resp = Response.text(bitonic).addHeader("X-Cache", if (wasCached) "HIT" else "MISS")
-        } yield resp)
-          .catchAll(e => ZIO.fail(Response.text(s"Unexpected error: ${e.getMessage}").status(Status.InternalServerError)))
+
+        for {
+          cacheService <- ZIO.service[BitonicCacheService]
+          result <- cacheService.generateSequence(n, l, r)
+          arrayString = result.mkString("[", ",", "]")
+        } yield Response.json(arrayString)
       }
     }
 
-  val routes: Routes[Redis & Bitonic.Impl, Nothing] = Routes(
+  private val routes: Routes[BitonicCacheService, Nothing] = Routes(
     healthRoute,
     bitonicRoute
   )
 
-  object ProtobufCodecSupplier extends CodecSupplier {
+  private object ProtobufCodecSupplier extends CodecSupplier {
     def get[A: Schema]: BinaryCodec[A] = ProtobufCodec.protobufCodec
   }
 
-  // Environment variables for Redis configuration
   private val redisHost = sys.env.getOrElse("REDIS_HOST", "localhost")
   private val redisPort = sys.env.get("REDIS_PORT").flatMap(_.toIntOption).getOrElse(6379)
   private val appPort = sys.env.get("APP_PORT").flatMap(_.toIntOption).getOrElse(8080)
@@ -60,6 +46,7 @@ object Main extends ZIOAppDefault {
         Redis.singleNode,
         ZLayer.succeed[RedisConfig](RedisConfig(host = redisHost, port = redisPort)),
         ZLayer.succeed[CodecSupplier](ProtobufCodecSupplier),
-        Bitonic.live
+        BitonicService.layer,
+        BitonicCacheService.layer
       )
 }
