@@ -1,0 +1,43 @@
+services:
+  redis:
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - bitonic
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  app:
+    build: .
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      APP_PORT: 8080
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # JVM options for better logging and performance
+      JAVA_OPTS: "-XX:+UnlockExperimentalVMOptions -XX:+UseContainerSupport -Xmx512m"
+      # Force console output to flush immediately
+      SBT_OPTS: "-Dsbt.log.noformat=true"
+    ports:
+      - "8080:8080"
+    networks:
+      - bitonic
+    # Ensure logs are shown in real-time
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Add stdin/tty for interactive logging
+    stdin_open: true
+    tty: true
+
+networks:
+  bitonic:
+    driver: bridge

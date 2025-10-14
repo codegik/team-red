@@ -1,0 +1,19 @@
+FROM redis:7.2-alpine
+
+# Metadata labels
+LABEL name="bitonic-redis"
+LABEL version="7.2"
+LABEL description="Redis server for bitonic-scala3 application"
+
+# Copy custom redis configuration if needed
+# COPY redis.conf /usr/local/etc/redis/redis.conf
+
+# Expose Redis port
+EXPOSE 6379
+
+# Redis data directory
+VOLUME ["/data"]
+
+# Start Redis server with default configuration
+# To use custom config: CMD ["redis-server", "/usr/local/etc/redis/redis.conf"]
+CMD ["redis-server", "--bind", "0.0.0.0", "--protected-mode", "no"]
