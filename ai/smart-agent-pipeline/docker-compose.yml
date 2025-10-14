@@ -1,0 +1,60 @@
+services:
+  jenkins:
+    image: jenkins/jenkins:latest-jdk21
+    container_name: jenkins
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - ${JENKINS_SSL_CERT_FILE}:/tmp/host-cert.pem
+      - ./jobs:/var/jenkins_home/jobs
+      - .:/workspace
+      - ./setup-jenkins-simple.groovy:/var/jenkins_home/init.groovy.d/setup-jenkins.groovy
+      - ./scriptApproval.xml:/var/jenkins_home/scriptApproval.xml
+    environment:
+      - JENKINS_OPTS=--httpPort=8080
+      - JAVA_OPTS=-Djavax.net.ssl.trustStore=/opt/java/openjdk/lib/security/cacerts -Djavax.net.ssl.trustStorePassword=changeit -Dcom.sun.net.ssl.checkRevocation=false -Djenkins.install.runSetupWizard=false
+      - JENKINS_INSTALL_PLUGINS=git,github,workflow-aggregator,pipeline-stage-view,maven-plugin
+      - GIT_SSL_NO_VERIFY=1
+      - MAVEN_OPTS=-Djavax.net.ssl.trustStore=/opt/java/openjdk/lib/security/cacerts -Djavax.net.ssl.trustStorePassword=changeit -Dmaven.repo.local=/var/jenkins_home/.m2/repository
+      - JENKINS_SSL_CERT_FILE=/tmp/host-cert.pem
+      - REQUESTS_CA_BUNDLE=/tmp/host-cert.pem
+      - CURL_CA_BUNDLE=/tmp/host-cert.pem
+      - JENKINS_ADMIN_USER=${JENKINS_ADMIN_USER:-admin}
+      - JENKINS_ADMIN_PASSWORD=${JENKINS_ADMIN_PASSWORD:-admin}
+      - OPENAI_API_TOKEN=${OPENAI_API_TOKEN}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    user: root
+    command: >
+      bash -c "
+      echo 'ca-certificate=/tmp/host-cert.pem' >> /etc/wgetrc &&
+      echo 'check-certificate=on' >> /etc/wgetrc &&
+      keytool -delete -alias host-cert -keystore /opt/java/openjdk/lib/security/cacerts -storepass changeit -noprompt 2>/dev/null || true &&
+      keytool -import -trustcacerts -keystore /opt/java/openjdk/lib/security/cacerts -storepass changeit -alias host-cert -file /tmp/host-cert.pem -noprompt &&
+      git config --system http.sslVerify false &&
+      git config --system http.sslCAInfo /tmp/host-cert.pem &&
+      git config --system user.name 'Jenkins' &&
+      git config --system user.email 'jenkins@localhost' &&
+      git config --system init.defaultBranch main &&
+      git config --system safe.directory '*' &&
+      echo 'export GIT_SSL_NO_VERIFY=1' >> /etc/environment &&
+      echo 'export JENKINS_SSL_CERT_FILE=/tmp/host-cert.pem' >> /etc/environment &&
+      echo 'export CURL_CA_BUNDLE=/tmp/host-cert.pem' >> /etc/environment &&
+      echo 'export MAVEN_OPTS=\"-Djavax.net.ssl.trustStore=/opt/java/openjdk/lib/security/cacerts -Djavax.net.ssl.trustStorePassword=changeit\"' >> /etc/environment &&
+      apt-get update && apt-get install -y maven python3 python3-pip python3-venv nodejs npm &&
+      echo 'Node.js version:' && node --version &&
+      echo 'NPM version:' && npm --version &&
+      update-ca-certificates &&
+      ln -sf /usr/bin/python3 /usr/bin/python &&
+      pip install --break-system-packages --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r /workspace/requirements.txt &&      jenkins-plugin-cli -f /workspace/plugins.txt &&
+      mkdir -p /var/jenkins_home/init.groovy.d &&
+      echo 'jenkins.install.runSetupWizard=false' > /var/jenkins_home/jenkins.install.UpgradeWizard.state &&
+      echo 'jenkins.install.runSetupWizard=false' > /var/jenkins_home/jenkins.install.InstallUtil.lastExecVersion &&
+      touch /var/jenkins_home/.jenkins-cli &&
+      chown -R jenkins:jenkins /var/jenkins_home &&
+      /usr/local/bin/jenkins.sh
+      "
+volumes:
+  jenkins_home:

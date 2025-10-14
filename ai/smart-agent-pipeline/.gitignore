@@ -1,0 +1,12 @@
+.idea
+.env
+.DS_Store
+**/*@tmp
+
+# Jobs folder - ignore everything except config.xml files
+jobs/*/builds
+jobs/*/nextBuildNumber
+!jobs/springboot-context-jdk24/config.xml
+
+target
+apps

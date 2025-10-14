@@ -1,0 +1,35 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<scriptApproval plugin="script-security@1378.vf25626395f49">
+  <approvedScriptHashes/>
+  <approvedSignatures>
+    <!-- Basic Jenkins API methods -->
+    <string>method hudson.model.Run getLog int</string>
+    <string>method org.jenkinsci.plugins.workflow.support.steps.build.RunWrapper getRawBuild</string>
+    
+    <!-- Common Pipeline methods (add more as needed) -->
+    <string>method java.lang.String toLowerCase</string>
+    <string>method java.lang.String toUpperCase</string>
+    <string>method java.lang.String trim</string>
+    <string>method java.lang.String split java.lang.String</string>
+    <string>method java.util.List get int</string>
+    <string>method java.util.List size</string>
+    
+    <!-- File operations -->
+    <string>new java.io.File java.lang.String</string>
+    <string>method java.io.File exists</string>
+    <string>method java.io.File isDirectory</string>
+    <string>method java.io.File listFiles</string>
+    
+    <!-- Environment variables -->
+    <string>staticMethod java.lang.System getenv java.lang.String</string>
+    <string>staticMethod java.lang.System getProperty java.lang.String</string>
+    
+    <!-- Add your specific approvals here -->
+  </approvedSignatures>
+  <aclApprovedSignatures/>
+  <approvedClasspathEntries/>
+  <forceSandbox>false</forceSandbox>
+  <pendingScripts/>
+  <pendingSignatures/>
+  <pendingClasspathEntries/>
+</scriptApproval>

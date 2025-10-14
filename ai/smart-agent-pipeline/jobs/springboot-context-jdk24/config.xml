@@ -1,0 +1,81 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@1549.vc8d7f497b_22f">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@2.2273.v643f36ed9e94"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@2.2273.v643f36ed9e94">
+      <jobProperties/>
+      <triggers/>
+      <parameters/>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description>Spring Boot Java application build job using JDK 24 - Uses inline pipeline script with agent integration</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <com.cloudbees.jenkins.GitHubPushTrigger plugin="github@1.45.0">
+          <spec></spec>
+        </com.cloudbees.jenkins.GitHubPushTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@4209.v83c4e257f1e9">
+    <script>pipeline {
+    agent any
+
+    environment {
+        WORKSPACE_DIR = '/workspace'
+        WORKSPACE_APP_DIR = '/workspace/apps/springboot-context-jdk24'
+        VALIDATION_COMMAND = 'mvn clean install -B'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                dir("${env.WORKSPACE_DIR}") {
+                    script {
+                        sh '''
+                            mkdir -p apps
+                            cd apps
+                            rm -rf springboot-context-jdk24
+                            git clone --verbose https://github.com/codegik/springboot-context-jdk24.git
+                            ls -la springboot-context-jdk24/
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('All Steps') {
+            steps {
+                dir("${env.WORKSPACE_APP_DIR}") {
+                    script {
+                        sh "${env.VALIDATION_COMMAND}"
+                    }
+                }
+            }
+            post {
+                failure {
+                    dir("${env.WORKSPACE_DIR}") {
+                        script {
+                            def jobOutput = currentBuild.rawBuild.getLog(1000).join('\n')
+                            def cleanOutput = jobOutput.replaceAll(/\x1B\[[;0-9]*[a-zA-Z]/, '').replaceAll(/\[\[0;?[0-9;]*m/, '')
+                            
+                            writeFile file: '/tmp/job_output.txt', text: cleanOutput
+
+                            sh "echo 'Build failed. Calling agent to fix the issues...'"
+                            sh "chmod +x agent.py"
+                            sh "python -u agent.py ${WORKSPACE_APP_DIR} /tmp/job_output.txt '${env.VALIDATION_COMMAND}'"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <disabled>false</disabled>
+</flow-definition>
