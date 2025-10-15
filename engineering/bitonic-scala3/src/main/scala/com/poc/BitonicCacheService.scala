@@ -1,3 +1,5 @@
+package com.poc
+
 import zio.redis.Redis
 import zio.{Duration, UIO, ZIO, ZLayer}
 

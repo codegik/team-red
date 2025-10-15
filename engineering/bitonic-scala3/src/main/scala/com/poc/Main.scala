@@ -1,4 +1,6 @@
-import memcached.{MemcachedConfig, MemcachedServiceImpl}
+package com.poc
+
+import com.poc.memcached.{BitonicMemcachedService, MemcachedConfig, MemcachedServiceImpl}
 import zio.*
 import zio.http.*
 import zio.redis.*
@@ -25,6 +27,21 @@ object Main extends ZIOAppDefault {
         } yield Response.json(arrayString)
       }
     }
+    
+  private val bitonicMemcachedRoute =
+      Method.POST / "bitonic-memcached" -> handler { (req: Request) =>
+        ZIO.logInfo(s"Called /bitonic memcached with queryParams=${req.url.queryParams}") *> {
+          val n = req.queryOrElse[Int]("n", 0)
+          val l = req.queryOrElse[Int]("l", 0)
+          val r = req.queryOrElse[Int]("r", 0)
+
+          for {
+            cacheService <- ZIO.service[BitonicMemcachedService]
+            result <- cacheService.generateSequence(n, l, r)
+            arrayString = result.mkString("[", ",", "]")
+          } yield Response.json(arrayString)
+        }
+      }
 
   private val routes: Routes[BitonicCacheService, Nothing] = Routes(
     healthRoute,

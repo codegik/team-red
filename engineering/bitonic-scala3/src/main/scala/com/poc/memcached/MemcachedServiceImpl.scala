@@ -1,7 +1,7 @@
-package memcached
+package com.poc.memcached
 
 import net.rubyeye.xmemcached.utils.AddrUtil
-import net.rubyeye.xmemcached.{MemcachedClient, XMemcachedClient, XMemcachedClientBuilder}
+import net.rubyeye.xmemcached.{MemcachedClient, XMemcachedClientBuilder}
 import zio.*
 
 class MemcachedServiceImpl(client: MemcachedClient) extends MemcachedService {

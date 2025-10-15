@@ -1,3 +1,4 @@
+import com.poc.BitonicService
 import zio.test.junit.JUnitRunnableSpec
 import zio.test.{Spec, assertTrue}
 import zio.{Scope, ZIO}
