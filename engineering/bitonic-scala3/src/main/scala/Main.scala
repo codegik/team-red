@@ -1,3 +1,4 @@
+import memcached.{MemcachedConfig, MemcachedServiceImpl}
 import zio.*
 import zio.http.*
 import zio.redis.*
@@ -36,6 +37,10 @@ object Main extends ZIOAppDefault {
 
   private val redisHost = sys.env.getOrElse("REDIS_HOST", "localhost")
   private val redisPort = sys.env.get("REDIS_PORT").flatMap(_.toIntOption).getOrElse(6379)
+
+  private val memcachedHost = sys.env.getOrElse("MEMCACHED_HOST", "localhost")
+  private val memcachedPort = sys.env.get("MEMCACHED_PORT").flatMap(_.toIntOption).getOrElse(11211)
+
   private val appPort = sys.env.get("APP_PORT").flatMap(_.toIntOption).getOrElse(8080)
 
   def run: ZIO[Any, Throwable, Nothing] =
@@ -43,8 +48,15 @@ object Main extends ZIOAppDefault {
       .serve(routes)
       .provide(
         Server.defaultWithPort(appPort),
+
+        // Redis
         Redis.singleNode,
         ZLayer.succeed[RedisConfig](RedisConfig(host = redisHost, port = redisPort)),
+
+        // Memcached
+        MemcachedServiceImpl.layer,
+        ZLayer.succeed(MemcachedConfig(memcachedHost, memcachedPort)),
+
         ZLayer.succeed[CodecSupplier](ProtobufCodecSupplier),
         BitonicService.layer,
         BitonicCacheService.layer
