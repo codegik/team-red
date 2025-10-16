@@ -27,7 +27,7 @@ object Main extends ZIOAppDefault {
         } yield Response.json(arrayString)
       }
     }
-    
+
   private val bitonicMemcachedRoute =
       Method.POST / "bitonic-memcached" -> handler { (req: Request) =>
         ZIO.logInfo(s"Called /bitonic memcached with queryParams=${req.url.queryParams}") *> {
@@ -43,9 +43,10 @@ object Main extends ZIOAppDefault {
         }
       }
 
-  private val routes: Routes[BitonicCacheService, Nothing] = Routes(
+  private val routes: Routes[BitonicCacheService & BitonicMemcachedService, Nothing] = Routes(
     healthRoute,
-    bitonicRoute
+    bitonicRoute,
+    bitonicMemcachedRoute
   )
 
   private object ProtobufCodecSupplier extends CodecSupplier {
@@ -75,7 +76,8 @@ object Main extends ZIOAppDefault {
         ZLayer.succeed(MemcachedConfig(memcachedHost, memcachedPort)),
 
         ZLayer.succeed[CodecSupplier](ProtobufCodecSupplier),
+        BitonicCacheService.layer,
+        BitonicMemcachedService.layer,
         BitonicService.layer,
-        BitonicCacheService.layer
       )
 }
