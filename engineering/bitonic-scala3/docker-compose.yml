@@ -41,6 +41,8 @@ services:
       APP_PORT: 8080
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      MEMCACHED_HOST: memcached
+      MEMCACHED_PORT: 11211
       # JVM options for better logging and performance
       JAVA_OPTS: "-XX:+UnlockExperimentalVMOptions -XX:+UseContainerSupport -Xmx512m"
       # Force console output to flush immediately
