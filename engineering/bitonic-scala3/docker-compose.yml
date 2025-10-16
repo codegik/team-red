@@ -1,6 +1,7 @@
 services:
   redis:
     image: redis:7.2-alpine
+    container_name: redis
     ports:
       - "6379:6379"
     networks:
@@ -12,6 +13,7 @@ services:
       retries: 5
   memcached:
     image: memcached:alpine3.22
+    container_name: memcached
     ports:
       - "11211:11211"
     networks:
@@ -28,6 +30,7 @@ services:
       - --threads=4
 
   app:
+    container_name: bitonic-app
     build: .
     depends_on:
       redis:
