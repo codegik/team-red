@@ -46,7 +46,7 @@ object Main extends ZIOAppDefault {
         Redis.singleNode,
         ZLayer.succeed[RedisConfig](RedisConfig(host = redisHost, port = redisPort)),
         ZLayer.succeed[CodecSupplier](ProtobufCodecSupplier),
-        BitonicService.layer,
-        BitonicCacheService.layer
+        BitonicCacheService.layer,
+        BitonicService.layer
       )
 }
