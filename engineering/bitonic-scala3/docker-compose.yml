@@ -51,6 +51,12 @@ services:
       - "8080:8080"
     networks:
       - bitonic
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health-check || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     # Ensure logs are shown in real-time
     logging:
       driver: "json-file"
@@ -83,6 +89,7 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
+      SSL_CERT_FILE: /etc/ssl/certs/custom-cert.pem
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/dashboards:/var/lib/grafana/dashboards
@@ -93,14 +100,16 @@ services:
   k6:
     image: grafana/k6:latest
     depends_on:
-      - app
-      - influxdb
+      app:
+        condition: service_healthy
+      influxdb:
+        condition: service_started
     volumes:
       - ./benchmark/payloads.json:/benchmark/payloads.json
       - ./benchmark/benchmark.js:/benchmark/benchmark.js
     networks:
       - bitonic
-    entrypoint: ["k6"]
+    entrypoint: [ "k6" ]
     command:
       [
         "run",

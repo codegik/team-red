@@ -54,6 +54,7 @@ trait MemcachedService {
 ---
 
 ### 3) `MemcachedServiceImpl.scala`
+
 ```scala
 package com.poc.memcached
 
@@ -73,10 +74,10 @@ object MemcachedServiceImpl {
   val layer: ZLayer[MemcachedConfig, Throwable, MemcachedService] =
     ZLayer.scoped {
       for {
-        config  <- ZIO.service[MemcachedConfig]
+        config <- ZIO.service[MemcachedConfig]
         builder <- ZIO.succeed(new XMemcachedClientBuilder(AddrUtil.getAddresses(s"${config.host}:${config.port}")))
-        client  <- ZIO.acquireRelease(ZIO.attempt(builder.build()))(c => ZIO.attempt(c.shutdown()).ignore)
-      } yield MemcachedServiceImpl(client)
+        client <- ZIO.acquireRelease(ZIO.attempt(builder.build()))(c => ZIO.attempt(c.shutdown()).ignore)
+      } yield MemcachedService(client)
     }
 }
 ```

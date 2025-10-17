@@ -1,16 +1,20 @@
 package com.poc.memcached
 
 import com.poc.BitonicService
+import net.rubyeye.xmemcached.utils.AddrUtil
+import net.rubyeye.xmemcached.{MemcachedClient, XMemcachedClientBuilder}
 import zio.{UIO, ZIO, ZLayer}
 
-class BitonicMemcachedService(bitonic: BitonicService, memcachedService: MemcachedService) {
+case class MemcachedConfig(host: String, port: Int)
+
+class BitonicMemcachedService(bitonic: BitonicService, client: MemcachedClient) {
   private val defaultTtlInSeconds = 300 // 5 minutes
 
   def generateSequence(n: Int, l: Int, r: Int): UIO[Array[Int]] = {
     val key = s"bitonic:n=$n-l=$l-r=$r"
 
     (for {
-      cached <- memcachedService.get(key)
+      cached <- ZIO.attempt(Option(client.get[String](key)))
       result <- cached match {
         case Some(cachedValue) =>
           val parsedArray = if (cachedValue.isEmpty) Array.empty[Int]
@@ -20,7 +24,7 @@ class BitonicMemcachedService(bitonic: BitonicService, memcachedService: Memcach
         case None =>
           bitonic.generateSequence(n, l, r).flatMap { bitonicArray =>
             val arrayString = bitonicArray.mkString(",")
-            memcachedService.set(key, arrayString, defaultTtlInSeconds).as(bitonicArray)
+            ZIO.attempt(client.set(key, defaultTtlInSeconds, arrayString)).as(bitonicArray)
           }
       }
     } yield result).orDie
@@ -28,10 +32,13 @@ class BitonicMemcachedService(bitonic: BitonicService, memcachedService: Memcach
 }
 
 object BitonicMemcachedService {
-  val layer: ZLayer[BitonicService & MemcachedService, Nothing, BitonicMemcachedService] = ZLayer {
+  val layer: ZLayer[BitonicService & MemcachedConfig, Nothing, BitonicMemcachedService] = ZLayer {
     for {
       bitonic <- ZIO.service[BitonicService]
-      memcachedService <- ZIO.service[MemcachedService]
-    } yield BitonicMemcachedService(bitonic, memcachedService)
+      config <- ZIO.service[MemcachedConfig]
+      builder <- ZIO.succeed(new XMemcachedClientBuilder(AddrUtil.getAddresses(s"${config.host}:${config.port}")))
+//      client <- ZIO.acquireRelease(ZIO.attempt(builder.build()))(c => ZIO.attempt(c.shutdown()).ignore)
+      client <- ZIO.attempt(builder.build()).orDie
+    } yield BitonicMemcachedService(bitonic, client)
   }
 }

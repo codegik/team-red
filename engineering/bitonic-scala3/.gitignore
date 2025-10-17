@@ -32,3 +32,4 @@ metals.sbt
 /.worksheet/
 
 cert.pem
+.env

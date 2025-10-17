@@ -1,6 +1,6 @@
 package com.poc
 
-import com.poc.memcached.{BitonicMemcachedService, MemcachedConfig, MemcachedServiceImpl}
+import com.poc.memcached.{BitonicMemcachedService, MemcachedConfig}
 import zio.*
 import zio.http.*
 import zio.redis.*
@@ -82,15 +82,11 @@ object Main extends ZIOAppDefault {
       .serve(routes)
       .provide(
         Server.defaultWithPort(appPort),
-
         // Redis
         Redis.singleNode,
         ZLayer.succeed[RedisConfig](RedisConfig(host = redisHost, port = redisPort)),
-
         // Memcached
-        MemcachedServiceImpl.layer,
         ZLayer.succeed(MemcachedConfig(memcachedHost, memcachedPort)),
-
         ZLayer.succeed[CodecSupplier](ProtobufCodecSupplier),
         BitonicCacheService.layer,
         BitonicMemcachedService.layer,
