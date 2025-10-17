@@ -14,13 +14,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # # Copy the certificate from host machine
-# COPY cert.pem /usr/local/share/ca-certificates/cert.crt
+COPY cert.pem /usr/local/share/ca-certificates/cert.crt
 
 # # Update the certificate store to include the new certificate
-# RUN update-ca-certificates
+RUN update-ca-certificates
 
 # # Set curl to use the system certificate store
-# ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 # Install SBT using the official repository method
 RUN echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | tee /etc/apt/sources.list.d/sbt.list && \
