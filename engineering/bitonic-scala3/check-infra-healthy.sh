@@ -15,7 +15,6 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-# Function to cleanup containers
 cleanup() {
     echo -e "${YELLOW}Cleaning up containers...${NC}"
     podman stop $REDIS_CONTAINER_NAME 2>/dev/null || true
