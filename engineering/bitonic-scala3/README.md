@@ -143,17 +143,7 @@ podman exec -it memcached sh
 ## Project Structure
 The project is structured as follows:
 ```
-bitonic-scala3-app/
-├── src/main/scala/
-│   ├── api/                # API routes and handlers
-│   ├── services/           # Business logic and services
-│   ├── models/             # Data models and case classes
-│   ├── utils/              # Utility functions and helpers
-│   ├── Main.scala          # Main application entry point
-├── src/test/scala/         # Unit and integration tests
-├── build.sbt               # SBT build configuration
-├── podman-compose.yaml     # Podman Compose configuration
-└── README.md               # Project documentation
+![img.png](img.png)
 ```
 ## Contributing
 Contributions are welcome! Please follow these steps to contribute:
