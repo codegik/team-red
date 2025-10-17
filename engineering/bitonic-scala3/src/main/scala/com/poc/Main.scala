@@ -14,7 +14,7 @@ object Main extends ZIOAppDefault {
   }
 
   private val bitonicRoute =
-    Method.POST / "bitonic" -> handler { (req: Request) =>
+    Method.POST / "bitonic-redis" -> handler { (req: Request) =>
       ZIO.logInfo(s"Called /bitonic with queryParams=${req.url.queryParams}") *> {
         val n = req.queryOrElse[Int]("n", 0)
         val l = req.queryOrElse[Int]("l", 0)
@@ -43,10 +43,26 @@ object Main extends ZIOAppDefault {
         }
       }
 
-  private val routes: Routes[BitonicCacheService & BitonicMemcachedService, Nothing] = Routes(
+  private val bitonicDirectRoute =
+    Method.POST / "bitonic" -> handler { (req: Request) =>
+      ZIO.logInfo(s"Called /bitonic (direct calculation) with queryParams=${req.url.queryParams}") *> {
+        val n = req.queryOrElse[Int]("n", 0)
+        val l = req.queryOrElse[Int]("l", 0)
+        val r = req.queryOrElse[Int]("r", 0)
+
+        for {
+          service <- ZIO.service[BitonicService]
+          result <- service.generateSequence(n, l, r)
+          arrayString = result.mkString("[", ",", "]")
+        } yield Response.json(arrayString)
+      }
+    }
+
+  private val routes: Routes[BitonicCacheService & BitonicMemcachedService & BitonicService, Nothing] = Routes(
     healthRoute,
     bitonicRoute,
-    bitonicMemcachedRoute
+    bitonicMemcachedRoute,
+    bitonicDirectRoute
   )
 
   private object ProtobufCodecSupplier extends CodecSupplier {
