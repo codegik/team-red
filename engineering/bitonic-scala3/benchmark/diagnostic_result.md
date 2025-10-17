@@ -52,10 +52,10 @@ All three runs produced very **consistent patterns**:
 
 | Observation | Possible Reason | Confidence |
 |--------------|------------------|-------------|
-| Memcached consistently faster for small/medium sizes | Lighter protocol, smaller serialization overhead, frequent cache hits | ✅ High |
-| Redis slower but stable | More complex serialization and key management | ✅ High |
-| Memcached fails on 500 000 items | Exceeds default 1 MB item size | ✅ Confirmed |
-| Minor time variance (< 0.001 s) | Normal network jitter and OS scheduling | ✅ Normal |
+| Memcached consistently faster for small/medium sizes | Lighter protocol, smaller serialization overhead, frequent cache hits |  High |
+| Redis slower but stable | More complex serialization and key management |  High |
+| Memcached fails on 500 000 items | Exceeds default 1 MB item size |  Confirmed |
+| Minor time variance (< 0.001 s) | Normal network jitter and OS scheduling | Normal |
 
 ---
 

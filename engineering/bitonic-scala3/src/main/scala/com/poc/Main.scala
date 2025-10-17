@@ -78,6 +78,6 @@ object Main extends ZIOAppDefault {
         ZLayer.succeed[CodecSupplier](ProtobufCodecSupplier),
         BitonicCacheService.layer,
         BitonicMemcachedService.layer,
-        BitonicService.layer,
+        BitonicService.layer
       )
 }
