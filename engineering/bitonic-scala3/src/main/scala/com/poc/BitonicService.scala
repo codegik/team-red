@@ -1,3 +1,5 @@
+package com.poc
+
 import zio.{UIO, ULayer, ZIO, ZLayer}
 
 import scala.collection.mutable

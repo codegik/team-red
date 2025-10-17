@@ -1,3 +1,6 @@
+package com.poc
+
+import com.poc.memcached.{BitonicMemcachedService, MemcachedConfig, MemcachedServiceImpl}
 import zio.*
 import zio.http.*
 import zio.redis.*
@@ -25,9 +28,25 @@ object Main extends ZIOAppDefault {
       }
     }
 
-  private val routes: Routes[BitonicCacheService, Nothing] = Routes(
+  private val bitonicMemcachedRoute =
+      Method.POST / "bitonic-memcached" -> handler { (req: Request) =>
+        ZIO.logInfo(s"Called /bitonic memcached with queryParams=${req.url.queryParams}") *> {
+          val n = req.queryOrElse[Int]("n", 0)
+          val l = req.queryOrElse[Int]("l", 0)
+          val r = req.queryOrElse[Int]("r", 0)
+
+          for {
+            cacheService <- ZIO.service[BitonicMemcachedService]
+            result <- cacheService.generateSequence(n, l, r)
+            arrayString = result.mkString("[", ",", "]")
+          } yield Response.json(arrayString)
+        }
+      }
+
+  private val routes: Routes[BitonicCacheService & BitonicMemcachedService, Nothing] = Routes(
     healthRoute,
-    bitonicRoute
+    bitonicRoute,
+    bitonicMemcachedRoute
   )
 
   private object ProtobufCodecSupplier extends CodecSupplier {
@@ -36,6 +55,10 @@ object Main extends ZIOAppDefault {
 
   private val redisHost = sys.env.getOrElse("REDIS_HOST", "localhost")
   private val redisPort = sys.env.get("REDIS_PORT").flatMap(_.toIntOption).getOrElse(6379)
+
+  private val memcachedHost = sys.env.getOrElse("MEMCACHED_HOST", "localhost")
+  private val memcachedPort = sys.env.get("MEMCACHED_PORT").flatMap(_.toIntOption).getOrElse(11211)
+
   private val appPort = sys.env.get("APP_PORT").flatMap(_.toIntOption).getOrElse(8080)
 
   def run: ZIO[Any, Throwable, Nothing] =
@@ -43,10 +66,18 @@ object Main extends ZIOAppDefault {
       .serve(routes)
       .provide(
         Server.defaultWithPort(appPort),
+
+        // Redis
         Redis.singleNode,
         ZLayer.succeed[RedisConfig](RedisConfig(host = redisHost, port = redisPort)),
+
+        // Memcached
+        MemcachedServiceImpl.layer,
+        ZLayer.succeed(MemcachedConfig(memcachedHost, memcachedPort)),
+
         ZLayer.succeed[CodecSupplier](ProtobufCodecSupplier),
         BitonicCacheService.layer,
-        BitonicService.layer
+        BitonicMemcachedService.layer,
+        BitonicService.layer,
       )
 }
