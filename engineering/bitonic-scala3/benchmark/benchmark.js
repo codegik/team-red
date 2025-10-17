@@ -15,7 +15,7 @@ const durationRedis = new Trend("duration_redis");
 const durationMemcached = new Trend("duration_memcached");
 
 export const options = {
-  stages: [{ duration: "5m", target: 5000 }],
+  stages: [{ duration: "5m", target: 500 }],
 };
 
 export default function () {
@@ -23,7 +23,7 @@ export default function () {
   const { n, l, r } = payload;
 
   const resStandard = http.post(
-    `http://localhost:8080/bitonic?n=${n}&l=${l}&r=${r}`
+    `http://bitonic-app:8080/bitonic?n=${n}&l=${l}&r=${r}`
   );
 
   const standardOk = check(resStandard, {
@@ -40,7 +40,7 @@ export default function () {
   sleep(0.05);
 
   const resRedis = http.post(
-    `http://localhost:8080/bitonic-redis?n=${n}&l=${l}&r=${r}`
+    `http://bitonic-app:8080/bitonic-redis?n=${n}&l=${l}&r=${r}`
   );
 
   const redisOk = check(resRedis, {
@@ -57,7 +57,7 @@ export default function () {
   sleep(0.05);
 
   const resMemcached = http.post(
-    `http://localhost:8080/bitonic-redis?n=${n}&l=${l}&r=${r}`
+    `http://bitonic-app:8080/bitonic-memcached?n=${n}&l=${l}&r=${r}`
   );
 
   const memcachedOk = check(resMemcached, {
