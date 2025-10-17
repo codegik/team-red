@@ -52,7 +52,8 @@ services:
     networks:
       - bitonic
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health-check || exit 1"]
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/health-check || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -73,6 +74,7 @@ services:
       INFLUXDB_DB: k6
       INFLUXDB_ADMIN_USER: admin
       INFLUXDB_ADMIN_PASSWORD: admin
+      INFLUXDB_DATA_MAX_VALUES_PER_TAG: 0
     ports:
       - "8086:8086"
     volumes:
@@ -109,7 +111,7 @@ services:
       - ./benchmark/benchmark.js:/benchmark/benchmark.js
     networks:
       - bitonic
-    entrypoint: [ "k6" ]
+    entrypoint: ["k6"]
     command:
       [
         "run",

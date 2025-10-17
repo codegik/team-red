@@ -31,7 +31,7 @@ export default function () {
   const resStandard = http.post(
     `http://bitonic-app:8080/bitonic?n=${n}&l=${l}&r=${r}`,
     null,
-    { tags: { endpoint: "standard" } }
+    { tags: { endpoint: "standard", name: "http://bitonic-app:8080/bitonic" } }
   );
 
   const standardOk = check(resStandard, {
@@ -51,7 +51,9 @@ export default function () {
   const resRedis = http.post(
     `http://bitonic-app:8080/bitonic-redis?n=${n}&l=${l}&r=${r}`,
     null,
-    { tags: { endpoint: "redis" } }
+    {
+      tags: { endpoint: "redis", name: "http://bitonic-app:8080/bitoni-redis" },
+    }
   );
 
   const redisOk = check(resRedis, {
@@ -71,7 +73,12 @@ export default function () {
   const resMemcached = http.post(
     `http://bitonic-app:8080/bitonic-memcached?n=${n}&l=${l}&r=${r}`,
     null,
-    { tags: { endpoint: "memcached" } }
+    {
+      tags: {
+        endpoint: "memcached",
+        name: "http://bitonic-app:8080/bitoni-memcached",
+      },
+    }
   );
 
   const memcachedOk = check(resMemcached, {
