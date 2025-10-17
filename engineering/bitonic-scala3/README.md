@@ -18,8 +18,51 @@ ZIO was chosen for its strong support for functional programming, reliability, a
 
 1. **Prerequisites**
    - [Podman] (https://podman.io/) or [Docker](https://www.docker.com/) installed.
+   - Scala 3.7.3 installed.
+   - SBT (Scala Build Tool) installed.
+   - Java 11 or higher installed.
 
-2. **Start compose**
+2. **Clone the repository**
+    ```sh
+     git clone https://github.com/codegik/team-red.git
+     cd team-red/bitonic-scala3-app
+    ```
+3. **Build the project**
+    ```sh
+     sbt clean compile
+     sbt assembly
+      ```
+4. **Create a `podman-compose.yaml` file** in the root directory of the project with the following content:
+5. ```yaml
+   version: '3.8'
+
+   services:
+     redis:
+       image: redis:latest
+       container_name: redis
+       ports:
+         - "6379:6379"
+
+     memcached:
+       image: memcached:latest
+       container_name: memcached
+       ports:
+         - "11211:11211"
+
+     bitonic-scala3-app:
+       image: openjdk:11-jre-slim
+       container_name: bitonic-scala3-app
+       ports:
+         - "8080:8080"
+       volumes:
+         - ./target/scala-3.7.3/bitonic-scala3-app-assembly-0.1.0-SNAPSHOT.jar:/app/bitonic-scala3-app-assembly-0.1.0-SNAPSHOT.jar
+       command: ["java", "-jar", "/app/bitonic-scala3-app-assembly-0.1.0-SNAPSHOT.jar"]
+       depends_on:
+         - redis
+         - memcached
+   ```
+   
+6. **Start compose**
    ```sh
    podman compose up
    ```
@@ -28,7 +71,13 @@ Compose will create and run 3 containers:
 * redis
 * memcached
 * bitonic-scala3-app
-
+The `bitonic-scala3-app` container will be accessible at `http://localhost:8080`.
+  * The Redis server will be accessible at `localhost:6379`.
+  * The Memcached server will be accessible at `localhost:11211`.
+  * You can stop the containers by running:
+  ```sh
+   podman compose down
+  ```
 
 ## How to Test the API
 
@@ -66,3 +115,52 @@ podman exec -it redis sh
 ```
 redis-cli --scan --pattern "*"
 ```
+This command will list all keys stored in the Redis cache.
+You can then use the `GET` command to retrieve the value of a specific key.
+```
+GET <key>
+```
+Replace `<key>` with the actual key you want to retrieve.
+### Verify Memcached Cache
+To verify if the app are saving the requests in the Memcached Cache, you need to access the Memcached Container
+### Access the Memcached container
+```
+podman exec -it memcached sh
+```
+### Check the Memcached cache
+```
+ echo "stats items" | nc localhost 11211 
+- This command will list all items stored in the Memcached cache.
+- You can then use the `stats cachedump` command to retrieve the keys of a specific slab
+ echo "stats cachedump <slab_id> <limit>" | nc localhost 11211
+ Replace `<slab_id>` with the actual slab id you want to retrieve and `<limit>` with the number of keys you want to retrieve.
+- You can then use the `get` command to retrieve the value of a specific key.
+ echo "get <key>" | nc localhost 11211
+- Replace `<key>` with the actual key you want to retrieve.
+```
+
+```
+## Project Structure
+The project is structured as follows:
+```
+bitonic-scala3-app/
+├── src/main/scala/
+│   ├── api/                # API routes and handlers
+│   ├── services/           # Business logic and services
+│   ├── models/             # Data models and case classes
+│   ├── utils/              # Utility functions and helpers
+│   ├── Main.scala          # Main application entry point
+├── src/test/scala/         # Unit and integration tests
+├── build.sbt               # SBT build configuration
+├── podman-compose.yaml     # Podman Compose configuration
+└── README.md               # Project documentation
+```
+## Contributing
+Contributions are welcome! Please follow these steps to contribute:
+1. Fork the repository.
+2. Create a new branch for your feature or bugfix.
+3. Make your changes and commit them with clear messages.
+4. Push your changes to your forked repository.
+5. Open a pull request to the main repository.
+6. Ensure your code passes all tests and adheres to the project's coding standards.
+
