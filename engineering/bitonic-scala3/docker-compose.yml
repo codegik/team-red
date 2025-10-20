@@ -11,6 +11,11 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
   memcached:
     image: memcached:alpine3.22
     container_name: memcached
@@ -28,6 +33,45 @@ services:
       - --conn-limit=1024
       - --memory-limit=64
       - --threads=4
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter
+    ports:
+      - "9121:9121"
+    environment:
+      REDIS_ADDR: redis:6379
+    networks:
+      - bitonic
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+
+  memcached-exporter:
+    image: prom/memcached-exporter:latest
+    container_name: memcached-exporter
+    ports:
+      - "9150:9150"
+    command:
+      - --memcached.address=memcached:11211
+    networks:
+      - bitonic
+    depends_on:
+      - memcached
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
 
   app:
     container_name: bitonic-app
@@ -67,9 +111,14 @@ services:
     # Add stdin/tty for interactive logging
     stdin_open: true
     tty: true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
 
   influxdb:
-    image: influxdb:1.8
+    image: influxdb:1.12.2
     environment:
       INFLUXDB_DB: k6
       INFLUXDB_ADMIN_USER: admin
@@ -81,6 +130,28 @@ services:
       - influxdb-data:/var/lib/influxdb
     networks:
       - bitonic
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  telegraf:
+    image: telegraf:latest
+    container_name: telegraf
+    volumes:
+      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    networks:
+      - bitonic
+    depends_on:
+      - influxdb
+      - redis-exporter
+      - memcached-exporter
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
   grafana:
     image: grafana/grafana
@@ -91,13 +162,20 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_FORCE_DEFAULT_ADMIN_PASSWORD_CHANGE: "false"
       SSL_CERT_FILE: /etc/ssl/certs/custom-cert.pem
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/config/custom.ini:/etc/grafana/custom.ini
     restart: always
     networks:
       - bitonic
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
   k6:
     image: grafana/k6:latest
@@ -119,6 +197,11 @@ services:
         "influxdb=http://influxdb:8086/k6?consistency=one",
         "/benchmark/benchmark.js",
       ]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
 
 networks:
   bitonic:
