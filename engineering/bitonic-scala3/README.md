@@ -139,13 +139,42 @@ podman exec -it memcached sh
 - Replace `<key>` with the actual key you want to retrieve.
 ```
 
+### APIs
+
+* Health Check
+```shell
+curl --request GET \
+  --url http://localhost:8080/health-check
 ```
-## Project Structure
-The project is structured as follows:
+
+* Bitonic API (without cache)
+```shell
+curl --request POST \
+  --url 'http://localhost:8080/bitonic?n=5&l=3&r=10'
+ 
+HTTP Status 200
+[ 9, 10, 9, 8, 7]
 ```
-![img.png](img.png)
+
+* Bitonic API (using redis)
+```shell
+curl --request POST \
+  --url 'http://localhost:8080/bitonic-redis?n=5&l=3&r=10'
+  
+HTTP Status 200
+[ 9, 10, 9, 8, 7]
 ```
-## Contributing
+
+* Bitonic API (using memcached)
+```shell
+curl --request POST \
+  --url 'http://localhost:8080/bitonic-memcached?n=5&l=3&r=10'
+  
+HTTP Status 200
+[ 9, 10, 9, 8, 7]
+```
+
+### Contributing
 Contributions are welcome! Please follow these steps to contribute:
 1. Fork the repository.
 2. Create a new branch for your feature or bugfix.
@@ -156,29 +185,3 @@ Contributions are welcome! Please follow these steps to contribute:
 
 For more information on the sbt-dotty plugin, see the
 [scala3-example-project](https://github.com/scala/scala3-example-project/blob/main/README.md).
-
-### APIs
-
-* Health Check
-```shell
-curl --request GET \
-  --url http://localhost:8080/health-check
-```
-
-* Bitonic API (using redis)
-```shell
-curl --request POST \
-  --url 'http://localhost:8080/bitonic?n=5&l=3&r=10'
-  
-HTTP Status 200
-[ 9, 10, 9, 8, 7]
-```
-
-* Bitonic API (using memcached  )
-```shell
-curl --request POST \
-  --url 'http://localhost:8080/bitonic-memcached?n=5&l=3&r=10'
-  
-HTTP Status 200
-[ 9, 10, 9, 8, 7]
-```
