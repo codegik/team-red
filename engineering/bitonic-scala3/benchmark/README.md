@@ -93,13 +93,29 @@ The benchmark infrastructure consists of:
 │   Database) │                        │              │
 └──────┬──────┘                   ┌────┴────┐        │
        │                          │Telegraf │◀───────┘
-       │ Queries                  │(Scraper)│  Exports metrics
-       ▼                          └─────────┘
-┌─────────────┐
+       │ Queries                  │(Scraper)│  Exports metrics via:
+       ▼                          └─────────┘  - Redis Exporter (port 9121)
+┌─────────────┐                                - Memcached Exporter (port 9150)
 │   Grafana   │ ──── Visualizes ────▶ Dashboard
 │ (Dashboard) │
 └─────────────┘
 ```
+
+### Cache Metrics Collection
+
+**Redis Metrics:**
+- Collected via [Redis Exporter](https://github.com/oliver006/redis_exporter) (port 9121)
+- Key metrics: `redis_keyspace_hits_total`, `redis_keyspace_misses_total`
+
+**Memcached Metrics:**
+- Collected via [Memcached Exporter](https://github.com/prometheus/memcached_exporter) (port 9150)
+- Key metrics: `memcached_commands_total{command="get",status="hit/miss"}`
+
+**Collection Flow:**
+1. Exporters scrape cache statistics from Redis/Memcached
+2. Telegraf collects Prometheus-formatted metrics from exporters (every 10s)
+3. Telegraf sends metrics to InfluxDB (database: `k6`, measurement: `prometheus`)
+4. Grafana queries InfluxDB and visualizes cache hit/miss rates
 
 ## Resource Limits
 
@@ -119,6 +135,31 @@ This ensures consistent and fair performance comparison.
 - Wait for K6 to start sending requests (starts automatically with `docker compose up`)
 - Check if InfluxDB is running: `docker ps | grep influx`
 - Verify K6 is running: `docker logs bitonic-scala3-k6-1`
+
+### Cache metrics not showing
+1. **Verify exporters are running:**
+   ```bash
+   docker ps | grep exporter
+   ```
+
+2. **Test exporters directly:**
+   ```bash
+   # Redis Exporter
+   curl http://localhost:9121/metrics | grep keyspace
+
+   # Memcached Exporter
+   curl http://localhost:9150/metrics | grep commands
+   ```
+
+3. **Check Telegraf logs:**
+   ```bash
+   docker logs telegraf
+   ```
+
+4. **Query InfluxDB directly:**
+   ```bash
+   docker exec bitonic-scala3-influxdb-1 influx -database 'k6' -execute 'SELECT * FROM prometheus WHERE cache_type = '\''redis'\'' LIMIT 5'
+   ```
 
 ### K6 finished but want to run again
 ```bash
