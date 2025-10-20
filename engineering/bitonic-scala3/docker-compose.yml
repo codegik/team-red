@@ -39,6 +39,40 @@ services:
           cpus: '0.25'
           memory: 128M
 
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter
+    ports:
+      - "9121:9121"
+    environment:
+      REDIS_ADDR: redis:6379
+    networks:
+      - bitonic
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+
+  memcached-exporter:
+    image: prom/memcached-exporter:latest
+    container_name: memcached-exporter
+    ports:
+      - "9150:9150"
+    command:
+      - --memcached.address=memcached:11211
+    networks:
+      - bitonic
+    depends_on:
+      - memcached
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+
   app:
     container_name: bitonic-app
     build: .
@@ -102,6 +136,23 @@ services:
           cpus: '0.5'
           memory: 512M
 
+  telegraf:
+    image: telegraf:latest
+    container_name: telegraf
+    volumes:
+      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    networks:
+      - bitonic
+    depends_on:
+      - influxdb
+      - redis-exporter
+      - memcached-exporter
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
   grafana:
     image: grafana/grafana
     depends_on:
@@ -147,7 +198,7 @@ services:
         "run",
         "--out",
         "influxdb=http://influxdb:8086/k6?consistency=one",
-        "/benchmark/benchmark_cache_comparison.js",
+        "/benchmark/benchmark.js",
       ]
     deploy:
       resources:
