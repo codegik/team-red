@@ -37,7 +37,6 @@ object BitonicMemcachedService {
       bitonic <- ZIO.service[BitonicService]
       config <- ZIO.service[MemcachedConfig]
       builder <- ZIO.succeed(new XMemcachedClientBuilder(AddrUtil.getAddresses(s"${config.host}:${config.port}")))
-//      client <- ZIO.acquireRelease(ZIO.attempt(builder.build()))(c => ZIO.attempt(c.shutdown()).ignore)
       client <- ZIO.attempt(builder.build()).orDie
     } yield BitonicMemcachedService(bitonic, client)
   }
