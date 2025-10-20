@@ -186,10 +186,7 @@ services:
         condition: service_started
     volumes:
       - ./benchmark/payloads.json:/benchmark/payloads.json
-      - ./benchmark/payloads_realistic.json:/benchmark/payloads_realistic.json
-      - ./benchmark/payloads_random.json:/benchmark/payloads_random.json
       - ./benchmark/benchmark.js:/benchmark/benchmark.js
-      - ./benchmark/benchmark_cache_comparison.js:/benchmark/benchmark_cache_comparison.js
     networks:
       - bitonic
     entrypoint: ["k6"]
