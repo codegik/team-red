@@ -14,3 +14,11 @@ Must Create a Modern Data Pipeline with:
 		a. Python
 		b. Red-Shift
 		c. Hadoop
+
+## Timeline
+
+- [ ] 19/12/25 - First round of study contents
+- [ ] 23/01/26 - Studied components about the solution, had internal team discussion about it, and expose the lead to receive feedback
+- [ ] 06/02/26 - Created arch diagrams
+- [ ] 23/02/26 - Finilize arch diagrams, ask feedback
+- [ ] 09/03/26 - Dry runs
