@@ -10,9 +10,17 @@ You must design a Realtime voting system with the following requirements:
 	6. Should be Realtime
 	
 Restrictions:
-	• Serverless
-	• MongoDB
-	• On-Premise, Google Cloude, Azure
-	• OpenShift
-	• Mainframes
-	• Monolith Solutions
+ * Serverless
+ * MongoDB
+ * On-Premise, Google Cloude, Azure
+ * OpenShift
+ * Mainframes
+ * Monolith Solutions
+
+## Timeline
+
+- [ ] 21/11/25 - First round of study contents
+- [ ] 31/12/25 - Studied components about the solution, had internal team discussion about it, and expose the lead to receive feedback
+- [ ] 15/01/26 - Created arch diagrams
+- [ ] 31/01/26 - Finilize arch diagrams, ask feedback
+- [ ] 15/02/26 - Dry runs
