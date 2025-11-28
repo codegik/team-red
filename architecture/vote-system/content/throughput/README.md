@@ -1,3 +1,15 @@
+### 1. Never Loose data
+
+> PostgreSQL or MySQL (configured for high availability)
+> Write-Ahead Log (WAL)
+   > Ensure the database is configured to enforce full durability on every write.
+   > This means setting the fsync or equivalent parameter to guarantee data is written to non-volatile storage (disk) before acknowledging the transaction as complete.
+   > synchronous replication
+> Redundancy and High Availability
+   > Deploy a database cluster across multiple physical machines and, ideally, multiple Availability Zones (AZs)
+   > Synchronous Replication: All incoming votes are immediately copied to the replica nodes.
+   > If the primary node fails, the replica already has all the data and can take over instantly (automatic failover).
+
 # Throughput
 
 > the amount of material or items passing through a system or process.
