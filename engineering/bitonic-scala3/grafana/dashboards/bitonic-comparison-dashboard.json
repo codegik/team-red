@@ -687,6 +687,8 @@
             }
           },
           "mappings": [],
+          "max": 1,
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -696,7 +698,7 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 0.8
               }
             ]
           },
@@ -776,7 +778,7 @@
               "mode": "none"
             },
             "thresholdsStyle": {
-              "mode": "off"
+              "mode": "line"
             }
           },
           "mappings": [],
@@ -788,8 +790,16 @@
                 "value": null
               },
               {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "orange",
+                "value": 100
+              },
+              {
                 "color": "red",
-                "value": 80
+                "value": 150
               }
             ]
           },
@@ -869,7 +879,7 @@
               "mode": "none"
             },
             "thresholdsStyle": {
-              "mode": "off"
+              "mode": "line"
             }
           },
           "mappings": [],
@@ -881,8 +891,16 @@
                 "value": null
               },
               {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "orange",
+                "value": 100
+              },
+              {
                 "color": "red",
-                "value": 80
+                "value": 150
               }
             ]
           },
@@ -929,6 +947,384 @@
       ],
       "title": "99th Percentile Response Time",
       "type": "timeseries"
+    },
+    {
+      "datasource": "k6_influx",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*Hit.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*Miss.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "last"],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "query": "SELECT derivative(mean(\"redis_keyspace_hits_total\"), 1s) / (derivative(mean(\"redis_keyspace_hits_total\"), 1s) + derivative(mean(\"redis_keyspace_misses_total\"), 1s)) FROM \"prometheus\" WHERE \"cache_type\" = 'redis' AND $timeFilter GROUP BY time(10s) fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "alias": "Redis Cache Hit Rate"
+        },
+        {
+          "query": "SELECT derivative(mean(\"redis_keyspace_misses_total\"), 1s) / (derivative(mean(\"redis_keyspace_hits_total\"), 1s) + derivative(mean(\"redis_keyspace_misses_total\"), 1s)) FROM \"prometheus\" WHERE \"cache_type\" = 'redis' AND $timeFilter GROUP BY time(10s) fill(null)",
+          "rawQuery": true,
+          "refId": "B",
+          "alias": "Redis Cache Miss Rate"
+        },
+        {
+          "query": "SELECT hits / (hits + misses) FROM (SELECT derivative(mean(\"memcached_commands_total\"), 1s) AS hits FROM \"prometheus\" WHERE \"cache_type\" = 'memcached' AND \"command\" = 'get' AND \"status\" = 'hit' AND $timeFilter GROUP BY time(10s) fill(null)), (SELECT derivative(mean(\"memcached_commands_total\"), 1s) AS misses FROM \"prometheus\" WHERE \"cache_type\" = 'memcached' AND \"command\" = 'get' AND \"status\" = 'miss' AND $timeFilter GROUP BY time(10s) fill(null))",
+          "rawQuery": true,
+          "refId": "C",
+          "alias": "Memcached Cache Hit Rate"
+        },
+        {
+          "query": "SELECT misses / (hits + misses) FROM (SELECT derivative(mean(\"memcached_commands_total\"), 1s) AS hits FROM \"prometheus\" WHERE \"cache_type\" = 'memcached' AND \"command\" = 'get' AND \"status\" = 'hit' AND $timeFilter GROUP BY time(10s) fill(null)), (SELECT derivative(mean(\"memcached_commands_total\"), 1s) AS misses FROM \"prometheus\" WHERE \"cache_type\" = 'memcached' AND \"command\" = 'get' AND \"status\" = 'miss' AND $timeFilter GROUP BY time(10s) fill(null))",
+          "rawQuery": true,
+          "refId": "D",
+          "alias": "Memcached Cache Miss Rate"
+        }
+      ],
+      "title": "Cache Hit/Miss Rate Over Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "k6_influx",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "green",
+                "value": 0.8
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 40
+      },
+      "id": 13,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.0.6",
+      "targets": [
+        {
+          "query": "SELECT (last(\"redis_keyspace_hits_total\") - first(\"redis_keyspace_hits_total\")) / ((last(\"redis_keyspace_hits_total\") - first(\"redis_keyspace_hits_total\")) + (last(\"redis_keyspace_misses_total\") - first(\"redis_keyspace_misses_total\"))) FROM \"prometheus\" WHERE \"cache_type\" = 'redis' AND $timeFilter",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Redis Cache Hit Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": "k6_influx",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.2
+              },
+              {
+                "color": "red",
+                "value": 0.5
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 40
+      },
+      "id": 14,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.0.6",
+      "targets": [
+        {
+          "query": "SELECT (last(\"redis_keyspace_misses_total\") - first(\"redis_keyspace_misses_total\")) / ((last(\"redis_keyspace_hits_total\") - first(\"redis_keyspace_hits_total\")) + (last(\"redis_keyspace_misses_total\") - first(\"redis_keyspace_misses_total\"))) FROM \"prometheus\" WHERE \"cache_type\" = 'redis' AND $timeFilter",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Redis Cache Miss Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": "k6_influx",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "green",
+                "value": 0.8
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 40
+      },
+      "id": 15,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.0.6",
+      "targets": [
+        {
+          "query": "SELECT last(hit) / (last(hit) + last(miss)) FROM (SELECT last(\"memcached_commands_total\") AS hit FROM \"prometheus\" WHERE \"cache_type\" = 'memcached' AND \"command\" = 'get' AND \"status\" = 'hit' AND $timeFilter), (SELECT last(\"memcached_commands_total\") AS miss FROM \"prometheus\" WHERE \"cache_type\" = 'memcached' AND \"command\" = 'get' AND \"status\" = 'miss' AND $timeFilter)",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Memcached Cache Hit Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": "k6_influx",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.2
+              },
+              {
+                "color": "red",
+                "value": 0.5
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 40
+      },
+      "id": 16,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.0.6",
+      "targets": [
+        {
+          "query": "SELECT last(miss) / (last(hit) + last(miss)) FROM (SELECT last(\"memcached_commands_total\") AS hit FROM \"prometheus\" WHERE \"cache_type\" = 'memcached' AND \"command\" = 'get' AND \"status\" = 'hit' AND $timeFilter), (SELECT last(\"memcached_commands_total\") AS miss FROM \"prometheus\" WHERE \"cache_type\" = 'memcached' AND \"command\" = 'get' AND \"status\" = 'miss' AND $timeFilter)",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Memcached Cache Miss Rate",
+      "type": "stat"
     }
   ],
   "refresh": "5s",
