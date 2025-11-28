@@ -492,3 +492,291 @@ writes - Conflict detection
 - Live dashboards
 
 ------------------------------------------------------------------------
+
+## Core Services Overview
+
+This document describes the three core domain services of the secure
+voting platform:
+
+- **Auth Service**
+- **Vote Service**
+- **Fraud Service**
+
+These services work together with external providers: - **Auth0**
+(authentication) - **Sumsub** (biometric identity & liveness) - **Edge
+Security / WAF** (Cloudflare or equivalent)
+
+The goal is to ensure: - Strong identity verification - One person = one
+vote - Resilience against bots and organized fraud - Full auditability
+
+------------------------------------------------------------------------
+
+## 1. Auth Service
+
+### Purpose
+
+The Auth Service is the **internal identity authority** of the voting
+platform.\
+It does NOT replace Auth0 or Sumsub. Instead, it **connects them to the
+voting domain** and applies business rules.
+
+It answers one main question: \> "Who is this user inside the voting
+system, and what is their current status?"
+
+### Core Responsibilities
+
+- Map external identities to internal voters:
+  - Auth0 `sub` → `voterId`
+  - Sumsub `applicantId` → `voterId`
+- Maintain internal voter profile and status:
+  - `PENDING_KYC`
+  - `APPROVED`
+  - `BLOCKED`
+  - `REJECTED`
+- Orchestrate onboarding and verification with Sumsub
+- Enforce internal blocks coming from Fraud Service or Admin actions
+- Expose voter eligibility to the Vote Service
+- Maintain audit trail of identity state changes
+
+------------------------------------------------------------------------
+
+### Key Endpoints
+
+#### `GET /me`
+
+Returns the authenticated user's internal voter profile.
+
+**Used by:** Mobile App, Web App
+
+**Output Example:**
+
+``` json
+{
+  "voterId": "vtr_123",
+  "status": "APPROVED",
+  "sumsubApplicantId": "applicant_987",
+  "flags": {
+    "isBlocked": false,
+    "needsReverification": false
+  }
+}
+```
+
+------------------------------------------------------------------------
+
+#### `POST /voters/onboard`
+
+Starts the biometric verification flow with Sumsub.
+
+**Used by:** Mobile App after login
+
+**What it does:** - Creates or loads voter record - Creates Sumsub
+applicant - Generates Sumsub session token
+
+**Output Example:**
+
+``` json
+{
+  "voterId": "vtr_123",
+  "sumsub": {
+    "applicantId": "applicant_987",
+    "accessToken": "sumsub-access-token",
+    "flow": "document+liveness"
+  },
+  "status": "PENDING_KYC"
+}
+```
+
+------------------------------------------------------------------------
+
+#### `POST /voters/webhook/sumsub`
+
+Receives verification result from Sumsub.
+
+**Used by:** Sumsub (Webhook)
+
+**What it does:** - Updates voter verification status - Emits event to
+Fraud & Vote systems if needed
+
+------------------------------------------------------------------------
+
+#### `GET /voters/{voterId}/eligibility?electionId=...`
+
+Checks if the voter can participate in a specific election.
+
+**Used by:** Vote Service
+
+**Output Example:**
+
+``` json
+{
+  "voterId": "vtr_123",
+  "electionId": "election_2026",
+  "eligible": true
+}
+```
+
+------------------------------------------------------------------------
+
+#### `POST /voters/{voterId}/block`
+
+Blocks a voter at the identity level.
+
+**Used by:** Fraud Service, Admin Panel
+
+------------------------------------------------------------------------
+
+## 2. Vote Service
+
+### Purpose
+
+The Vote Service is the **core election engine**.\
+It is the only service allowed to **create, validate, store, and tally
+votes**.
+
+It answers the question: \> "Is this voter eligible right now, and can
+we safely record this vote?"
+
+------------------------------------------------------------------------
+
+### Core Responsibilities
+
+- Election creation and configuration
+- Ballot management
+- Eligibility validation through Auth Service
+- Fraud validation through Fraud Service
+- Enforcing voting rules:
+  - One vote per voter
+  - Idempotent submissions
+- Secure vote storage (append-only / immutable)
+- Vote tallying and result publishing
+- Vote audit trail
+
+------------------------------------------------------------------------
+
+### Key Endpoints
+
+#### `POST /elections`
+
+Creates a new election.
+
+------------------------------------------------------------------------
+
+#### `POST /votes`
+
+Registers a vote.
+
+**Used by:** Mobile App
+
+**Internal Flow:** 1. Validate voter via Auth Service 2. Validate risk
+via Fraud Service 3. Enforce "one person = one vote" 4. Persist vote in
+immutable storage
+
+------------------------------------------------------------------------
+
+#### `GET /elections/{id}/results`
+
+Returns aggregated voting results.
+
+------------------------------------------------------------------------
+
+## 3. Fraud Service
+
+### Purpose
+
+The Fraud Service is the **behavioral risk engine** of the system.
+
+It does NOT validate identity documents and does NOT authenticate
+users.\
+Its job is to **detect suspicious patterns across users, devices,
+sessions, and elections.**
+
+It answers the question: \> "Does this action look normal or coordinated
+/ fraudulent?"
+
+------------------------------------------------------------------------
+
+### Core Responsibilities
+
+- Behavioral risk scoring for:
+  - Account creation
+  - Voting attempts
+- Device correlation:
+  - Same device used by many voters
+- Election-level fraud detection:
+  - Coordinated vote attempts
+  - Abnormal regional concentration
+- Decision engine:
+  - `ALLOW`
+  - `CHALLENGE`
+  - `DENY`
+- Maintain fraud watchlists
+- Maintain historical fraud signals and risk profiles
+- Feed audit, alerting, and investigation tools
+
+------------------------------------------------------------------------
+
+### Key Endpoints
+
+#### `POST /fraud/check-signup`
+
+Risk analysis at voter onboarding.
+
+**Used by:** Auth Service
+
+**Output Example:**
+
+``` json
+{
+  "decision": "ALLOW",
+  "riskScore": 0.14
+}
+```
+
+------------------------------------------------------------------------
+
+#### `POST /fraud/check-vote`
+
+Risk analysis before vote registration.
+
+**Used by:** Vote Service
+
+**Output Example:**
+
+``` json
+{
+  "decision": "DENY",
+  "riskScore": 0.92,
+  "reasons": [
+    "MULTIPLE_VOTERS_SAME_DEVICE_IN_SHORT_WINDOW"
+  ]
+}
+```
+
+------------------------------------------------------------------------
+
+#### `POST /fraud/events`
+
+Ingests behavioral events (login, vote, block, review).
+
+------------------------------------------------------------------------
+
+#### `GET /fraud/profile/{voterId}`
+
+Returns the full fraud risk profile for a voter.
+
+------------------------------------------------------------------------
+
+## Interaction Summary
+
+  Service         Talks To        Purpose
+  --------------- --------------- ---------------------------------------
+  Auth Service    Auth0           Login & token validation
+  Auth Service    Sumsub          Identity & biometric verification
+  Auth Service    Fraud Service   Signup risk analysis
+  Vote Service    Auth Service    Eligibility validation
+  Vote Service    Fraud Service   Vote risk analysis
+  Fraud Service   All             Receives behavioral events
+  Admin Panel     All             Oversight, investigation, enforcement
+
+------------------------------------------------------------------------
