@@ -507,8 +507,7 @@ flexibility for custom flows
 Pros: - Strong biometric antifraud - Global KYC compliance -
 High-quality liveness detection - Advanced risk scoring
 
-Cons: - High user friction - Sensitive biometric data handling - High
-per-verification cost - Not always legally permitted for voting
+Cons: - High user friction - Sensitive biometric data handling - High per-verification cost - Not always legally permitted for voting
 
 ------------------------------------------------------------------------
 
@@ -568,5 +567,3 @@ validation
 
  Cons: - Cost at very high RPS - Harder to debug than direct ALB
 setups
-
-
