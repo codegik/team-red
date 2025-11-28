@@ -138,114 +138,9 @@ scalability
 
 ## 6. Security & Anti-Bot Strategy (Primary Focus)
 
-### 6.1 Edge Security -- First Line of Defense
+# 6.1. End-to-End Mobile Flow (React Native + Expo)
 
-At the edge, the system uses:
-
-- AWS global infrastructure
-- Amazon CloudFront
-- AWS WAF
-
-Key Protections: - IP-based rate limiting - Geo-blocking - L7 DDoS
-protection - Behavior-based bot filtering - API scraping detection -
-Automatic blocking of malicious IPs, VPNs, and proxies
-
-------------------------------------------------------------------------
-
-### 6.2 API Abuse & Injection Protection
-
-Automatically mitigates: - SQL Injection - XSS - Command Injection -
-CSRF - Broken authentication attempts - Credential stuffing
-
-------------------------------------------------------------------------
-
-### 6.3 Identity & Human Verification Layer
-
-Before voting is allowed, users must pass:
-
-- Secure authentication
-- Token-based authentication (short-lived)
-- Device binding
-
-Anti-Bot Challenge: - Cloudflare Turnstile--like challenge system -
-Invisible human verification - Script automation blocking
-
-------------------------------------------------------------------------
-
-### 6.4 Device & Behavior Intelligence
-
-Capabilities: - Device fingerprinting - Behavioral pattern analysis -
-Velocity detection - Automation detection - Anomaly detection per
-device/session
-
-Providers: - DataDome (Anti-bot + Fraud) - Human Security
-
-------------------------------------------------------------------------
-
-### 6.5 Vote API Protection (Critical Control)
-
-Each vote request must include: - User identity token - Device
-fingerprint - Session signature - Idempotency key
-
-Backend enforces: - One vote per user - No duplicate submission - No
-replay attacks - No race conditions
-
-------------------------------------------------------------------------
-
-### 6.6 Threat Intelligence & Reputation Feeds
-
-Tracks: - Malicious IPs - Botnet networks - Dark web credential leaks -
-Known attack campaigns
-
-Blocked at the edge before application processing.
-
-------------------------------------------------------------------------
-
-## 7. Data Integrity & One-Vote Enforcement
-
-- Globally unique voting token
-- Single-use cryptographic vote key
-
-Database enforces: - Strong uniqueness constraints - Atomic conditional
-writes - Conflict detection
-
-------------------------------------------------------------------------
-
-## 8. Resilience & Fault Tolerance
-
-- Multi-AZ write replication
-- Event queues for vote ingestion
-- Retry with backoff
-- Dead-letter queues
-- Immutable audit log streams
-
-------------------------------------------------------------------------
-
-## 9. Real-Time Result Distribution
-
-- Real-time aggregation pipelines
-- WebSocket / streaming consumers
-- Live dashboards
-
-------------------------------------------------------------------------
-
-## 10. Summary
-
-This architecture prioritizes:
-
-- Massive scalability
-- Military-grade security
-- Zero tolerance for data loss
-- Extreme resistance to automation
-- High-performance real-time processing
-
-The security model is layered, adaptive, intelligence-driven, and fully
-automated, ensuring reliability even under coordinated global-scale
-attacks.
-
-# 1. End-to-End Mobile Flow (React Native + Expo)
-
-## 1.1 Mobile Application Stack
+## 6.1.1 Mobile Application Stack
 
 - Mobile framework: **React Native + Expo**
 - Authentication: **Auth0**
@@ -263,7 +158,7 @@ This stack is designed to ensure:
 
 ------------------------------------------------------------------------
 
-## 1.2 Liveness Detection & Identity Verification with SumSub
+## 6.1.2 Liveness Detection & Identity Verification with SumSub
 
 SumSub is used for:
 
@@ -306,7 +201,7 @@ No raw biometric data is stored directly in the voting backend.
 
 ------------------------------------------------------------------------
 
-## 1.3 Secure Authentication with Auth0 (SSO + MFA)
+## 6.1.3 Secure Authentication with Auth0 (SSO + MFA)
 
 Auth0 is used for:
 
@@ -333,7 +228,7 @@ Documentation: <https://auth0.com/docs/quickstart/native/react-native>
 
 ------------------------------------------------------------------------
 
-## 1.4 Bot Detection with Auth0 Challenge + Turnstile
+## 6.1.4 Bot Detection with Auth0 Challenge + Turnstile
 
 To prevent credential stuffing, brute-force, and automated accounts:
 
@@ -351,7 +246,7 @@ by the backend before granting access.
 
 ------------------------------------------------------------------------
 
-## 1.5 Secure API Requests with Tokens
+## 6.1.5 Secure API Requests with Tokens
 
 All API requests use:
 
@@ -379,7 +274,7 @@ All backend services:
 
 ------------------------------------------------------------------------
 
-## 1.6 Device Fingerprinting with FingerprintJS
+## 6.1.6 Device Fingerprinting with FingerprintJS
 
 FingerprintJS is used to:
 
@@ -415,9 +310,9 @@ This allows detection of:
 
 ------------------------------------------------------------------------
 
-# 2. Architecture Overview (Edge to API)
+# 6.2. Architecture Overview (Edge to API)
 
-## 2.1 Global Request Flow
+## 6.2.1 Global Request Flow
 
 ``` text
 Mobile App (React Native)
@@ -441,7 +336,7 @@ Microservices (Auth, Voting, Fraud)
 
 ------------------------------------------------------------------------
 
-## 2.2 CloudFront + AWS WAF Responsibilities
+## 6.2.2 CloudFront + AWS WAF Responsibilities
 
 ### CloudFront
 
@@ -464,7 +359,7 @@ Microservices (Auth, Voting, Fraud)
 
 ------------------------------------------------------------------------
 
-## 2.3 Global Accelerator & Backbone Routing
+## 6.2.3 Global Accelerator & Backbone Routing
 
 All traffic between edge and API uses:
 
@@ -475,7 +370,7 @@ All traffic between edge and API uses:
 
 ------------------------------------------------------------------------
 
-## 2.4 API Gateway Security Model
+## 6.2.4 API Gateway Security Model
 
 The API Gateway enforces:
 
@@ -490,9 +385,9 @@ The API Gateway enforces:
 
 ------------------------------------------------------------------------
 
-# 3. Tradeoffs Analysis of All Security Tools
+# 6.3. Tradeoffs Analysis of All Security Tools
 
-## 3.1 Auth0
+## 6.3.1 Auth0
 
 Pros: - Enterprise-grade authentication - Built-in MFA - Secure token
 lifecycle - SSO support - High availability
@@ -502,7 +397,7 @@ flexibility for custom flows
 
 ------------------------------------------------------------------------
 
-## 3.2 SumSub
+## 6.3.2 SumSub
 
 Pros: - Strong biometric antifraud - Global KYC compliance -
 High-quality liveness detection - Advanced risk scoring
@@ -511,7 +406,7 @@ Cons: - High user friction - Sensitive biometric data handling - High per-verifi
 
 ------------------------------------------------------------------------
 
-## 3.3 Cloudflare Turnstile
+## 6.3.3 Cloudflare Turnstile
 
 Pros: - Invisible challenge - Better UX than CAPTCHA - Strong privacy
 guarantees - Blocks simple automation
@@ -521,7 +416,7 @@ dependency - Needs backend verification
 
 ------------------------------------------------------------------------
 
-## 3.4 FingerprintJS
+## 6.3.4 FingerprintJS
 
 Pros: - Passive and invisible - Emulator and device cloning
 detection - Excellent multi-account detection signal
@@ -531,7 +426,7 @@ and compliance concerns - Device replacement causes identity changes
 
 ------------------------------------------------------------------------
 
-## 3.5 AWS CloudFront
+## 6.3.5 AWS CloudFront
 
 Pros: - Global CDN - Massive traffic absorption - Native integration
 with AWS security - Edge-level DDoS protection
@@ -541,7 +436,7 @@ than software-based proxies
 
 ------------------------------------------------------------------------
 
-## 3.6 AWS WAF
+## 6.3.6 AWS WAF
 
 Pros: - Managed OWASP rules - Tight AWS integration - Native
 CloudFront support - Bot Control included
@@ -551,7 +446,7 @@ to avoid false positives
 
 ------------------------------------------------------------------------
 
-## 3.7 AWS Global Accelerator
+## 6.3.7 AWS Global Accelerator
 
 Pros: - Very low global latency - Consistent static IPs -
 Multi-region failover
@@ -560,10 +455,40 @@ Cons: - Additional cost - More complex routing model
 
 ------------------------------------------------------------------------
 
-## 3.8 API Gateway
+## 6.3.8 API Gateway
 
  Pros: - Built-in rate limiting - Strong security posture - Native JWT
 validation
 
  Cons: - Cost at very high RPS - Harder to debug than direct ALB
 setups
+
+------------------------------------------------------------------------
+
+## 7. Data Integrity & One-Vote Enforcement
+
+- Globally unique voting token
+- Single-use cryptographic vote key
+
+Database enforces: - Strong uniqueness constraints - Atomic conditional
+writes - Conflict detection
+
+------------------------------------------------------------------------
+
+## 8. Resilience & Fault Tolerance
+
+- Multi-AZ write replication
+- Event queues for vote ingestion
+- Retry with backoff
+- Dead-letter queues
+- Immutable audit log streams
+
+------------------------------------------------------------------------
+
+## 9. Real-Time Result Distribution
+
+- Real-time aggregation pipelines
+- WebSocket / streaming consumers
+- Live dashboards
+
+------------------------------------------------------------------------
