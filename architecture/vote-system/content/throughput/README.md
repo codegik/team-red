@@ -1,14 +1,78 @@
 ### 1. Never Loose data
 
-> PostgreSQL or MySQL (configured for high availability)
-> Write-Ahead Log (WAL)
-   > Ensure the database is configured to enforce full durability on every write.
-   > This means setting the fsync or equivalent parameter to guarantee data is written to non-volatile storage (disk) before acknowledging the transaction as complete.
-   > synchronous replication
-> Redundancy and High Availability
-   > Deploy a database cluster across multiple physical machines and, ideally, multiple Availability Zones (AZs)
-   > Synchronous Replication: All incoming votes are immediately copied to the replica nodes.
-   > If the primary node fails, the replica already has all the data and can take over instantly (automatic failover).
+Data durability is the result of multiple layers working together:
+
+- Correct transactional data modeling
+- A reliable, ACID-compliant database
+- Safe write configuration
+- Proper replication strategy
+- Tested and reliable backups
+- Redundant infrastructure
+- Well-defined operational procedures
+
+If any of these layers fail, votes can be lost.
+
+---
+
+## 2. Database Choice: PostgreSQL vs MySQL
+
+### ✅ Recommended Database: **PostgreSQL**
+
+PostgreSQL is widely used in **financial, governmental, and electoral systems** due to its strong guarantees around consistency and durability.
+
+| Criterion | PostgreSQL | MySQL |
+|---------|------------|-------|
+| ACID compliance | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| Complex transactions | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| Strong consistency | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| WAL robustness | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| Synchronous replication | ⭐⭐⭐⭐ | ⭐⭐ |
+| Auditing capabilities | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| Use in critical systems | Banks, governments | Web apps |
+
+### When MySQL Might Be Acceptable
+- Simple applications
+- Read-heavy workloads
+- Systems where limited data loss is acceptable (**not suitable for voting**)
+
+## 3. Write-Ahead Logging (WAL)
+
+### Mandatory: **YES**
+
+Write-Ahead Logging ensures that:
+
+- Every change is written to a log **before** being committed
+- If a crash occurs, the database can **replay committed transactions**
+
+PostgreSQL includes WAL by default, but it must be **properly configured**.
+
+### Critical PostgreSQL Settings
+```conf
+synchronous_commit = on
+wal_sync_method = fdatasync
+full_page_writes = on
+```
+
+### 4. Synchronous Replication
+
+Synchronous replication ensures that:
+
+A transaction is only committed after:
+
+The primary node writes it
+
+At least one standby node confirms the write
+
+If the primary crashes immediately after a vote, the vote still exists on the replica.
+
+## Trade-offs
+| Pros | Cons | 
+|---------|------------|
+| Zero data loss	| Higher latency | 
+Strong durability	| Slower writes | 
+Ideal for voting	| Requires reliable network | 
+
+---
 
 # Throughput
 
