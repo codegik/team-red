@@ -50,3 +50,17 @@ plugins.security.compliance.immutable_indices (Static): Documents in indexes tha
 ## Redundancy, Backups and Disaster Recovery
 
 We need to plan and study more about it, because it's so important.
+
+# Trade-offs
+
+## SQL vs No-SQL
+
+| **Criteria**                   | **SQL Databases**                                                                   |**No-SQL databases**                                       |
+|------------------------------|---------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| **Consistency** | Strong (ACID)    | Eventual (in most cases)                                 |
+| **Scalability** |  Mainly vertical                     | Horizontal |
+| **Schema**       | Rigid | Flexible                  |
+| **Transaction**  | Complex and fully supported                 | Limited           |
+| **Complexity**   | Lower for relational data                                  |    Higher at the application level                   |
+| **Performance**     | Good for transactional workloads           | Excelent for high data volume                        |
+
