@@ -1,14 +1,62 @@
 ### 1. Never Loose data
 
-> PostgreSQL or MySQL (configured for high availability)
-> Write-Ahead Log (WAL)
-   > Ensure the database is configured to enforce full durability on every write.
-   > This means setting the fsync or equivalent parameter to guarantee data is written to non-volatile storage (disk) before acknowledging the transaction as complete.
-   > synchronous replication
-> Redundancy and High Availability
-   > Deploy a database cluster across multiple physical machines and, ideally, multiple Availability Zones (AZs)
-   > Synchronous Replication: All incoming votes are immediately copied to the replica nodes.
-   > If the primary node fails, the replica already has all the data and can take over instantly (automatic failover).
+*  PostgreSQL or MySQL (configured for high availability)
+- PostgreeSQL is the best option here, because:
+     - Stricter ACID compliance by default. (Atomicity, Consistency, Isolation, Durability)
+     - More robust WAL (Write-Ahead Logging). Recording all changes in a sequential log before applying them to the main data files.
+     - PostgreSQL MVCC
+         - PostgreSQL's MVCC is generally considered more robust and complete, offering greater ACID compliance and better performance in complex, write-heavy workloads, while MySQL's MVCC (via InnoDB) excels in read-                  intensive and simple applications but may have limitations in complex, high-concurrency scenarios compared to PostgreSQL.
+- Advanced Features from PostGreSQL:
+   - Complex data types (JSON, arrays, hstore)
+   - More powerful CTEs (Common Table Expressions) and window functions
+   - Improved support for complex and analytical operations
+   - Powerful extensions (PostGIS, pg_partman, etc.)
+
+- Scalability:
+   - Improved performance in complex operations
+   - More advanced native partitioning
+   - Robust logical and physical replication
+ 
+
+- PostgreSQL - Cons
+   - More complex initial configuration
+   - Requires more RAM
+   - Slightly steeper learning curve
+   - Less adoption in shared hosting environments
+
+MySQL - Pros
+
+- Simplicity:
+   - Simpler configuration
+   - Widely supported on hosting providers
+   - Abundant documentation
+   - Large community
+
+- Performance:
+   - Simple reads can be faster (MyISAM, but without ACID)
+   - InnoDB has improved significantly in recent versions
+   - Good for simple read-heavy applications
+
+- MySQL - Cons
+   - Integrity:
+      - Historically less rigorous with data types
+      - Silent conversions can cause data loss
+      - Less reliable constraint implementation
+      - Asynchronous replication by default (risk of data loss)
+
+- Limitations:
+   - Fewer advanced features
+   - Less complete SQL implementation
+   - Foreign keys only with InnoDB
+ 
+# Conclusion
+   We sohlud use PostgreSQL because:
+   
+   - Guaranteed durability - WAL and fsync ensure confirmed votes are never lost
+   - Superior MVCC - Multiple users voting simultaneously without locks
+   - Reliable transactions - Each vote is a complete ACID transaction
+   - Strict constraints - Prevents invalid data (duplicate votes, incorrect values)
+   - Auditing - Better support for triggers and change logging
 
 # Throughput
 
