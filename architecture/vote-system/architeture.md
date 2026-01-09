@@ -387,17 +387,7 @@ The API Gateway enforces:
 
 # 6.3. Tradeoffs Analysis of All Security Tools
 
-## 6.3.1 Auth0
-
-Pros: - Enterprise-grade authentication - Built-in MFA - Secure token
-lifecycle - SSO support - High availability
-
-Cons: - Expensive at large scale - Vendor lock-in - Limited
-flexibility for custom flows
-
-------------------------------------------------------------------------
-
-## 6.3.2 SumSub
+## 6.3.1 SumSub
 
 Pros: - Strong biometric antifraud - Global KYC compliance -
 High-quality liveness detection - Advanced risk scoring
@@ -406,7 +396,7 @@ Cons: - High user friction - Sensitive biometric data handling - High per-verifi
 
 ------------------------------------------------------------------------
 
-## 6.3.3 Cloudflare Turnstile
+## 6.3.2 Cloudflare Turnstile
 
 Pros: - Invisible challenge - Better UX than CAPTCHA - Strong privacy
 guarantees - Blocks simple automation
@@ -416,7 +406,7 @@ dependency - Needs backend verification
 
 ------------------------------------------------------------------------
 
-## 6.3.4 FingerprintJS
+## 6.3.3 FingerprintJS
 
 Pros: - Passive and invisible - Emulator and device cloning
 detection - Excellent multi-account detection signal
@@ -426,7 +416,7 @@ and compliance concerns - Device replacement causes identity changes
 
 ------------------------------------------------------------------------
 
-## 6.3.5 AWS CloudFront
+## 6.3.4 AWS CloudFront
 
 Pros: - Global CDN - Massive traffic absorption - Native integration
 with AWS security - Edge-level DDoS protection
@@ -436,7 +426,7 @@ than software-based proxies
 
 ------------------------------------------------------------------------
 
-## 6.3.6 AWS WAF
+## 6.3.5 AWS WAF
 
 Pros: - Managed OWASP rules - Tight AWS integration - Native
 CloudFront support - Bot Control included
@@ -446,7 +436,7 @@ to avoid false positives
 
 ------------------------------------------------------------------------
 
-## 6.3.7 AWS Global Accelerator
+## 6.3.6 AWS Global Accelerator
 
 Pros: - Very low global latency - Consistent static IPs -
 Multi-region failover
@@ -455,7 +445,7 @@ Cons: - Additional cost - More complex routing model
 
 ------------------------------------------------------------------------
 
-## 6.3.8 API Gateway
+## 6.3.7 API Gateway
 
  Pros: - Built-in rate limiting - Strong security posture - Native JWT
 validation
