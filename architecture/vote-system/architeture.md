@@ -465,6 +465,57 @@ setups
 
 ------------------------------------------------------------------------
 
+# 7. 💾 Migrations
+
+We don't have migration for this architecture since its a new system.
+
+------------------------------------------------------------------------
+
+# 8. 🧪 Testing strategy
+
+## Frontend Tests
+- ReactJS component rendering tests with focus on performance metrics.
+- Client-side state management tests.
+- WebSocket client implementation tests.
+
+## Contract tests
+- Test API contracts between decomposed microservices.
+- Verify WebSocket message formats and protocols.
+
+## Integration tests
+- Try to cover most of the scenarios.
+- Test WebSocket real-time communication flows.
+- Run in isolated environments before production deployment.
+
+## Infra tests
+- Validate Global Accelerator routing behavior.
+
+## Performance tests
+- Use K6 to simulate the user behavior and check the system's performance.
+- Measure database query performance under load
+- Measure UI rendering time across device types
+- Benchmark WebSocket vs HTTP performance in real usage scenarios
+- Track CDN cache hit/miss ratios
+- Execute in staging environment with production-like conditions
+
+## Chaos tests
+- Simulate AWS region failures to test Global Accelerator failover
+- Test WebSocket reconnection strategies during network disruptions
+- Inject latency between services to identify performance bottlenecks
+- Execute in isolated production environment during low-traffic periods
+
+## Mobile testing
+
+- Unit Android: ViewModel/repository with JUnit.
+- Unit iOS: XCTest with async/await; mocks per protocol.
+- UI Android: Espresso for flows (login, search, dojo).
+- UI iOS: XCUITest with LaunchArguments for mocks.
+- Network/Contract: MockWebServer (Android) / URLProtocol stub (iOS); Pact consumer tests for contracts with the backend.
+- Performance: Cold start and WS connection times measured in CI (staging).
+- Accessibility: Basic TalkBack/VoiceOver per critical screen.
+
+------------------------------------------------------------------------
+
 ## 7. Data Integrity & One-Vote Enforcement
 
 - Globally unique voting token
