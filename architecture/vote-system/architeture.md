@@ -1,6 +1,8 @@
-# Realtime Voting System -- Architecture Overview
+# 🧬 Architecture overview
 
-## 1. Context & Problem Statement
+# 1. 🏛️ Structure
+
+## 1.1 🎯 Problem Statement and Context
 
 This document describes the high-level architecture and security
 strategy for a global, real-time voting system designed to support:
@@ -15,7 +17,7 @@ strategy for a global, real-time voting system designed to support:
 The system must be fully cloud-native, highly scalable, fault tolerant,
 and secure by design, while explicitly avoiding:
 
-### Restricted Technologies (Non-Allowed)
+## 1.2 Restrictions
 
 - Serverless platforms outside AWS
 - MongoDB
@@ -30,7 +32,15 @@ assumed.
 
 ------------------------------------------------------------------------
 
-## 2. Core Requirements & Why They Matter
+# 2. 🎯 Goals
+
+### Goals
+
+- Planet-scale availability
+- Zero data loss tolerance
+- High resistance to automation & fraud
+- Real-time vote processing
+- Fully distributed architecture
 
 ### 2.1 Never Lose Data
 
@@ -39,8 +49,6 @@ risks - Loss of public trust - Invalid election outcomes
 
 This requires: - Multi-region replication - Strong durability
 guarantees - Strict write acknowledgements - Immutable audit logs
-
-------------------------------------------------------------------------
 
 ### 2.2 Be Secure and Prevent Bots & Bad Actors (Primary Ownership Area)
 
@@ -58,15 +66,11 @@ prevent:
 Security must be implemented in multiple layers (defense in depth): -
 Network - Identity - Device - Behavior - Application - Data
 
-------------------------------------------------------------------------
-
 ### 2.3 Handle 300M Users
 
 This implies: - Massive horizontal scalability - Stateless
 architectures - Global CDNs - Partitioned databases - Multi-region
 deployment
-
-------------------------------------------------------------------------
 
 ### 2.4 Handle 240K RPS Peak Traffic
 
@@ -76,15 +80,11 @@ monoliths
 It requires: - Load-based autoscaling - Event-driven processing -
 Front-door traffic absorption - Backpressure handling
 
-------------------------------------------------------------------------
-
 ### 2.5 One Vote per User (Strict Idempotency)
 
 This is a data + security + consistency problem: - Each identity must
 be: - Verified - Unique - Non-replayable - Vote submissions must be: -
 Idempotent - Conflict-safe - Race-condition proof
-
-------------------------------------------------------------------------
 
 ### 2.6 Real-Time Results
 
@@ -92,19 +92,8 @@ This creates challenges in: - Data streaming - Cache invalidation -
 Broadcast consistency - Fan-out architectures - WebSocket / pub-sub
 scalability
 
-------------------------------------------------------------------------
 
-## 3. Goals & Non-Goals
-
-### Goals
-
-- Planet-scale availability
-- Zero data loss tolerance
-- High resistance to automation & fraud
-- Real-time vote processing
-- Fully distributed architecture
-
-### Non-Goals
+# 3. 🎯 Non-Goals
 
 - On-prem or hybrid operation
 - Manual moderation for fraud detection
@@ -113,7 +102,7 @@ scalability
 
 ------------------------------------------------------------------------
 
-## 4. Design Principles
+# 4. 📐 Principles
 
 - Security First
 - Scalability by Default
@@ -125,7 +114,9 @@ scalability
 
 ------------------------------------------------------------------------
 
-## 5. High-Level Architecture Overview
+# 5. 🏗️ Overall Diagrams
+
+## 5.1 🗂️ Overall architecture
 
 1. Users send requests through a global CDN + security edge
 2. Traffic is validated, filtered, rate-limited, and inspected
