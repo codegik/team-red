@@ -670,9 +670,90 @@ This allows detection of:
 
 ---
 
-## 6.2. Architecture Overview (Edge to API)
+# 6.2. Tradeoffs Analysis of All Security Tools
 
-### 6.2.1 Global Request Flow
+## 6.2.1 Auth0
+
+Pros: - Enterprise-grade authentication - Built-in MFA - Secure token
+lifecycle - SSO support - High availability
+
+Cons: - Expensive at large scale - Vendor lock-in - Limited
+flexibility for custom flows
+
+------------------------------------------------------------------------
+
+## 6.2.2 SumSub
+
+Pros: - Strong biometric antifraud - Global KYC compliance -
+High-quality liveness detection - Advanced risk scoring
+
+Cons: - High user friction - Sensitive biometric data handling - High per-verification cost - Not always legally permitted for voting
+
+------------------------------------------------------------------------
+
+## 6.2.3 Cloudflare Turnstile
+
+Pros: - Invisible challenge - Better UX than CAPTCHA - Strong privacy
+guarantees - Blocks simple automation
+
+Cons: - Not sufficient alone against advanced bots - External
+dependency - Needs backend verification
+
+------------------------------------------------------------------------
+
+## 6.2.4 FingerprintJS
+
+Pros: - Passive and invisible - Emulator and device cloning
+detection - Excellent multi-account detection signal
+
+Cons: - Fingerprints can be spoofed by advanced attackers - Privacy
+and compliance concerns - Device replacement causes identity changes
+
+------------------------------------------------------------------------
+
+## 6.3.5 AWS CloudFront
+
+Pros: - Global CDN - Massive traffic absorption - Native integration
+with AWS security - Edge-level DDoS protection
+
+Cons: - Pricing complexity - Cache invalidation cost - Less flexible
+than software-based proxies
+
+------------------------------------------------------------------------
+
+## 6.2.6 AWS WAF
+
+Pros: - Managed OWASP rules - Tight AWS integration - Native
+CloudFront support - Bot Control included
+
+ Cons: - Limited advanced behavioral fraud detection - Requires tuning
+to avoid false positives
+
+------------------------------------------------------------------------
+
+## 6.2.7 AWS Global Accelerator
+
+Pros: - Very low global latency - Consistent static IPs -
+Multi-region failover
+
+Cons: - Additional cost - More complex routing model
+
+------------------------------------------------------------------------
+
+## 6.2.8 API Gateway
+
+ Pros: - Built-in rate limiting - Strong security posture - Native JWT
+validation
+
+ Cons: - Cost at very high RPS - Harder to debug than direct ALB
+setups
+
+------------------------------------------------------------------------
+
+
+# 7. Architecture Overview (Edge to API)
+
+## 7.1 Global Request Flow
 
 ``` text
 Mobile App (React Native)
@@ -696,7 +777,7 @@ Microservices (Auth, Voting, Fraud)
 
 ---
 
-### 6.2.2 CloudFront + AWS WAF Responsibilities
+## 7.2 CloudFront + AWS WAF Responsibilities
 
 ### CloudFront
 
@@ -719,7 +800,7 @@ Microservices (Auth, Voting, Fraud)
 
 ---
 
-### 6.2.3 Global Accelerator & Backbone Routing
+## 7.3 Global Accelerator & Backbone Routing
 
 All traffic between edge and API uses:
 
@@ -730,7 +811,7 @@ All traffic between edge and API uses:
 
 ---
 
-### 6.2.4 API Gateway Security Model
+## 7.4 API Gateway Security Model
 
 The API Gateway enforces:
 
@@ -745,87 +826,69 @@ The API Gateway enforces:
 
 ---
 
-## 6.3. Tradeoffs Analysis of All Security Tools
+# 8. 💾 Migrations
 
-### 6.3.1 Auth0
+We don't have migration for this architecture since its a new system.
 
-Pros: - Enterprise-grade authentication - Built-in MFA - Secure token
-lifecycle - SSO support - High availability
+------------------------------------------------------------------------
 
-Cons: - Expensive at large scale - Vendor lock-in - Limited
-flexibility for custom flows
+# 9. 🧪 Testing strategy
 
----
+## Frontend Tests
+- ReactJS component rendering tests with focus on performance metrics.
+- Client-side state management tests.
+- WebSocket client implementation tests.
 
-### 6.3.2 SumSub
+## Contract tests
+- Test API contracts between decomposed microservices.
+- Verify WebSocket message formats and protocols.
 
-Pros: - Strong biometric antifraud - Global KYC compliance -
-High-quality liveness detection - Advanced risk scoring
+## Integration tests
+- Try to cover most of the scenarios.
+- Test WebSocket real-time communication flows.
+- Run in isolated environments before production deployment.
 
-Cons: - High user friction - Sensitive biometric data handling - High per-verification cost - Not always legally permitted for voting
+## Infra tests
+- Validate Global Accelerator routing behavior.
 
----
+## Performance tests
+- Use K6 to simulate the user behavior and check the system's performance.
+- Measure database query performance under load
+- Measure UI rendering time across device types
+- Benchmark WebSocket vs HTTP performance in real usage scenarios
+- Track CDN cache hit/miss ratios
+- Execute in staging environment with production-like conditions
 
-### 6.3.3 Cloudflare Turnstile
+## Chaos tests
+- Simulate AWS region failures to test Global Accelerator failover
+- Test WebSocket reconnection strategies during network disruptions
+- Inject latency between services to identify performance bottlenecks
+- Execute in isolated production environment during low-traffic periods
 
-Pros: - Invisible challenge - Better UX than CAPTCHA - Strong privacy
-guarantees - Blocks simple automation
+## Mobile testing
 
-Cons: - Not sufficient alone against advanced bots - External
-dependency - Needs backend verification
+- Unit Android: ViewModel/repository with JUnit.
+- Unit iOS: XCTest with async/await; mocks per protocol.
+- UI Android: Espresso for flows (login, search, dojo).
+- UI iOS: XCUITest with LaunchArguments for mocks.
+- Network/Contract: MockWebServer (Android) / URLProtocol stub (iOS); Pact consumer tests for contracts with the backend.
+- Performance: Cold start and WS connection times measured in CI (staging).
+- Accessibility: Basic TalkBack/VoiceOver per critical screen.
+------------------------------------------------------------------------
 
----
+## 10. Data store settings 
 
-### 6.3.4 FingerprintJS
+![Database Diagram](diagrams/database-diagram.png)
 
-Pros: - Passive and invisible - Emulator and device cloning
-detection - Excellent multi-account detection signal
+The system uses a multi-database strategy:
 
-Cons: - Fingerprints can be spoofed by advanced attackers - Privacy
-and compliance concerns - Device replacement causes identity changes
+- **PostgreSQL (RDS Multi-AZ)**: Transactional data for voters, elections, and votes with strong ACID guarantees
 
----
+Each microservice owns its schema, avoiding cross-service queries through event-driven architecture, this alse reduces the need of FKs in database.
 
-### 6.3.5 AWS CloudFront
+------------------------------------------------------------------------
 
-Pros: - Global CDN - Massive traffic absorption - Native integration
-with AWS security - Edge-level DDoS protection
-
-Cons: - Pricing complexity - Cache invalidation cost - Less flexible
-than software-based proxies
-
----
-
-### 6.3.6 AWS WAF
-
-Pros: - Managed OWASP rules - Tight AWS integration - Native
-CloudFront support - Bot Control included
-
- Cons: - Limited advanced behavioral fraud detection - Requires tuning
-to avoid false positives
-
----
-
-### 6.3.7 AWS Global Accelerator
-
-Pros: - Very low global latency - Consistent static IPs -
-Multi-region failover
-
-Cons: - Additional cost - More complex routing model
-
----
-
-### 6.3.8 API Gateway
-
- Pros: - Built-in rate limiting - Strong security posture - Native JWT
-validation
-
- Cons: - Cost at very high RPS - Harder to debug than direct ALB
-setups
-
----
-
-# 7. Data Integrity & One-Vote Enforcement
+## 11. Data Integrity & One-Vote Enforcement
 
 - Globally unique voting token
 - Single-use cryptographic vote key
@@ -835,7 +898,7 @@ writes - Conflict detection
 
 ---
 
-# 8. Resilience & Fault Tolerance
+# 12. Resilience & Fault Tolerance
 
 - Multi-AZ write replication
 - Event queues for vote ingestion
@@ -845,7 +908,7 @@ writes - Conflict detection
 
 ---
 
-# 9. Real-Time Result Distribution
+# 13. Real-Time Result Distribution
 
 - Real-time aggregation pipelines
 - WebSocket / streaming consumers
