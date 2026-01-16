@@ -1,6 +1,8 @@
-# Realtime Voting System -- Architecture Overview
+# 🧬 Realtime Voting System -- Architecture Overview
 
-## 1. Context & Problem Statement
+# 1. 🏛️ Structure
+
+## 1.1 🎯 Problem Statement and Context
 
 This document describes the high-level architecture and security
 strategy for a global, real-time voting system designed to support:
@@ -15,7 +17,7 @@ strategy for a global, real-time voting system designed to support:
 The system must be fully cloud-native, highly scalable, fault tolerant,
 and secure by design, while explicitly avoiding:
 
-### Restricted Technologies (Non-Allowed)
+## 1.2 Restrictions
 
 - Serverless platforms outside AWS
 - MongoDB
@@ -28,11 +30,23 @@ and secure by design, while explicitly avoiding:
 AWS-based, fully distributed, microservices-first architecture is
 assumed.
 
-------------------------------------------------------------------------
+## 1.3 Problem Space
 
-## 2. Core Requirements & Why They Matter
+**What is the problem?**
 
-### 2.1 Never Lose Data
+**What is the context of the problem?**
+- **Market Context**: 
+- **Business Context**: 
+- **Technical Context**: 
+- **User Context**:
+
+**Core Challenges:**
+
+---
+
+# 2. 🎯 Goals
+
+## 2.1 Never Lose Data
 
 Voting systems are mission-critical. Any data loss leads to: - Legal
 risks - Loss of public trust - Invalid election outcomes
@@ -40,9 +54,9 @@ risks - Loss of public trust - Invalid election outcomes
 This requires: - Multi-region replication - Strong durability
 guarantees - Strict write acknowledgements - Immutable audit logs
 
-------------------------------------------------------------------------
+---
 
-### 2.2 Be Secure and Prevent Bots & Bad Actors (Primary Ownership Area)
+## 2.2 Be Secure and Prevent Bots & Bad Actors (Primary Ownership Area)
 
 This is one of the hardest challenges at global scale. The system must
 prevent:
@@ -58,17 +72,17 @@ prevent:
 Security must be implemented in multiple layers (defense in depth): -
 Network - Identity - Device - Behavior - Application - Data
 
-------------------------------------------------------------------------
+---
 
-### 2.3 Handle 300M Users
+## 2.3 Handle 300M Users
 
 This implies: - Massive horizontal scalability - Stateless
 architectures - Global CDNs - Partitioned databases - Multi-region
 deployment
 
-------------------------------------------------------------------------
+---
 
-### 2.4 Handle 240K RPS Peak Traffic
+## 2.4 Handle 240K RPS Peak Traffic
 
 This eliminates: - Vertical scaling - Centralized bottlenecks - Stateful
 monoliths
@@ -76,44 +90,34 @@ monoliths
 It requires: - Load-based autoscaling - Event-driven processing -
 Front-door traffic absorption - Backpressure handling
 
-------------------------------------------------------------------------
+---
 
-### 2.5 One Vote per User (Strict Idempotency)
+## 2.5 One Vote per User (Strict Idempotency)
 
 This is a data + security + consistency problem: - Each identity must
 be: - Verified - Unique - Non-replayable - Vote submissions must be: -
 Idempotent - Conflict-safe - Race-condition proof
 
-------------------------------------------------------------------------
+---
 
-### 2.6 Real-Time Results
+## 2.6 Real-Time Results
 
 This creates challenges in: - Data streaming - Cache invalidation -
 Broadcast consistency - Fan-out architectures - WebSocket / pub-sub
 scalability
 
-------------------------------------------------------------------------
+---
 
-## 3. Goals & Non-Goals
-
-### Goals
-
-- Planet-scale availability
-- Zero data loss tolerance
-- High resistance to automation & fraud
-- Real-time vote processing
-- Fully distributed architecture
-
-### Non-Goals
+# 3. 🎯 Non-Goals
 
 - On-prem or hybrid operation
 - Manual moderation for fraud detection
 - Single-region deployment
 - Strong coupling between frontend and backend
 
-------------------------------------------------------------------------
+---
 
-## 4. Design Principles
+# 4. 📐 Principles
 
 - Security First
 - Scalability by Default
@@ -123,9 +127,14 @@ scalability
 - Auditable Data
 - Failure as a Normal Condition
 
-------------------------------------------------------------------------
+---
 
-## 5. High-Level Architecture Overview
+# 5. 🏗️ Overall Diagrams
+
+## 5.1 🗂️ Overall architecture
+## 5.2 🗂️ Deployment
+## 5.3 🗂️ Use Cases
+
 
 1. Users send requests through a global CDN + security edge
 2. Traffic is validated, filtered, rate-limited, and inspected
@@ -134,13 +143,13 @@ scalability
 5. Data is stored redundantly and immutably
 6. Real-time updates are published via streaming
 
-------------------------------------------------------------------------
+---
 
-## 6. Security & Anti-Bot Strategy (Primary Focus)
+# 6. Security & Anti-Bot Strategy (Primary Focus)
 
-# 6.1. End-to-End Mobile Flow (React Native + Expo)
+## 6.1. End-to-End Mobile Flow (React Native + Expo)
 
-## 6.1.1 Mobile Application Stack
+### 6.1.1 Mobile Application Stack
 
 - Mobile framework: **React Native + Expo**
 - Authentication: **Auth0**
@@ -156,9 +165,9 @@ This stack is designed to ensure:
 - Strong resistance against bots, emulators, and automation
 - Secure session handling across all API calls
 
-------------------------------------------------------------------------
+---
 
-## 6.1.2 Liveness Detection & Identity Verification with SumSub
+### 6.1.2 Liveness Detection & Identity Verification with SumSub
 
 SumSub is used for:
 
@@ -199,9 +208,9 @@ Documentation: <https://docs.sumsub.com/docs/react-native-module>
 
 No raw biometric data is stored directly in the voting backend.
 
-------------------------------------------------------------------------
+---
 
-## 6.1.3 Secure Authentication with Auth0 (SSO + MFA)
+### 6.1.3 Secure Authentication with Auth0 (SSO + MFA)
 
 Auth0 is used for:
 
@@ -226,9 +235,9 @@ Documentation: <https://auth0.com/docs/quickstart/native/react-native>
     - ID Token
     - Refresh Token (secure storage only)
 
-------------------------------------------------------------------------
+---
 
-## 6.1.4 Bot Detection with Auth0 Challenge + Turnstile
+### 6.1.4 Bot Detection with Auth0 Challenge + Turnstile
 
 To prevent credential stuffing, brute-force, and automated accounts:
 
@@ -244,9 +253,9 @@ To prevent credential stuffing, brute-force, and automated accounts:
 The Turnstile token is attached to authentication requests and validated
 by the backend before granting access.
 
-------------------------------------------------------------------------
+---
 
-## 6.1.5 Secure API Requests with Tokens
+### 6.1.5 Secure API Requests with Tokens
 
 All API requests use:
 
@@ -272,9 +281,9 @@ All backend services:
 - Check device consistency
 - Enforce authorization scope
 
-------------------------------------------------------------------------
+---
 
-## 6.1.6 Device Fingerprinting with FingerprintJS
+### 6.1.6 Device Fingerprinting with FingerprintJS
 
 FingerprintJS is used to:
 
@@ -308,11 +317,11 @@ This allows detection of:
 - One user trying to vote from multiple devices
 - One device trying to impersonate multiple users
 
-------------------------------------------------------------------------
+---
 
-# 6.2. Architecture Overview (Edge to API)
+## 6.2. Architecture Overview (Edge to API)
 
-## 6.2.1 Global Request Flow
+### 6.2.1 Global Request Flow
 
 ``` text
 Mobile App (React Native)
@@ -334,9 +343,9 @@ API Gateway (Rate Limited)
 Microservices (Auth, Voting, Fraud)
 ```
 
-------------------------------------------------------------------------
+---
 
-## 6.2.2 CloudFront + AWS WAF Responsibilities
+### 6.2.2 CloudFront + AWS WAF Responsibilities
 
 ### CloudFront
 
@@ -357,9 +366,9 @@ Microservices (Auth, Voting, Fraud)
   - API Abuse
 - Integrated Bot Control
 
-------------------------------------------------------------------------
+---
 
-## 6.2.3 Global Accelerator & Backbone Routing
+### 6.2.3 Global Accelerator & Backbone Routing
 
 All traffic between edge and API uses:
 
@@ -368,9 +377,9 @@ All traffic between edge and API uses:
 - Low-latency backbone
 - Automatic regional failover
 
-------------------------------------------------------------------------
+---
 
-## 6.2.4 API Gateway Security Model
+### 6.2.4 API Gateway Security Model
 
 The API Gateway enforces:
 
@@ -383,11 +392,11 @@ The API Gateway enforces:
 - Request signing enforcement
 - Request schema validation
 
-------------------------------------------------------------------------
+---
 
-# 6.3. Tradeoffs Analysis of All Security Tools
+## 6.3. Tradeoffs Analysis of All Security Tools
 
-## 6.3.1 Auth0
+### 6.3.1 Auth0
 
 Pros: - Enterprise-grade authentication - Built-in MFA - Secure token
 lifecycle - SSO support - High availability
@@ -395,18 +404,18 @@ lifecycle - SSO support - High availability
 Cons: - Expensive at large scale - Vendor lock-in - Limited
 flexibility for custom flows
 
-------------------------------------------------------------------------
+---
 
-## 6.3.2 SumSub
+### 6.3.2 SumSub
 
 Pros: - Strong biometric antifraud - Global KYC compliance -
 High-quality liveness detection - Advanced risk scoring
 
 Cons: - High user friction - Sensitive biometric data handling - High per-verification cost - Not always legally permitted for voting
 
-------------------------------------------------------------------------
+---
 
-## 6.3.3 Cloudflare Turnstile
+### 6.3.3 Cloudflare Turnstile
 
 Pros: - Invisible challenge - Better UX than CAPTCHA - Strong privacy
 guarantees - Blocks simple automation
@@ -414,9 +423,9 @@ guarantees - Blocks simple automation
 Cons: - Not sufficient alone against advanced bots - External
 dependency - Needs backend verification
 
-------------------------------------------------------------------------
+---
 
-## 6.3.4 FingerprintJS
+### 6.3.4 FingerprintJS
 
 Pros: - Passive and invisible - Emulator and device cloning
 detection - Excellent multi-account detection signal
@@ -424,9 +433,9 @@ detection - Excellent multi-account detection signal
 Cons: - Fingerprints can be spoofed by advanced attackers - Privacy
 and compliance concerns - Device replacement causes identity changes
 
-------------------------------------------------------------------------
+---
 
-## 6.3.5 AWS CloudFront
+### 6.3.5 AWS CloudFront
 
 Pros: - Global CDN - Massive traffic absorption - Native integration
 with AWS security - Edge-level DDoS protection
@@ -434,9 +443,9 @@ with AWS security - Edge-level DDoS protection
 Cons: - Pricing complexity - Cache invalidation cost - Less flexible
 than software-based proxies
 
-------------------------------------------------------------------------
+---
 
-## 6.3.6 AWS WAF
+### 6.3.6 AWS WAF
 
 Pros: - Managed OWASP rules - Tight AWS integration - Native
 CloudFront support - Bot Control included
@@ -444,18 +453,18 @@ CloudFront support - Bot Control included
  Cons: - Limited advanced behavioral fraud detection - Requires tuning
 to avoid false positives
 
-------------------------------------------------------------------------
+---
 
-## 6.3.7 AWS Global Accelerator
+### 6.3.7 AWS Global Accelerator
 
 Pros: - Very low global latency - Consistent static IPs -
 Multi-region failover
 
 Cons: - Additional cost - More complex routing model
 
-------------------------------------------------------------------------
+---
 
-## 6.3.8 API Gateway
+### 6.3.8 API Gateway
 
  Pros: - Built-in rate limiting - Strong security posture - Native JWT
 validation
@@ -463,9 +472,9 @@ validation
  Cons: - Cost at very high RPS - Harder to debug than direct ALB
 setups
 
-------------------------------------------------------------------------
+---
 
-## 7. Data Integrity & One-Vote Enforcement
+# 7. Data Integrity & One-Vote Enforcement
 
 - Globally unique voting token
 - Single-use cryptographic vote key
@@ -473,9 +482,9 @@ setups
 Database enforces: - Strong uniqueness constraints - Atomic conditional
 writes - Conflict detection
 
-------------------------------------------------------------------------
+---
 
-## 8. Resilience & Fault Tolerance
+# 8. Resilience & Fault Tolerance
 
 - Multi-AZ write replication
 - Event queues for vote ingestion
@@ -483,17 +492,17 @@ writes - Conflict detection
 - Dead-letter queues
 - Immutable audit log streams
 
-------------------------------------------------------------------------
+---
 
-## 9. Real-Time Result Distribution
+# 9. Real-Time Result Distribution
 
 - Real-time aggregation pipelines
 - WebSocket / streaming consumers
 - Live dashboards
 
-------------------------------------------------------------------------
+---
 
-## Core Services Overview
+# 10. Core Services Overview
 
 This document describes the three core domain services of the secure
 voting platform:
@@ -509,11 +518,11 @@ Security / WAF** (Cloudflare or equivalent)
 The goal is to ensure: - Strong identity verification - One person = one
 vote - Resilience against bots and organized fraud - Full auditability
 
-------------------------------------------------------------------------
+---
 
-## 1. Auth Service
+## 10.1 Auth Service
 
-### Purpose
+### 10.1.1 Purpose
 
 The Auth Service is the **internal identity authority** of the voting
 platform.\
@@ -523,7 +532,7 @@ voting domain** and applies business rules.
 It answers one main question: \> "Who is this user inside the voting
 system, and what is their current status?"
 
-### Core Responsibilities
+### 10.1.2 Core Responsibilities
 
 - Map external identities to internal voters:
   - Auth0 `sub` → `voterId`
@@ -538,9 +547,9 @@ system, and what is their current status?"
 - Expose voter eligibility to the Vote Service
 - Maintain audit trail of identity state changes
 
-------------------------------------------------------------------------
+---
 
-### Key Endpoints
+### 10.1.3 Key Endpoints
 
 #### `GET /me`
 
@@ -562,7 +571,7 @@ Returns the authenticated user's internal voter profile.
 }
 ```
 
-------------------------------------------------------------------------
+---
 
 #### `POST /voters/onboard`
 
@@ -587,7 +596,7 @@ applicant - Generates Sumsub session token
 }
 ```
 
-------------------------------------------------------------------------
+---
 
 #### `POST /voters/webhook/sumsub`
 
@@ -598,7 +607,7 @@ Receives verification result from Sumsub.
 **What it does:** - Updates voter verification status - Emits event to
 Fraud & Vote systems if needed
 
-------------------------------------------------------------------------
+---
 
 #### `GET /voters/{voterId}/eligibility?electionId=...`
 
@@ -616,7 +625,7 @@ Checks if the voter can participate in a specific election.
 }
 ```
 
-------------------------------------------------------------------------
+---
 
 #### `POST /voters/{voterId}/block`
 
@@ -624,11 +633,11 @@ Blocks a voter at the identity level.
 
 **Used by:** Fraud Service, Admin Panel
 
-------------------------------------------------------------------------
+---
 
-## 2. Vote Service
+### 10.2 Vote Service
 
-### Purpose
+### 10.2.1 Purpose
 
 The Vote Service is the **core election engine**.\
 It is the only service allowed to **create, validate, store, and tally
@@ -637,9 +646,9 @@ votes**.
 It answers the question: \> "Is this voter eligible right now, and can
 we safely record this vote?"
 
-------------------------------------------------------------------------
+---
 
-### Core Responsibilities
+### 10.2.2 Core Responsibilities
 
 - Election creation and configuration
 - Ballot management
@@ -652,15 +661,15 @@ we safely record this vote?"
 - Vote tallying and result publishing
 - Vote audit trail
 
-------------------------------------------------------------------------
+---
 
-### Key Endpoints
+### 10.2.3 Key Endpoints
 
 #### `POST /elections`
 
 Creates a new election.
 
-------------------------------------------------------------------------
+---
 
 #### `POST /votes`
 
@@ -672,17 +681,17 @@ Registers a vote.
 via Fraud Service 3. Enforce "one person = one vote" 4. Persist vote in
 immutable storage
 
-------------------------------------------------------------------------
+---
 
 #### `GET /elections/{id}/results`
 
 Returns aggregated voting results.
 
-------------------------------------------------------------------------
+---
 
-## 3. Fraud Service
+## 10.3 Fraud Service
 
-### Purpose
+### 10.3.1 Purpose
 
 The Fraud Service is the **behavioral risk engine** of the system.
 
@@ -694,9 +703,9 @@ sessions, and elections.**
 It answers the question: \> "Does this action look normal or coordinated
 / fraudulent?"
 
-------------------------------------------------------------------------
+---
 
-### Core Responsibilities
+### 10.3.2 Core Responsibilities
 
 - Behavioral risk scoring for:
   - Account creation
@@ -714,9 +723,9 @@ It answers the question: \> "Does this action look normal or coordinated
 - Maintain historical fraud signals and risk profiles
 - Feed audit, alerting, and investigation tools
 
-------------------------------------------------------------------------
+---
 
-### Key Endpoints
+### 10.3.3 Key Endpoints
 
 #### `POST /fraud/check-signup`
 
@@ -733,7 +742,7 @@ Risk analysis at voter onboarding.
 }
 ```
 
-------------------------------------------------------------------------
+---
 
 #### `POST /fraud/check-vote`
 
@@ -753,21 +762,21 @@ Risk analysis before vote registration.
 }
 ```
 
-------------------------------------------------------------------------
+---
 
 #### `POST /fraud/events`
 
 Ingests behavioral events (login, vote, block, review).
 
-------------------------------------------------------------------------
+---
 
 #### `GET /fraud/profile/{voterId}`
 
 Returns the full fraud risk profile for a voter.
 
-------------------------------------------------------------------------
+---
 
-## Interaction Summary
+## 10.4 Interaction Summary
 
   Service         Talks To        Purpose
   --------------- --------------- ---------------------------------------
@@ -779,4 +788,4 @@ Returns the full fraud risk profile for a voter.
   Fraud Service   All             Receives behavioral events
   Admin Panel     All             Oversight, investigation, enforcement
 
-------------------------------------------------------------------------
+---
