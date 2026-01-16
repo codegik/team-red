@@ -469,32 +469,6 @@ We don't have migration for this architecture since its a new system.
 - Client-side state management tests.
 - WebSocket client implementation tests.
 
-## Contract tests
-- Test API contracts between decomposed microservices.
-- Verify WebSocket message formats and protocols.
-
-## Integration tests
-- Try to cover most of the scenarios.
-- Test WebSocket real-time communication flows.
-- Run in isolated environments before production deployment.
-
-## Infra tests
-- Validate Global Accelerator routing behavior.
-
-## Performance tests
-- Use K6 to simulate the user behavior and check the system's performance.
-- Measure database query performance under load
-- Measure UI rendering time across device types
-- Benchmark WebSocket vs HTTP performance in real usage scenarios
-- Track CDN cache hit/miss ratios
-- Execute in staging environment with production-like conditions
-
-## Chaos tests
-- Simulate AWS region failures to test Global Accelerator failover
-- Test WebSocket reconnection strategies during network disruptions
-- Inject latency between services to identify performance bottlenecks
-- Execute in isolated production environment during low-traffic periods
-
 ## Mobile testing
 
 - Unit Android: ViewModel/repository with JUnit.
@@ -504,6 +478,37 @@ We don't have migration for this architecture since its a new system.
 - Network/Contract: MockWebServer (Android) / URLProtocol stub (iOS); Pact consumer tests for contracts with the backend.
 - Performance: Cold start and WS connection times measured in CI (staging).
 - Accessibility: Basic TalkBack/VoiceOver per critical screen.
+
+## Contract tests
+- Test API contracts between decomposed microservices.
+- Verify WebSocket message formats and protocols.
+
+## Chaos tests
+- Simulate AWS region failures to test Global Accelerator failover
+- Test WebSocket reconnection strategies during network disruptions
+- Inject latency between services to identify performance bottlenecks
+- Execute in isolated production environment during low-traffic periods
+
+## Performance tests
+- Use K6 to simulate the user behavior and check the system's performance.
+- Measure database query performance under load
+- Measure UI rendering time across device types
+- Benchmark WebSocket vs HTTP performance in real usage scenarios
+- Track CDN cache hit/miss ratios
+- Execute in staging environment with production-like conditions
+
+## Integration tests
+- Junit provides the APIs needed to run integrations tests.
+- Using test containers to emulate database and or other infra dependency.
+- Test WebSocket real-time communication flows.
+- Run in isolated environments before production deployment.
+- Create test induction APIs on service that will be used during the integration tests to induce certain states, and achive coverage on multiple possible scenarios.
+- Focused on happy and unhappy paths
+
+## Unit tests
+- Junit provides the APIs needed to run integrations tests.
+- Focused on happy and unhappy paths
+- Minimizing the usage of mocks
 
 ------------------------------------------------------------------------
 
