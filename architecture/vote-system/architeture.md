@@ -1,4 +1,4 @@
-# 🧬 Architecture overview
+# 🧬 Realtime Voting System -- Architecture Overview
 
 # 1. 🏛️ Structure
 
@@ -30,19 +30,104 @@ and secure by design, while explicitly avoiding:
 AWS-based, fully distributed, microservices-first architecture is
 assumed.
 
-------------------------------------------------------------------------
+## 1.3 Problem Space
+
+**What is the problem?**
+
+We need to design and build a globally distributed, mission-critical real-time voting system capable of handling 300 million registered users with peak traffic of 240,000 requests per second. The system must guarantee absolute data integrity, enforce strict one-person-one-vote constraints, provide real-time result visibility, and defend against sophisticated fraud, bot attacks, and abuse at scale—all while maintaining near-zero data loss and high availability across multiple geographic regions.
+
+**What is the context of the problem?**
+
+- **Market Context**: 
+  - Democratic elections and large-scale voting events demand unprecedented levels of trust, transparency, and reliability
+  - Growing threat landscape from automated bots, state-sponsored actors, and coordinated fraud campaigns
+  - Increasing expectations for instant feedback and real-time results from 300M+ global participants
+  - Zero tolerance for data loss, system failures, or security breaches that could undermine election integrity
+  - Need for systems that can scale elastically during unpredictable traffic spikes (campaigns, debates, breaking news)
+
+- **Business Context**: 
+  - Any data loss or security breach creates legal liability, regulatory penalties, and irreparable reputational damage
+  - System must support mission-critical operations with financial and legal consequences
+  - One-time deployment windows with no room for failure during live voting periods
+  - Requirement for complete auditability and tamper-proof logging for legal compliance
+  - Cost optimization critical—infrastructure must scale down after peak periods
+  - Must support strict SLAs with penalties for downtime or data inconsistency
+
+- **Technical Context**: 
+  - Peak traffic of 240K RPS eliminates traditional vertical scaling and monolithic architectures
+  - 300M users require geo-distributed sharding, multi-region replication, and CDN distribution
+  - ACID guarantees required for vote integrity—NoSQL eventually consistent models insufficient for vote records
+  - Real-time requirements demand event-driven architecture (Kafka, SSE) with <2 second latency
+  - Cloud-native AWS-only restriction eliminates multi-cloud and serverless options
+  - Must handle database bottlenecks through strategic sharding (geo-based), read replicas, and caching
+  - Defense-in-depth security model required across network, identity, device, behavior, application, and data layers
+  - Need for immutable audit logs and write-once-read-many (WORM) compliance
+
+- **User Context**:
+  - 300M users spread across multiple geographic regions with varying network conditions
+  - Users expect instant confirmation of vote submission and real-time result updates
+  - Users must be authenticated securely without friction (prevent credential stuffing, session hijacking)
+  - Mobile and web clients require Server-Sent Events (SSE) for efficient real-time updates
+  - Users in different time zones create distributed load patterns with unpredictable spikes
+  - Accessibility requirements for diverse user populations (language, disability, device types)
+  - Users must vote exactly once—any duplicate vote undermines system integrity
+
+**Core Challenges:**
+
+1. **Data Integrity at Scale**
+   - Guarantee zero data loss across 240K RPS with multi-region active-active replication
+   - Implement synchronous writes with WAL (Write-Ahead Logging) and fsync guarantees
+   - Build tamper-proof immutable audit trails using OpenSearch WORM indices
+   - Handle database sharding across 300M users without creating consistency gaps
+   - Design automatic failover with RPO=0 (Recovery Point Objective) and RTO<60s (Recovery Time Objective)
+
+2. **Security & Fraud Prevention**
+   - Detect and block automated bots at 240K RPS without impacting legitimate users
+   - Prevent credential stuffing, session hijacking, replay attacks, and DDoS
+   - Implement defense-in-depth: WAF, device fingerprinting, behavioral analysis, rate limiting
+   - Validate identity uniqueness across 300M users without centralized bottlenecks
+   - Build real-time fraud detection with ML models analyzing voting patterns
+
+3. **Horizontal Scalability**
+   - Scale API layer from baseline to 240K RPS using Kubernetes HPA and KEDA
+   - Implement geo-based database sharding to distribute 300M user records
+   - Design stateless microservices that auto-scale without session affinity issues
+   - Optimize cache layers (Redis) to absorb read-heavy traffic and reduce DB load
+   - Handle cold-start delays during sudden traffic spikes with pre-warming strategies
+
+4. **Strict Idempotency & One-Vote Enforcement**
+   - Guarantee exactly-once vote processing despite retries, network failures, and race conditions
+   - Implement distributed locks or optimistic concurrency control at database level
+   - Design idempotency keys with conflict resolution for duplicate submissions
+   - Prevent race conditions when multiple requests arrive simultaneously for same user
+   - Build reconciliation mechanisms to detect and resolve any duplicate votes in audit logs
+
+5. **Real-Time Result Distribution**
+   - Stream aggregated results to 300M users with <2 second latency using SSE
+   - Design event-driven architecture (Kafka) for vote ingestion and aggregation
+   - Handle 250K concurrent SSE connections with minimal server resource overhead
+   - Implement efficient broadcast patterns using EventEmitter for SSE clients
+   - Balance real-time updates with system load—aggregate summaries vs. individual events
+
+6. **Multi-Region Complexity**
+   - Synchronize vote data across geographic regions with strong consistency
+   - Handle network partitions (split-brain scenarios) without duplicate votes
+   - Route users to nearest region while maintaining global vote count accuracy
+   - Implement cross-region disaster recovery with automated failover
+   - Manage clock skew and distributed transaction coordination across regions
+
+7. **Performance Under Load**
+   - Maintain <100ms p99 latency during 240K RPS peak traffic
+   - Prevent database saturation through write buffering, connection pooling, and read replicas
+   - Optimize Kafka throughput for event streaming without lag buildup
+   - Implement backpressure mechanisms to gracefully degrade under extreme load
+   - Cache authentication tokens and session data to reduce repeated DB lookups
+
+---
 
 # 2. 🎯 Goals
 
-### Goals
-
-- Planet-scale availability
-- Zero data loss tolerance
-- High resistance to automation & fraud
-- Real-time vote processing
-- Fully distributed architecture
-
-### 2.1 Never Lose Data
+## 2.1 Never Lose Data
 
 Voting systems are mission-critical. Any data loss leads to: - Legal
 risks - Loss of public trust - Invalid election outcomes
@@ -50,7 +135,9 @@ risks - Loss of public trust - Invalid election outcomes
 This requires: - Multi-region replication - Strong durability
 guarantees - Strict write acknowledgements - Immutable audit logs
 
-### 2.2 Be Secure and Prevent Bots & Bad Actors (Primary Ownership Area)
+---
+
+## 2.2 Be Secure and Prevent Bots & Bad Actors (Primary Ownership Area)
 
 This is one of the hardest challenges at global scale. The system must
 prevent:
@@ -66,13 +153,17 @@ prevent:
 Security must be implemented in multiple layers (defense in depth): -
 Network - Identity - Device - Behavior - Application - Data
 
-### 2.3 Handle 300M Users
+---
+
+## 2.3 Handle 300M Users
 
 This implies: - Massive horizontal scalability - Stateless
 architectures - Global CDNs - Partitioned databases - Multi-region
 deployment
 
-### 2.4 Handle 240K RPS Peak Traffic
+---
+
+## 2.4 Handle 240K RPS Peak Traffic
 
 This eliminates: - Vertical scaling - Centralized bottlenecks - Stateful
 monoliths
@@ -80,18 +171,23 @@ monoliths
 It requires: - Load-based autoscaling - Event-driven processing -
 Front-door traffic absorption - Backpressure handling
 
-### 2.5 One Vote per User (Strict Idempotency)
+---
+
+## 2.5 One Vote per User (Strict Idempotency)
 
 This is a data + security + consistency problem: - Each identity must
 be: - Verified - Unique - Non-replayable - Vote submissions must be: -
 Idempotent - Conflict-safe - Race-condition proof
 
-### 2.6 Real-Time Results
+---
+
+## 2.6 Real-Time Results
 
 This creates challenges in: - Data streaming - Cache invalidation -
 Broadcast consistency - Fan-out architectures - WebSocket / pub-sub
 scalability
 
+---
 
 # 3. 🎯 Non-Goals
 
@@ -100,7 +196,7 @@ scalability
 - Single-region deployment
 - Strong coupling between frontend and backend
 
-------------------------------------------------------------------------
+---
 
 # 4. 📐 Principles
 
@@ -112,11 +208,14 @@ scalability
 - Auditable Data
 - Failure as a Normal Condition
 
-------------------------------------------------------------------------
+---
 
 # 5. 🏗️ Overall Diagrams
 
 ## 5.1 🗂️ Overall architecture
+## 5.2 🗂️ Deployment
+## 5.3 🗂️ Use Cases
+
 
 1. Users send requests through a global CDN + security edge
 2. Traffic is validated, filtered, rate-limited, and inspected
@@ -125,13 +224,13 @@ scalability
 5. Data is stored redundantly and immutably
 6. Real-time updates are published via streaming
 
-------------------------------------------------------------------------
+---
 
-## 6. Security & Anti-Bot Strategy (Primary Focus)
+# 6. Security & Anti-Bot Strategy (Primary Focus)
 
-# 6.1. End-to-End Mobile Flow (React Native + Expo)
+## 6.1. End-to-End Mobile Flow (React Native + Expo)
 
-## 6.1.1 Mobile Application Stack
+### 6.1.1 Mobile Application Stack
 
 - Mobile framework: **React Native + Expo**
 - Authentication: **Auth0**
@@ -147,9 +246,9 @@ This stack is designed to ensure:
 - Strong resistance against bots, emulators, and automation
 - Secure session handling across all API calls
 
-------------------------------------------------------------------------
+---
 
-## 6.1.2 Liveness Detection & Identity Verification with SumSub
+### 6.1.2 Liveness Detection & Identity Verification with SumSub
 
 SumSub is used for:
 
@@ -190,9 +289,9 @@ Documentation: <https://docs.sumsub.com/docs/react-native-module>
 
 No raw biometric data is stored directly in the voting backend.
 
-------------------------------------------------------------------------
+---
 
-## 6.1.3 Secure Authentication with Auth0 (SSO + MFA)
+### 6.1.3 Secure Authentication with Auth0 (SSO + MFA)
 
 Auth0 is used for:
 
@@ -217,9 +316,9 @@ Documentation: <https://auth0.com/docs/quickstart/native/react-native>
     - ID Token
     - Refresh Token (secure storage only)
 
-------------------------------------------------------------------------
+---
 
-## 6.1.4 Bot Detection with Auth0 Challenge + Turnstile
+### 6.1.4 Bot Detection with Auth0 Challenge + Turnstile
 
 To prevent credential stuffing, brute-force, and automated accounts:
 
@@ -235,9 +334,9 @@ To prevent credential stuffing, brute-force, and automated accounts:
 The Turnstile token is attached to authentication requests and validated
 by the backend before granting access.
 
-------------------------------------------------------------------------
+---
 
-## 6.1.5 Secure API Requests with Tokens
+### 6.1.5 Secure API Requests with Tokens
 
 All API requests use:
 
@@ -263,9 +362,9 @@ All backend services:
 - Check device consistency
 - Enforce authorization scope
 
-------------------------------------------------------------------------
+---
 
-## 6.1.6 Device Fingerprinting with FingerprintJS
+### 6.1.6 Device Fingerprinting with FingerprintJS
 
 FingerprintJS is used to:
 
@@ -299,11 +398,11 @@ This allows detection of:
 - One user trying to vote from multiple devices
 - One device trying to impersonate multiple users
 
-------------------------------------------------------------------------
+---
 
-# 6.2. Architecture Overview (Edge to API)
+## 6.2. Architecture Overview (Edge to API)
 
-## 6.2.1 Global Request Flow
+### 6.2.1 Global Request Flow
 
 ``` text
 Mobile App (React Native)
@@ -325,9 +424,9 @@ API Gateway (Rate Limited)
 Microservices (Auth, Voting, Fraud)
 ```
 
-------------------------------------------------------------------------
+---
 
-## 6.2.2 CloudFront + AWS WAF Responsibilities
+### 6.2.2 CloudFront + AWS WAF Responsibilities
 
 ### CloudFront
 
@@ -348,9 +447,9 @@ Microservices (Auth, Voting, Fraud)
   - API Abuse
 - Integrated Bot Control
 
-------------------------------------------------------------------------
+---
 
-## 6.2.3 Global Accelerator & Backbone Routing
+### 6.2.3 Global Accelerator & Backbone Routing
 
 All traffic between edge and API uses:
 
@@ -359,9 +458,9 @@ All traffic between edge and API uses:
 - Low-latency backbone
 - Automatic regional failover
 
-------------------------------------------------------------------------
+---
 
-## 6.2.4 API Gateway Security Model
+### 6.2.4 API Gateway Security Model
 
 The API Gateway enforces:
 
@@ -374,11 +473,11 @@ The API Gateway enforces:
 - Request signing enforcement
 - Request schema validation
 
-------------------------------------------------------------------------
+---
 
-# 6.3. Tradeoffs Analysis of All Security Tools
+## 6.3. Tradeoffs Analysis of All Security Tools
 
-## 6.3.1 Auth0
+### 6.3.1 Auth0
 
 Pros: - Enterprise-grade authentication - Built-in MFA - Secure token
 lifecycle - SSO support - High availability
@@ -386,18 +485,18 @@ lifecycle - SSO support - High availability
 Cons: - Expensive at large scale - Vendor lock-in - Limited
 flexibility for custom flows
 
-------------------------------------------------------------------------
+---
 
-## 6.3.2 SumSub
+### 6.3.2 SumSub
 
 Pros: - Strong biometric antifraud - Global KYC compliance -
 High-quality liveness detection - Advanced risk scoring
 
 Cons: - High user friction - Sensitive biometric data handling - High per-verification cost - Not always legally permitted for voting
 
-------------------------------------------------------------------------
+---
 
-## 6.3.3 Cloudflare Turnstile
+### 6.3.3 Cloudflare Turnstile
 
 Pros: - Invisible challenge - Better UX than CAPTCHA - Strong privacy
 guarantees - Blocks simple automation
@@ -405,9 +504,9 @@ guarantees - Blocks simple automation
 Cons: - Not sufficient alone against advanced bots - External
 dependency - Needs backend verification
 
-------------------------------------------------------------------------
+---
 
-## 6.3.4 FingerprintJS
+### 6.3.4 FingerprintJS
 
 Pros: - Passive and invisible - Emulator and device cloning
 detection - Excellent multi-account detection signal
@@ -415,9 +514,9 @@ detection - Excellent multi-account detection signal
 Cons: - Fingerprints can be spoofed by advanced attackers - Privacy
 and compliance concerns - Device replacement causes identity changes
 
-------------------------------------------------------------------------
+---
 
-## 6.3.5 AWS CloudFront
+### 6.3.5 AWS CloudFront
 
 Pros: - Global CDN - Massive traffic absorption - Native integration
 with AWS security - Edge-level DDoS protection
@@ -425,9 +524,9 @@ with AWS security - Edge-level DDoS protection
 Cons: - Pricing complexity - Cache invalidation cost - Less flexible
 than software-based proxies
 
-------------------------------------------------------------------------
+---
 
-## 6.3.6 AWS WAF
+### 6.3.6 AWS WAF
 
 Pros: - Managed OWASP rules - Tight AWS integration - Native
 CloudFront support - Bot Control included
@@ -435,18 +534,18 @@ CloudFront support - Bot Control included
  Cons: - Limited advanced behavioral fraud detection - Requires tuning
 to avoid false positives
 
-------------------------------------------------------------------------
+---
 
-## 6.3.7 AWS Global Accelerator
+### 6.3.7 AWS Global Accelerator
 
 Pros: - Very low global latency - Consistent static IPs -
 Multi-region failover
 
 Cons: - Additional cost - More complex routing model
 
-------------------------------------------------------------------------
+---
 
-## 6.3.8 API Gateway
+### 6.3.8 API Gateway
 
  Pros: - Built-in rate limiting - Strong security posture - Native JWT
 validation
@@ -454,65 +553,9 @@ validation
  Cons: - Cost at very high RPS - Harder to debug than direct ALB
 setups
 
-------------------------------------------------------------------------
+---
 
-# 7. 💾 Migrations
-
-We don't have migration for this architecture since its a new system.
-
-------------------------------------------------------------------------
-
-# 8. 🧪 Testing strategy
-
-## Frontend Tests
-- ReactJS component rendering tests with focus on performance metrics.
-- Client-side state management tests.
-- WebSocket client implementation tests.
-
-## Mobile testing
-
-- Unit Android: ViewModel/repository with JUnit.
-- Unit iOS: XCTest with async/await; mocks per protocol.
-- UI Android: Espresso for flows (login, search, dojo).
-- UI iOS: XCUITest with LaunchArguments for mocks.
-- Network/Contract: MockWebServer (Android) / URLProtocol stub (iOS); Pact consumer tests for contracts with the backend.
-- Performance: Cold start and WS connection times measured in CI (staging).
-- Accessibility: Basic TalkBack/VoiceOver per critical screen.
-
-## Contract tests
-- Test API contracts between decomposed microservices.
-- Verify WebSocket message formats and protocols.
-
-## Chaos tests
-- Simulate AWS region failures to test Global Accelerator failover
-- Test WebSocket reconnection strategies during network disruptions
-- Inject latency between services to identify performance bottlenecks
-- Execute in isolated production environment during low-traffic periods
-
-## Performance tests
-- Use K6 to simulate the user behavior and check the system's performance.
-- Measure database query performance under load
-- Measure UI rendering time across device types
-- Benchmark WebSocket vs HTTP performance in real usage scenarios
-- Track CDN cache hit/miss ratios
-- Execute in staging environment with production-like conditions
-
-## Integration tests
-- Junit provides the APIs needed to run integrations tests.
-- Using test containers to emulate database and or other infra dependency.
-- Test WebSocket real-time communication flows.
-- Run in isolated environments before production deployment.
-- Create test induction APIs on service that will be used during the integration tests to induce certain states, and achive coverage on multiple possible scenarios.
-- Focused on happy and unhappy paths
-
-## Unit tests
-- Junit provides the APIs needed to run integrations tests.
-- Focused on happy and unhappy paths
-- Minimizing the usage of mocks
-
-------------------------------------------------------------------------
-
-## 7. Data Integrity & One-Vote Enforcement
+# 7. Data Integrity & One-Vote Enforcement
 
 - Globally unique voting token
 - Single-use cryptographic vote key
@@ -520,9 +563,9 @@ We don't have migration for this architecture since its a new system.
 Database enforces: - Strong uniqueness constraints - Atomic conditional
 writes - Conflict detection
 
-------------------------------------------------------------------------
+---
 
-## 8. Resilience & Fault Tolerance
+# 8. Resilience & Fault Tolerance
 
 - Multi-AZ write replication
 - Event queues for vote ingestion
@@ -530,17 +573,17 @@ writes - Conflict detection
 - Dead-letter queues
 - Immutable audit log streams
 
-------------------------------------------------------------------------
+---
 
-## 9. Real-Time Result Distribution
+# 9. Real-Time Result Distribution
 
 - Real-time aggregation pipelines
 - WebSocket / streaming consumers
 - Live dashboards
 
-------------------------------------------------------------------------
+---
 
-## Core Services Overview
+# 10. Core Services Overview
 
 This document describes the three core domain services of the secure
 voting platform:
@@ -556,11 +599,11 @@ Security / WAF** (Cloudflare or equivalent)
 The goal is to ensure: - Strong identity verification - One person = one
 vote - Resilience against bots and organized fraud - Full auditability
 
-------------------------------------------------------------------------
+---
 
-## 1. Auth Service
+## 10.1 Auth Service
 
-### Purpose
+### 10.1.1 Purpose
 
 The Auth Service is the **internal identity authority** of the voting
 platform.\
@@ -570,7 +613,7 @@ voting domain** and applies business rules.
 It answers one main question: \> "Who is this user inside the voting
 system, and what is their current status?"
 
-### Core Responsibilities
+### 10.1.2 Core Responsibilities
 
 - Map external identities to internal voters:
   - Auth0 `sub` → `voterId`
@@ -585,9 +628,9 @@ system, and what is their current status?"
 - Expose voter eligibility to the Vote Service
 - Maintain audit trail of identity state changes
 
-------------------------------------------------------------------------
+---
 
-### Key Endpoints
+### 10.1.3 Key Endpoints
 
 #### `GET /me`
 
@@ -609,7 +652,7 @@ Returns the authenticated user's internal voter profile.
 }
 ```
 
-------------------------------------------------------------------------
+---
 
 #### `POST /voters/onboard`
 
@@ -634,7 +677,7 @@ applicant - Generates Sumsub session token
 }
 ```
 
-------------------------------------------------------------------------
+---
 
 #### `POST /voters/webhook/sumsub`
 
@@ -645,7 +688,7 @@ Receives verification result from Sumsub.
 **What it does:** - Updates voter verification status - Emits event to
 Fraud & Vote systems if needed
 
-------------------------------------------------------------------------
+---
 
 #### `GET /voters/{voterId}/eligibility?electionId=...`
 
@@ -663,7 +706,7 @@ Checks if the voter can participate in a specific election.
 }
 ```
 
-------------------------------------------------------------------------
+---
 
 #### `POST /voters/{voterId}/block`
 
@@ -671,11 +714,11 @@ Blocks a voter at the identity level.
 
 **Used by:** Fraud Service, Admin Panel
 
-------------------------------------------------------------------------
+---
 
-## 2. Vote Service
+### 10.2 Vote Service
 
-### Purpose
+### 10.2.1 Purpose
 
 The Vote Service is the **core election engine**.\
 It is the only service allowed to **create, validate, store, and tally
@@ -684,9 +727,9 @@ votes**.
 It answers the question: \> "Is this voter eligible right now, and can
 we safely record this vote?"
 
-------------------------------------------------------------------------
+---
 
-### Core Responsibilities
+### 10.2.2 Core Responsibilities
 
 - Election creation and configuration
 - Ballot management
@@ -699,15 +742,15 @@ we safely record this vote?"
 - Vote tallying and result publishing
 - Vote audit trail
 
-------------------------------------------------------------------------
+---
 
-### Key Endpoints
+### 10.2.3 Key Endpoints
 
 #### `POST /elections`
 
 Creates a new election.
 
-------------------------------------------------------------------------
+---
 
 #### `POST /votes`
 
@@ -719,17 +762,17 @@ Registers a vote.
 via Fraud Service 3. Enforce "one person = one vote" 4. Persist vote in
 immutable storage
 
-------------------------------------------------------------------------
+---
 
 #### `GET /elections/{id}/results`
 
 Returns aggregated voting results.
 
-------------------------------------------------------------------------
+---
 
-## 3. Fraud Service
+## 10.3 Fraud Service
 
-### Purpose
+### 10.3.1 Purpose
 
 The Fraud Service is the **behavioral risk engine** of the system.
 
@@ -741,9 +784,9 @@ sessions, and elections.**
 It answers the question: \> "Does this action look normal or coordinated
 / fraudulent?"
 
-------------------------------------------------------------------------
+---
 
-### Core Responsibilities
+### 10.3.2 Core Responsibilities
 
 - Behavioral risk scoring for:
   - Account creation
@@ -761,9 +804,9 @@ It answers the question: \> "Does this action look normal or coordinated
 - Maintain historical fraud signals and risk profiles
 - Feed audit, alerting, and investigation tools
 
-------------------------------------------------------------------------
+---
 
-### Key Endpoints
+### 10.3.3 Key Endpoints
 
 #### `POST /fraud/check-signup`
 
@@ -780,7 +823,7 @@ Risk analysis at voter onboarding.
 }
 ```
 
-------------------------------------------------------------------------
+---
 
 #### `POST /fraud/check-vote`
 
@@ -800,21 +843,21 @@ Risk analysis before vote registration.
 }
 ```
 
-------------------------------------------------------------------------
+---
 
 #### `POST /fraud/events`
 
 Ingests behavioral events (login, vote, block, review).
 
-------------------------------------------------------------------------
+---
 
 #### `GET /fraud/profile/{voterId}`
 
 Returns the full fraud risk profile for a voter.
 
-------------------------------------------------------------------------
+---
 
-## Interaction Summary
+## 10.4 Interaction Summary
 
   Service         Talks To        Purpose
   --------------- --------------- ---------------------------------------
@@ -826,4 +869,4 @@ Returns the full fraud risk profile for a voter.
   Fraud Service   All             Receives behavioral events
   Admin Panel     All             Oversight, investigation, enforcement
 
-------------------------------------------------------------------------
+---
