@@ -1,0 +1,535 @@
+openapi: 3.0.0
+info:
+  title: Voting System API
+  version: 1.0.0
+  description: API for managing surveys, questions, options and collecting responses
+
+servers:
+  - url: https://api.example.com
+    description: Production server
+  - url: http://localhost:3000
+    description: Development server
+
+tags:
+  - name: Management
+    description: Survey management endpoints
+  - name: Public
+    description: Public endpoints for responses and answers
+
+paths:
+  /v1/internal/surveys:
+    post:
+      summary: Create Survey
+      tags: [Management]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSurveyRequest"
+      responses:
+        "201":
+          description: Survey created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Survey"
+
+  /v1/internal/surveys/{id}:
+    put:
+      summary: Update Survey
+      description: Update survey details, create/update/delete questions and options. To update existing questions/options include their id. To create new ones, omit the id. To delete, omit them from the payload.
+      tags: [Management]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSurveyRequest"
+      responses:
+        "200":
+          description: Survey updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Survey"
+    delete:
+      summary: Delete Survey
+      tags: [Management]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Survey deleted successfully
+
+  /v1/internal/surveys/{id}/publish:
+    put:
+      summary: Publish Survey
+      description: Publish a survey making it available for public responses. Sets the startDate to current timestamp.
+      tags: [Management]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Survey published successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "1"
+                  title:
+                    type: string
+                    example: Elections Survey For President
+                  startDate:
+                    type: string
+                    format: date-time
+                    example: "2025-12-09T10:00:00Z"
+                  finishDate:
+                    type: string
+                    format: date-time
+                    nullable: true
+                    example: null
+
+  /v1/internal/surveys/{id}/finish:
+    put:
+      summary: Finish Survey
+      description: Close a survey, preventing new responses. Sets the finishDate to current timestamp.
+      tags: [Management]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Survey finished successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "1"
+                  title:
+                    type: string
+                    example: Elections Survey For President
+                  startDate:
+                    type: string
+                    format: date-time
+                    example: "2025-12-09T10:00:00Z"
+                  finishDate:
+                    type: string
+                    format: date-time
+                    example: "2025-12-09T18:00:00Z"
+
+  /v1/internal/surveys/{survey_id}/results:
+    get:
+      summary: Get Survey Results
+      tags: [Management]
+      parameters:
+        - name: survey_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Survey ID
+      responses:
+        "200":
+          description: Survey results retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  survey:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "1"
+                      title:
+                        type: string
+                        example: Elections Survey
+                  totalResponses:
+                    type: integer
+                    example: 150
+                  questions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: "1"
+                        title:
+                          type: string
+                          example: Who would you vote for president?
+                        order:
+                          type: integer
+                          example: 0
+                        options:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                example: "1"
+                              text:
+                                type: string
+                                example: Homer Simpson
+                              order:
+                                type: integer
+                                example: 0
+                              votes:
+                                type: integer
+                                example: 85
+
+  /v1/surveys/{survey_id}:
+    get:
+      summary: Get Survey Details
+      description: Get public survey details including questions and options
+      tags: [Public]
+      parameters:
+        - name: survey_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Survey ID
+      responses:
+        "200":
+          description: Survey details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Survey"
+
+  /v1/surveys/{survey_id}/answers:
+    post:
+      summary: Submit Answer
+      description: Submit an answer to a question. On the first answer submission, a SurveyAnswer is automatically created. Include surveyAnswerId in subsequent requests.
+      tags: [Public]
+      parameters:
+        - name: survey_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Survey ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitAnswerRequest"
+      responses:
+        "201":
+          description: Answer submitted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  surveyAnswer:
+                    $ref: "#/components/schemas/SurveyAnswer"
+                    description: Only returned on first answer submission
+                  questionAnswer:
+                    $ref: "#/components/schemas/QuestionAnswer"
+
+  /v1/surveys/{survey_id}/answers/{survey_answer_id}/finish:
+    put:
+      summary: Finish Survey
+      description: Mark a survey answer session as completed
+      tags: [Public]
+      parameters:
+        - name: survey_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Survey ID
+        - name: survey_answer_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Survey Answer ID
+      responses:
+        "200":
+          description: Survey finished successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SurveyAnswer"
+
+components:
+  schemas:
+    Survey:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "1"
+        title:
+          type: string
+          example: Elections Survey
+        startDate:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        finishDate:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Question"
+
+    Question:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "1"
+        title:
+          type: string
+          example: Who would you vote for president?
+        description:
+          type: string
+        min:
+          type: integer
+          example: 1
+        max:
+          type: integer
+          example: 2
+        order:
+          type: integer
+          example: 0
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/Option"
+
+    Option:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "1"
+        text:
+          type: string
+          example: Homer Simpson
+        image:
+          type: string
+          example: https://example.com/homer.jpg
+        order:
+          type: integer
+          example: 0
+
+    SurveyAnswer:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "1"
+        survey:
+          type: string
+          example: "1"
+        initialized:
+          type: string
+          format: date-time
+          example: "2025-11-21T10:30:00Z"
+        finished:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+
+    QuestionAnswer:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "1"
+        surveyAnswer:
+          type: string
+          example: "1"
+        question:
+          type: string
+          example: "1"
+        option:
+          type: string
+          example: "1"
+        text:
+          type: string
+          example: ""
+
+    CreateSurveyRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          example: Elections Survey
+        questions:
+          type: array
+          items:
+            type: object
+            required:
+              - title
+              - min
+              - max
+              - order
+            properties:
+              title:
+                type: string
+                example: Who would you vote for president?
+              min:
+                type: integer
+                example: 1
+              max:
+                type: integer
+                example: 2
+              order:
+                type: integer
+                example: 0
+              options:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - text
+                    - order
+                  properties:
+                    text:
+                      type: string
+                      example: Homer Simpson
+                    image:
+                      type: string
+                      example: https://example.com/homer.jpg
+                    order:
+                      type: integer
+                      example: 0
+
+    UpdateSurveyRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          example: Elections Survey For President
+        questions:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: Include id to update existing question, omit to create new question
+                example: "1"
+              title:
+                type: string
+                example: Who would you vote for president?
+              description:
+                type: string
+              min:
+                type: integer
+                example: 1
+              max:
+                type: integer
+                example: 2
+              order:
+                type: integer
+                example: 0
+              options:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: Include id to update existing option, omit to create new option
+                      example: "1"
+                    text:
+                      type: string
+                      example: Homer Simpson
+                    image:
+                      type: string
+                      example: https://example.com/homer.jpg
+                    order:
+                      type: integer
+                      example: 0
+      example:
+        title: Elections Survey For President
+        questions:
+          - id: "1"
+            title: Who would you vote for president?
+            min: 1
+            max: 2
+            order: 0
+            options:
+              - id: "1"
+                text: Homer Simpson
+                image: https://example.com/homer.jpg
+                order: 0
+              - id: "2"
+                text: Ned Flanders
+                image: https://example.com/ned.jpg
+                order: 1
+              - text: Marge Simpson
+                image: https://example.com/marge.jpg
+                order: 2
+          - title: Who would you vote for minister?
+            min: 1
+            max: 1
+            order: 1
+            options:
+              - text: Montgomery Burns
+                image: https://example.com/burns.jpg
+                order: 0
+              - text: Sideshow Bob
+                image: https://example.com/bob.jpg
+                order: 1
+
+    SubmitAnswerRequest:
+      type: object
+      required:
+        - question
+        - option
+      properties:
+        surveyAnswerId:
+          type: string
+          description: Required for subsequent answers, omit on first answer
+          example: "1"
+        question:
+          type: string
+          example: "1"
+        option:
+          type: string
+          example: "1"
+        text:
+          type: string
+          example: ""
