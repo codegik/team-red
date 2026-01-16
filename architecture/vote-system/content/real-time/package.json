@@ -1,0 +1,15 @@
+{
+  "name": "princejs-poc",
+  "module": "app",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "kafkajs": "^2.2.4",
+    "princejs": "^1.6.6"
+  }
+}
