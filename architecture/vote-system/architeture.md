@@ -38,14 +38,14 @@ We need to design and build a globally distributed, mission-critical real-time v
 
 **What is the context of the problem?**
 
-- **Market Context**: 
+- **Market Context**:
   - Democratic elections and large-scale voting events demand unprecedented levels of trust, transparency, and reliability
   - Growing threat landscape from automated bots, state-sponsored actors, and coordinated fraud campaigns
   - Increasing expectations for instant feedback and real-time results from 300M+ global participants
   - Zero tolerance for data loss, system failures, or security breaches that could undermine election integrity
   - Need for systems that can scale elastically during unpredictable traffic spikes (campaigns, debates, breaking news)
 
-- **Business Context**: 
+- **Business Context**:
   - Any data loss or security breach creates legal liability, regulatory penalties, and irreparable reputational damage
   - System must support mission-critical operations with financial and legal consequences
   - One-time deployment windows with no room for failure during live voting periods
@@ -53,7 +53,7 @@ We need to design and build a globally distributed, mission-critical real-time v
   - Cost optimization critical—infrastructure must scale down after peak periods
   - Must support strict SLAs with penalties for downtime or data inconsistency
 
-- **Technical Context**: 
+- **Technical Context**:
   - Peak traffic of 240K RPS eliminates traditional vertical scaling and monolithic architectures
   - 300M users require geo-distributed sharding, multi-region replication, and CDN distribution
   - ACID guarantees required for vote integrity—NoSQL eventually consistent models insufficient for vote records
@@ -209,6 +209,7 @@ The architecture is guided by seven foundational design principles that address 
 **Principle**: Security is not a feature—it's the foundation. Every layer of the system must assume breach and implement independent security controls.
 
 **Why This Matters**:
+
 - Voting systems are high-value targets for nation-state actors, organized fraud, and automated bot armies
 - A single security failure can compromise election integrity and destroy public trust
 - Attack vectors evolve constantly—security must be layered and adaptive
@@ -216,47 +217,55 @@ The architecture is guided by seven foundational design principles that address 
 **Implementation Strategy**:
 
 ### Layer 1: Network & Edge Security
+
 - **AWS WAF**: Block common attack patterns (SQL injection, XSS, CSRF)
 - **DDoS Protection**: AWS Shield Advanced for volumetric attack mitigation
 - **Geographic Filtering**: Route53 + CloudFront geo-restrictions to block suspicious regions
 - **Rate Limiting**: Token bucket algorithm at edge to prevent request flooding
 
 ### Layer 2: Identity & Authentication
+
 - **Auth0 SSO + MFA**: Multi-factor authentication (SMS, authenticator apps, push notifications)
 - **Liveness Detection**: SumSub facial biometrics to prevent fake accounts and deepfakes
 - **Document Verification**: Government ID validation with fraud risk scoring
 - **Session Binding**: Tokens tied to device fingerprint and IP address
 
 ### Layer 3: Device Intelligence
+
 - **FingerprintJS**: Device fingerprinting to detect emulators, VMs, and bot farms
 - **Jailbreak/Root Detection**: Block compromised devices
 - **Behavioral Biometrics**: Analyze touch patterns, typing speed, mouse movements
 - **Challenge-Response**: Cloudflare Turnstile for invisible human verification
 
 ### Layer 4: Application Security
+
 - **OAuth2 Bearer Tokens**: Short-lived access tokens (15 min TTL) with secure refresh flows
 - **API Gateway**: AWS API Gateway with request validation and transformation
 - **Input Sanitization**: Strict schema validation on all API requests
 - **HTTPS Everywhere**: TLS 1.3 with certificate pinning on mobile clients
 
 ### Layer 5: Data Protection
+
 - **Encryption at Rest**: AES-256 for database, S3, and backups
 - **Encryption in Transit**: TLS 1.3 for all service-to-service communication
 - **Field-Level Encryption**: Sensitive PII encrypted at application layer
 - **Key Rotation**: Automated rotation via AWS KMS with audit trails
 
 ### Layer 6: Audit & Monitoring
+
 - **Immutable Logs**: OpenSearch with WORM (Write-Once-Read-Many) indices
 - **Real-Time Anomaly Detection**: Machine learning models flagging suspicious voting patterns
 - **SIEM Integration**: AWS Security Hub aggregating security events
 - **Forensic Readiness**: Complete audit trail for post-incident investigation
 
 **Trade-offs**:
+
 - Increased latency from security checks at each layer
 - Higher infrastructure costs from redundant security systems
 - Potential false positives requiring manual review workflows
 
 **Success Metrics**:
+
 - Zero successful bot votes detected in production
 - <0.01% false positive rate on fraud detection
 - 100% of attacks blocked at edge (no malicious traffic reaches application layer)
@@ -268,6 +277,7 @@ The architecture is guided by seven foundational design principles that address 
 **Principle**: The system must scale horizontally without architectural changes. Every component is designed for elastic scaling from day one.
 
 **Why This Matters**:
+
 - Peak traffic (240K RPS) is 100x baseline load—vertical scaling is impossible
 - Voting events create unpredictable traffic spikes (debates, breaking news, election day)
 - Cost optimization requires scaling down after peak periods
@@ -275,6 +285,7 @@ The architecture is guided by seven foundational design principles that address 
 **Implementation Strategy**:
 
 ### Stateless API Layer
+
 - **Kubernetes Deployments**: Pods are ephemeral, interchangeable, and horizontally scalable
 - **No In-Memory State**: Session data stored in Redis, not application memory
 - **Container Images**: Immutable Docker images with health checks for fast startup
@@ -283,21 +294,25 @@ The architecture is guided by seven foundational design principles that address 
   - **KEDA (Kubernetes Event-Driven Autoscaling)**: Scale based on Kafka lag, Redis queue depth, custom Prometheus metrics
 
 ### Database Sharding Strategy
+
 - **Geo-Based Sharding**: Users partitioned by geographic region (North America, Europe, Asia-Pacific)
 - **Consistent Hashing**: User ID hashed to determine shard assignment
 - **Read Replicas**: 3-5 read replicas per shard to distribute query load
 
 ### Event-Driven Asynchronous Processing
+
 - **Kafka Partitioning**: 50+ partitions per topic for parallel consumption
 - **Consumer Groups**: Multiple consumer instances per group for horizontal scaling
 - **Backpressure Handling**: Kafka provides natural buffering during load spikes
 
 **Trade-offs**:
+
 - Cold-start delays (30-60s) when scaling from zero
 - Higher infrastructure complexity with sharding and caching
 - Eventual consistency in cached data (2-second lag on vote counts)
 
 **Success Metrics**:
+
 - Scale from 1K to 240K RPS in <5 minutes
 - Maintain <100ms p99 API latency during scale-up
 - Auto-scale down to baseline within 10 minutes after traffic drops
@@ -309,6 +324,7 @@ The architecture is guided by seven foundational design principles that address 
 **Principle**: Decouple producers and consumers through event streams. All critical operations are asynchronous to prevent cascading failures.
 
 **Why This Matters**:
+
 - Synchronous request-response patterns create tight coupling and single points of failure
 - Database writes at 240K RPS would saturate any relational database
 - Real-time result aggregation requires parallel event processing
@@ -316,18 +332,20 @@ The architecture is guided by seven foundational design principles that address 
 **Implementation Strategy**:
 
 ### Kafka as Central Event Bus
+
 - **Vote Submission Topic**: All votes published as events (producer: API layer)
 - **Vote Aggregation Topic**: Processed vote summaries (producer: aggregation service)
 - **Audit Log Topic**: Immutable event stream for compliance
 - **Replication Factor**: 3 (across availability zones for durability)
 
-
 **Trade-offs**:
+
 - Eventual consistency—vote confirmation may take 500ms to 2 seconds
 - Increased operational complexity (Kafka cluster management)
 - Debugging asynchronous failures is harder than synchronous flows
 
 **Success Metrics**:
+
 - 99.99% of events processed within 2 seconds
 - Zero message loss (exactly-once semantics)
 - Kafka lag <1000 messages during peak load
@@ -339,6 +357,7 @@ The architecture is guided by seven foundational design principles that address 
 **Principle**: Application servers hold no persistent state. Every instance is interchangeable and can be destroyed/recreated without data loss.
 
 **Why This Matters**:
+
 - Stateful servers cannot scale horizontally (sticky sessions create hotspots)
 - Server failures with in-memory state cause data loss
 - Rolling updates and auto-scaling require killing instances without warning
@@ -346,26 +365,31 @@ The architecture is guided by seven foundational design principles that address 
 **Implementation Strategy**:
 
 ### Session State Externalization
+
 - **Redis for Sessions**: All session data stored in distributed Redis cluster
 - **JWT Tokens**: Stateless authentication—server validates signature without DB lookup
 - **Sticky Session Elimination**: Load balancer distributes requests randomly
 
 ### Immutable Infrastructure
+
 - **No SSH Access**: Servers are never modified after deployment
 - **Configuration via Environment Variables**: All config injected at container startup
 - **Blue-Green Deployments**: New versions deployed alongside old, traffic switched atomically
 
 ### Health Checks & Auto-Recovery
+
 - **Kubernetes Liveness Probes**: Kill and restart unhealthy pods
 - **Readiness Probes**: Remove pods from load balancer if not ready
 - **Pod Disruption Budgets**: Ensure minimum replicas during voluntary disruptions
 
 **Trade-offs**:
+
 - Redis becomes critical dependency (must be highly available)
 - Cannot use in-memory caching—must use distributed cache
 - Slightly higher latency (network hop to Redis for every request)
 
 **Success Metrics**:
+
 - 100% of requests succeed even when 50% of pods are terminated
 - Zero data loss during rolling updates
 - Mean time to recovery (MTTR) <30 seconds
@@ -377,6 +401,7 @@ The architecture is guided by seven foundational design principles that address 
 **Principle**: Assume every request is malicious until proven otherwise. Defense mechanisms adapt in real-time to emerging threats.
 
 **Why This Matters**:
+
 - Bots evolve to bypass static rules (CAPTCHA solving, residential proxies)
 - Credential stuffing attacks leverage millions of stolen username/password pairs
 - Distributed attacks from 100K+ IP addresses bypass simple rate limiting
@@ -384,12 +409,14 @@ The architecture is guided by seven foundational design principles that address 
 **Implementation Strategy**:
 
 ### Static Defenses (Always Active)
+
 - **Rate Limiting**: 10 requests/second per IP, 1 vote/user/election
 - **IP Reputation**: Block known proxy/VPN/Tor exit nodes
 - **Geo-Fencing**: Restrict voting to eligible geographic regions
 - **User-Agent Validation**: Block non-standard or suspicious user agents
 
 ### Dynamic Defenses (ML-Powered)
+
 - **Behavioral Analysis**:
   - Typing speed anomalies (too fast = bot, too slow = automation)
   - Mouse movement patterns (linear paths = automation)
@@ -403,6 +430,7 @@ The architecture is guided by seven foundational design principles that address 
   - Identify bot clusters by behavioral similarity
 
 ### Adaptive Challenge Escalation
+
 ```
 Low Risk: No challenge
 Medium Risk: Cloudflare Turnstile (invisible)
@@ -411,11 +439,13 @@ Critical Risk: Manual review queue
 ```
 
 **Trade-offs**:
+
 - False positives frustrate legitimate users
 - ML model training requires large labeled datasets
 - Real-time inference adds latency
 
 **Success Metrics**:
+
 - Block 99.9% of bot traffic without human intervention
 - False positive rate <0.1% (1 in 1000 legitimate users challenged)
 - Detect novel attack patterns within 5 minutes
@@ -427,6 +457,7 @@ Critical Risk: Manual review queue
 **Principle**: Every vote and system action is recorded in an append-only, cryptographically verifiable audit log.
 
 **Why This Matters**:
+
 - Legal requirements for election audits and recounts
 - Post-incident forensics require complete event reconstruction
 - Public trust depends on transparent, verifiable vote counting
@@ -438,6 +469,7 @@ Critical Risk: Manual review queue
 **Principle**: Expect failures at every level. Design systems that degrade gracefully and self-heal automatically.
 
 **Why This Matters**:
+
 - At 240K RPS, component failures are guaranteed (hardware, network, software bugs)
 - Manual intervention is too slow—recovery must be automatic
 - Partial availability is better than complete outage
@@ -445,17 +477,20 @@ Critical Risk: Manual review queue
 **Implementation Strategy**:
 
 ### Redundancy & Failover
+
 - **Multi-AZ Deployment**: Every component runs in 3+ availability zones
 - **Database Replicas**: Automatic failover to standby within 30 seconds
 - **Kafka Partition Replication**: Replicas across AZs, leader election on failure
 - **Load Balancer Health Checks**: Remove failed instances within 10 seconds
 
 ### Circuit Breakers & Timeouts
+
 - **Hystrix Pattern**: Open circuit after 5 consecutive failures
 - **Timeout Budgets**: Fail fast (200ms max per external call)
 - **Bulkhead Isolation**: Separate thread pools for different dependencies
 
 ### Graceful Degradation Strategies
+
 ```
 Level 1: All systems operational
 Level 2: Real-time results delayed (cache stale data)
@@ -464,16 +499,19 @@ Level 4: Queue votes offline (process when system recovers)
 ```
 
 ### Chaos Engineering Practice
+
 - **Monthly Chaos Days**: Randomly terminate 20% of pods, kill database replicas
 - **Failure Injection**: Simulate network latency, dropped packets, CPU saturation
 - **Game Days**: Simulate election day load + simultaneous failures
 
 **Trade-offs**:
+
 - Over-provisioning increases costs (3x redundancy)
 - Complexity in managing degraded states
 - Risk of automation making wrong decisions
 
 **Success Metrics**:
+
 - 99.99% uptime (52 minutes downtime/year)
 - Automatic recovery from 95% of failures without human intervention
 - Zero complete outages (always serve degraded service)
@@ -483,9 +521,10 @@ Level 4: Queue votes offline (process when system recovers)
 # 5. 🏗️ Overall Diagrams
 
 ## 5.1 🗂️ Overall architecture
-## 5.2 🗂️ Deployment
-## 5.3 🗂️ Use Cases
 
+## 5.2 🗂️ Deployment
+
+## 5.3 🗂️ Use Cases
 
 1. Users send requests through a global CDN + security edge
 2. Traffic is validated, filtered, rate-limited, and inspected
@@ -750,7 +789,6 @@ setups
 
 ------------------------------------------------------------------------
 
-
 # 7. Architecture Overview (Edge to API)
 
 ## 7.1 Global Request Flow
@@ -835,23 +873,28 @@ We don't have migration for this architecture since its a new system.
 # 9. 🧪 Testing strategy
 
 ## Frontend Tests
+
 - ReactJS component rendering tests with focus on performance metrics.
 - Client-side state management tests.
 - WebSocket client implementation tests.
 
 ## Contract tests
+
 - Test API contracts between decomposed microservices.
 - Verify WebSocket message formats and protocols.
 
 ## Integration tests
+
 - Try to cover most of the scenarios.
 - Test WebSocket real-time communication flows.
 - Run in isolated environments before production deployment.
 
 ## Infra tests
+
 - Validate Global Accelerator routing behavior.
 
 ## Performance tests
+
 - Use K6 to simulate the user behavior and check the system's performance.
 - Measure database query performance under load
 - Measure UI rendering time across device types
@@ -860,6 +903,7 @@ We don't have migration for this architecture since its a new system.
 - Execute in staging environment with production-like conditions
 
 ## Chaos tests
+
 - Simulate AWS region failures to test Global Accelerator failover
 - Test WebSocket reconnection strategies during network disruptions
 - Inject latency between services to identify performance bottlenecks
@@ -874,9 +918,10 @@ We don't have migration for this architecture since its a new system.
 - Network/Contract: MockWebServer (Android) / URLProtocol stub (iOS); Pact consumer tests for contracts with the backend.
 - Performance: Cold start and WS connection times measured in CI (staging).
 - Accessibility: Basic TalkBack/VoiceOver per critical screen.
+
 ------------------------------------------------------------------------
 
-## 10. Data store settings 
+## 10. Data store settings
 
 ![Database Diagram](diagrams/database-diagram.png)
 
@@ -885,6 +930,122 @@ The system uses a multi-database strategy:
 - **PostgreSQL (RDS Multi-AZ)**: Transactional data for voters, elections, and votes with strong ACID guarantees
 
 Each microservice owns its schema, avoiding cross-service queries through event-driven architecture, this alse reduces the need of FKs in database.
+
+------------------------------------------------------------------------
+
+## 5.4.2 Cloudflare Turnstile
+
+Pros: - Invisible challenge - Better UX than CAPTCHA - Strong privacy
+guarantees - Blocks simple automation
+
+Cons: - Not sufficient alone against advanced bots - External
+dependency - Needs backend verification
+
+------------------------------------------------------------------------
+
+## 5.4.3 FingerprintJS
+
+Pros: - Passive and invisible - Emulator and device cloning
+detection - Excellent multi-account detection signal
+
+Cons: - Fingerprints can be spoofed by advanced attackers - Privacy
+and compliance concerns - Device replacement causes identity changes
+
+------------------------------------------------------------------------
+
+## 5.4.4 AWS CloudFront
+
+Pros: - Global CDN - Massive traffic absorption - Native integration
+with AWS security - Edge-level DDoS protection
+
+Cons: - Pricing complexity - Cache invalidation cost - Less flexible
+than software-based proxies
+
+------------------------------------------------------------------------
+
+## 5.4.5 AWS WAF
+
+Pros: - Managed OWASP rules - Tight AWS integration - Native
+CloudFront support - Bot Control included
+
+ Cons: - Limited advanced behavioral fraud detection - Requires tuning
+to avoid false positives
+
+------------------------------------------------------------------------
+
+## 5.4.6 AWS Global Accelerator
+
+Pros: - Very low global latency - Consistent static IPs -
+Multi-region failover
+
+Cons: - Additional cost - More complex routing model
+
+------------------------------------------------------------------------
+
+## 5.4.7 API Gateway
+
+ Pros: - Built-in rate limiting - Strong security posture - Native JWT
+validation
+
+ Cons: - Cost at very high RPS - Harder to debug than direct ALB
+setups
+
+------------------------------------------------------------------------
+
+# 6. 💾 Migrations
+
+We don't have migration for this architecture since its a new system.
+
+------------------------------------------------------------------------
+
+# 7. 🧪 Testing strategy
+
+## Frontend Tests
+
+- ReactJS component rendering tests with focus on performance metrics.
+- Client-side state management tests.
+- WebSocket client implementation tests.
+
+## Contract tests
+
+- Test API contracts between decomposed microservices.
+- Verify WebSocket message formats and protocols.
+
+## Integration tests
+
+- Try to cover most of the scenarios.
+- Test WebSocket real-time communication flows.
+- Run in isolated environments before production deployment.
+
+## Infra tests
+
+- Validate Global Accelerator routing behavior.
+
+## Performance tests
+
+- Use K6 to simulate the user behavior and check the system's performance.
+- Measure database query performance under load
+- Measure UI rendering time across device types
+- Benchmark WebSocket vs HTTP performance in real usage scenarios
+- Track CDN cache hit/miss ratios
+- Execute in staging environment with production-like conditions
+
+## Chaos tests
+
+- Simulate AWS region failures to test Global Accelerator failover
+- Test WebSocket reconnection strategies during network disruptions
+- Inject latency between services to identify performance bottlenecks
+- Execute in isolated production environment during low-traffic periods
+
+## Mobile testing
+
+- Unit Android: ViewModel/repository with JUnit.
+- Unit iOS: XCTest with async/await; mocks per protocol.
+- UI Android: Espresso for flows (login, search, dojo).
+- UI iOS: XCUITest with LaunchArguments for mocks.
+- Network/Contract: MockWebServer (Android) / URLProtocol stub (iOS); Pact consumer tests for contracts with the backend.
+- Performance: Cold start and WS connection times measured in CI (staging).
+- Accessibility: Basic TalkBack/VoiceOver per critical screen.
 
 ------------------------------------------------------------------------
 
@@ -906,7 +1067,9 @@ writes - Conflict detection
 - Dead-letter queues
 - Immutable audit log streams
 
----
+## 10. Real-Time Result Distribution
+
+=======
 
 # 13. Real-Time Result Distribution
 
@@ -936,6 +1099,7 @@ A robust observability strategy is critical for a system of this scale and criti
 Prometheus is the core metrics engine, chosen for its Open Source nature and Kubernetes-native design.
 
 **Key Features:**
+
 - Pull-based time-series collection via exporters
 - Powerful query language (PromQL)
 - Built-in alerting rules
@@ -943,6 +1107,7 @@ Prometheus is the core metrics engine, chosen for its Open Source nature and Kub
 - Integration with AWS via CloudWatch Exporter
 
 **Exporters to Deploy:**
+
 - `node_exporter` - Host-level metrics (CPU, memory, disk, network)
 - `kube-state-metrics` - Kubernetes object states
 - `cloudwatch_exporter` - AWS service metrics (RDS, SQS, ElastiCache, etc.)
@@ -989,6 +1154,7 @@ Prometheus is the core metrics engine, chosen for its Open Source nature and Kub
 ```
 
 For 300M users and high cardinality, consider **Thanos** or **Cortex** for:
+
 - Long-term metric storage (S3-backed)
 - Global query view across regions
 - Downsampling for historical data
@@ -1000,6 +1166,7 @@ For 300M users and high cardinality, consider **Thanos** or **Cortex** for:
 Grafana serves as the unified observability frontend.
 
 **Key Features:**
+
 - Multi-datasource support (Prometheus, Loki, Jaeger, CloudWatch)
 - Rich dashboard templating
 - Alerting integration
@@ -1044,6 +1211,7 @@ Grafana serves as the unified observability frontend.
 For a microservices architecture at this scale, distributed tracing is essential to understand request flow and identify bottlenecks.
 
 **Why Jaeger:**
+
 - Open Source (CNCF graduated project)
 - Native OpenTelemetry support
 - Scalable architecture with Kafka and Elasticsearch/Cassandra backends
@@ -1106,6 +1274,7 @@ For a microservices architecture at this scale, distributed tracing is essential
 **Sampling Strategy:**
 
 For 240K RPS, full tracing is not feasible. Use adaptive sampling:
+
 - 100% sampling for errors and high-latency requests
 - 1% sampling for successful requests
 - 100% sampling for fraud-flagged requests
@@ -1118,6 +1287,7 @@ For 240K RPS, full tracing is not feasible. Use adaptive sampling:
 Loki provides log aggregation that integrates natively with Grafana and uses the same label model as Prometheus.
 
 **Why Loki:**
+
 - Open Source (Grafana Labs)
 - Lightweight - indexes labels only, not full text
 - Cost-effective storage (S3-backed)
@@ -1166,12 +1336,14 @@ All services must emit structured JSON logs:
 ```
 
 **Required Log Labels:**
+
 - `service` - Service name
 - `environment` - prod/staging/dev
 - `region` - AWS region
 - `level` - Log level (ERROR, WARN, INFO, DEBUG)
 
 **Log Retention Policy:**
+
 - ERROR logs: 90 days
 - WARN logs: 30 days
 - INFO logs: 14 days
@@ -1233,6 +1405,7 @@ groups:
 ```
 
 **Notification Channels:**
+
 - Critical: PagerDuty + Slack + SMS
 - High: Slack + Email
 - Medium: Slack
@@ -1245,6 +1418,7 @@ groups:
 OpenTelemetry (OTel) provides a vendor-neutral instrumentation standard across all services.
 
 **Why OpenTelemetry:**
+
 - CNCF standard
 - Unified API for metrics, traces, and logs
 - Auto-instrumentation for common frameworks
@@ -1272,6 +1446,7 @@ OpenTelemetry (OTel) provides a vendor-neutral instrumentation standard across a
 ```
 
 **SDK Integration per Language:**
+
 - Node.js: `@opentelemetry/sdk-node`
 - Go: `go.opentelemetry.io/otel`
 - Python: `opentelemetry-sdk`
@@ -1284,6 +1459,7 @@ OpenTelemetry (OTel) provides a vendor-neutral instrumentation standard across a
 For effective debugging, all telemetry must be correlated:
 
 **Correlation IDs:**
+
 - `trace_id` - Unique per request, propagated across services
 - `span_id` - Unique per operation
 - `voter_id` - Business context
@@ -1291,11 +1467,13 @@ For effective debugging, all telemetry must be correlated:
 - `request_id` - API Gateway assigned
 
 **Context Propagation:**
+
 - HTTP: W3C Trace Context headers (`traceparent`, `tracestate`)
 - Kafka: Headers with trace context
 - gRPC: Metadata with trace context
 
 **Grafana Correlation:**
+
 - Click on metric → Jump to related traces
 - Click on trace → Jump to related logs
 - Unified view with `trace_id` as the correlation key
@@ -1305,18 +1483,21 @@ For effective debugging, all telemetry must be correlated:
 ### 9.1.9 Observability for Specific Components
 
 **WebSocket Connections (Real-time Results):**
+
 - Active connection count per region
 - Message throughput (in/out)
 - Connection duration histogram
 - Reconnection rate
 
 **Fraud Service:**
+
 - Risk score distribution
 - Decision latency (p99 < 100ms)
 - False positive rate (requires manual labeling)
 - Model inference time
 
 **External Dependencies:**
+
 - Auth0 API latency and error rate
 - Sumsub API latency and error rate
 - AWS service health (via CloudWatch)
@@ -1350,12 +1531,12 @@ For effective debugging, all telemetry must be correlated:
 | Fraud Check Latency | p99 < 200ms | - |
 
 **Runbooks to Create:**
+
 - Vote Service degradation
 - Database failover
 - Fraud spike response
 - DDoS attack response
-- Regional failover procedure 
-
+- Regional failover procedure
 
 ------------------------------------------------------------------------
 
@@ -1387,262 +1568,9 @@ It does NOT replace Auth0 or Sumsub. Instead, it **connects them to the
 voting domain** and applies business rules.
 
 It answers one main question: \> "Who is this user inside the voting
-system, and what is their current status?"
 
-### 10.1.2 Core Responsibilities
+## 2. Notification Service
 
-- Map external identities to internal voters:
-  - Auth0 `sub` → `voterId`
-  - Sumsub `applicantId` → `voterId`
-- Maintain internal voter profile and status:
-  - `PENDING_KYC`
-  - `APPROVED`
-  - `BLOCKED`
-  - `REJECTED`
-- Orchestrate onboarding and verification with Sumsub
-- Enforce internal blocks coming from Fraud Service or Admin actions
-- Expose voter eligibility to the Vote Service
-- Maintain audit trail of identity state changes
+## 3. Pub Service
 
----
-
-### 10.1.3 Key Endpoints
-
-#### `GET /me`
-
-Returns the authenticated user's internal voter profile.
-
-**Used by:** Mobile App, Web App
-
-**Output Example:**
-
-``` json
-{
-  "voterId": "vtr_123",
-  "status": "APPROVED",
-  "sumsubApplicantId": "applicant_987",
-  "flags": {
-    "isBlocked": false,
-    "needsReverification": false
-  }
-}
-```
-
----
-
-#### `POST /voters/onboard`
-
-Starts the biometric verification flow with Sumsub.
-
-**Used by:** Mobile App after login
-
-**What it does:** - Creates or loads voter record - Creates Sumsub
-applicant - Generates Sumsub session token
-
-**Output Example:**
-
-``` json
-{
-  "voterId": "vtr_123",
-  "sumsub": {
-    "applicantId": "applicant_987",
-    "accessToken": "sumsub-access-token",
-    "flow": "document+liveness"
-  },
-  "status": "PENDING_KYC"
-}
-```
-
----
-
-#### `POST /voters/webhook/sumsub`
-
-Receives verification result from Sumsub.
-
-**Used by:** Sumsub (Webhook)
-
-**What it does:** - Updates voter verification status - Emits event to
-Fraud & Vote systems if needed
-
----
-
-#### `GET /voters/{voterId}/eligibility?electionId=...`
-
-Checks if the voter can participate in a specific election.
-
-**Used by:** Vote Service
-
-**Output Example:**
-
-``` json
-{
-  "voterId": "vtr_123",
-  "electionId": "election_2026",
-  "eligible": true
-}
-```
-
----
-
-#### `POST /voters/{voterId}/block`
-
-Blocks a voter at the identity level.
-
-**Used by:** Fraud Service, Admin Panel
-
----
-
-### 10.2 Vote Service
-
-### 10.2.1 Purpose
-
-The Vote Service is the **core election engine**.\
-It is the only service allowed to **create, validate, store, and tally
-votes**.
-
-It answers the question: \> "Is this voter eligible right now, and can
-we safely record this vote?"
-
----
-
-### 10.2.2 Core Responsibilities
-
-- Election creation and configuration
-- Ballot management
-- Eligibility validation through Auth Service
-- Fraud validation through Fraud Service
-- Enforcing voting rules:
-  - One vote per voter
-  - Idempotent submissions
-- Secure vote storage (append-only / immutable)
-- Vote tallying and result publishing
-- Vote audit trail
-
----
-
-### 10.2.3 Key Endpoints
-
-#### `POST /elections`
-
-Creates a new election.
-
----
-
-#### `POST /votes`
-
-Registers a vote.
-
-**Used by:** Mobile App
-
-**Internal Flow:** 1. Validate voter via Auth Service 2. Validate risk
-via Fraud Service 3. Enforce "one person = one vote" 4. Persist vote in
-immutable storage
-
----
-
-#### `GET /elections/{id}/results`
-
-Returns aggregated voting results.
-
----
-
-## 10.3 Fraud Service
-
-### 10.3.1 Purpose
-
-The Fraud Service is the **behavioral risk engine** of the system.
-
-It does NOT validate identity documents and does NOT authenticate
-users.\
-Its job is to **detect suspicious patterns across users, devices,
-sessions, and elections.**
-
-It answers the question: \> "Does this action look normal or coordinated
-/ fraudulent?"
-
----
-
-### 10.3.2 Core Responsibilities
-
-- Behavioral risk scoring for:
-  - Account creation
-  - Voting attempts
-- Device correlation:
-  - Same device used by many voters
-- Election-level fraud detection:
-  - Coordinated vote attempts
-  - Abnormal regional concentration
-- Decision engine:
-  - `ALLOW`
-  - `CHALLENGE`
-  - `DENY`
-- Maintain fraud watchlists
-- Maintain historical fraud signals and risk profiles
-- Feed audit, alerting, and investigation tools
-
----
-
-### 10.3.3 Key Endpoints
-
-#### `POST /fraud/check-signup`
-
-Risk analysis at voter onboarding.
-
-**Used by:** Auth Service
-
-**Output Example:**
-
-``` json
-{
-  "decision": "ALLOW",
-  "riskScore": 0.14
-}
-```
-
----
-
-#### `POST /fraud/check-vote`
-
-Risk analysis before vote registration.
-
-**Used by:** Vote Service
-
-**Output Example:**
-
-``` json
-{
-  "decision": "DENY",
-  "riskScore": 0.92,
-  "reasons": [
-    "MULTIPLE_VOTERS_SAME_DEVICE_IN_SHORT_WINDOW"
-  ]
-}
-```
-
----
-
-#### `POST /fraud/events`
-
-Ingests behavioral events (login, vote, block, review).
-
----
-
-#### `GET /fraud/profile/{voterId}`
-
-Returns the full fraud risk profile for a voter.
-
----
-
-## 10.4 Interaction Summary
-
-  Service         Talks To        Purpose
-  --------------- --------------- ---------------------------------------
-  Auth Service    Auth0           Login & token validation
-  Auth Service    Sumsub          Identity & biometric verification
-  Auth Service    Fraud Service   Signup risk analysis
-  Vote Service    Auth Service    Eligibility validation
-  Vote Service    Fraud Service   Vote risk analysis
-  Fraud Service   All             Receives behavioral events
-  Admin Panel     All             Oversight, investigation, enforcement
-
----
+## 4. Sub Service
