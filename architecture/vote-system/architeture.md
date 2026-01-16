@@ -914,7 +914,450 @@ writes - Conflict detection
 - WebSocket / streaming consumers
 - Live dashboards
 
+### 9.1 Observability and Monitoring
+
+A robust observability strategy is critical for a system of this scale and criticality. We adopt the **three pillars of observability**: Metrics, Logs, and Traces and all using Open Source tools.
+
+#### 9.1.1 Observability Stack Overview
+
+| Pillar | Tool | Purpose |
+|--------|------|---------|
+| Metrics | Prometheus | Time-series collection and alerting |
+| Visualization | Grafana | Dashboards and unified observability UI |
+| Tracing | Jaeger | Distributed tracing |
+| Logs | Loki | Log aggregation (Prometheus-native) |
+| Alerting | Alertmanager | Alert routing and notification |
+| Service Mesh Observability | OpenTelemetry | Instrumentation standard |
+
 ---
+
+### 9.1.2 Metrics - Prometheus
+
+Prometheus is the core metrics engine, chosen for its Open Source nature and Kubernetes-native design.
+
+**Key Features:**
+- Pull-based time-series collection via exporters
+- Powerful query language (PromQL)
+- Built-in alerting rules
+- Service discovery for dynamic environments
+- Integration with AWS via CloudWatch Exporter
+
+**Exporters to Deploy:**
+- `node_exporter` - Host-level metrics (CPU, memory, disk, network)
+- `kube-state-metrics` - Kubernetes object states
+- `cloudwatch_exporter` - AWS service metrics (RDS, SQS, ElastiCache, etc.)
+- `blackbox_exporter` - Endpoint probing (HTTP, TCP, DNS)
+- Custom application exporters for each microservice
+
+**Critical Metrics to Monitor:**
+
+| Category | Metrics |
+|----------|---------|
+| Application | Request rate, error rate, latency (p50, p95, p99) |
+| Business | Votes per second, fraud detection rate, auth success rate |
+| Infrastructure | CPU, memory, disk I/O, network throughput |
+| Kubernetes | Pod restarts, pending pods, node availability |
+| Database | Connection pool, query latency, replication lag |
+| Queue | Message age, queue depth, consumer lag |
+
+**Prometheus Architecture for Scale:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Prometheus Federation                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ Prometheus  │  │ Prometheus  │  │ Prometheus  │              │
+│  │  Region A   │  │  Region B   │  │  Region C   │              │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘              │
+│         │                │                │                      │
+│         └────────────────┼────────────────┘                      │
+│                          │                                        │
+│                          ▼                                        │
+│                 ┌─────────────────┐                              │
+│                 │ Global Prometheus│                              │
+│                 │   (Federation)   │                              │
+│                 └────────┬────────┘                              │
+│                          │                                        │
+│                          ▼                                        │
+│                 ┌─────────────────┐                              │
+│                 │    Thanos /     │ ← Long-term storage          │
+│                 │   Cortex (opt)  │                              │
+│                 └─────────────────┘                              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+For 300M users and high cardinality, consider **Thanos** or **Cortex** for:
+- Long-term metric storage (S3-backed)
+- Global query view across regions
+- Downsampling for historical data
+
+---
+
+### 9.1.3 Visualization - Grafana
+
+Grafana serves as the unified observability frontend.
+
+**Key Features:**
+- Multi-datasource support (Prometheus, Loki, Jaeger, CloudWatch)
+- Rich dashboard templating
+- Alerting integration
+- Team-based access control
+- Annotation support for deployment markers
+
+**Recommended Dashboards:**
+
+1. **System Overview**
+   - Global request rate and error rate
+   - Vote submission success rate
+   - Active users and concurrent connections
+   - Regional health status
+
+2. **Service-Level Dashboards** (per microservice)
+   - RED metrics (Rate, Errors, Duration)
+   - Dependency health
+   - Resource utilization
+
+3. **Security & Fraud Dashboard**
+   - Bot detection triggers per minute
+   - Fraud check decisions (ALLOW/CHALLENGE/DENY)
+   - Auth failures and suspicious patterns
+   - WAF block rate
+
+4. **Infrastructure Dashboard**
+   - Kubernetes cluster health
+   - Node resource saturation
+   - Database replication status
+   - Queue depths and consumer lag
+
+5. **Business Metrics Dashboard**
+   - Total votes cast (real-time)
+   - Votes per region/election
+   - User registration funnel
+   - Peak traffic patterns
+
+---
+
+### 9.1.4 Distributed Tracing - Jaeger
+
+For a microservices architecture at this scale, distributed tracing is essential to understand request flow and identify bottlenecks.
+
+**Why Jaeger:**
+- Open Source (CNCF graduated project)
+- Native OpenTelemetry support
+- Scalable architecture with Kafka and Elasticsearch/Cassandra backends
+- Adaptive sampling for high-volume systems
+
+**Tracing Architecture:**
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                         Tracing Flow                                  │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐           │
+│  │ Mobile  │───▶│   API   │───▶│  Auth   │───▶│  Vote   │           │
+│  │   App   │    │ Gateway │    │ Service │    │ Service │           │
+│  └─────────┘    └────┬────┘    └────┬────┘    └────┬────┘           │
+│                      │              │              │                  │
+│         ┌────────────┴──────────────┴──────────────┘                 │
+│         │  trace-id: abc123                                           │
+│         │  span-id propagated via headers                            │
+│         ▼                                                             │
+│  ┌─────────────────────────────────────────────────────────┐         │
+│  │              OpenTelemetry Collector                     │         │
+│  │  (sampling, batching, export to Jaeger)                 │         │
+│  └────────────────────────┬────────────────────────────────┘         │
+│                           │                                           │
+│                           ▼                                           │
+│  ┌─────────────────────────────────────────────────────────┐         │
+│  │                    Jaeger Backend                        │         │
+│  │  ┌──────────┐    ┌─────────────┐    ┌──────────────┐   │         │
+│  │  │Collector │───▶│    Kafka    │───▶│ Elasticsearch│   │         │
+│  │  └──────────┘    └─────────────┘    └──────────────┘   │         │
+│  └─────────────────────────────────────────────────────────┘         │
+│                                                                        │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Instrumentation Strategy:**
+
+| Service | Instrumentation |
+|---------|-----------------|
+| API Gateway | Auto-instrumentation via OpenTelemetry |
+| Auth Service | Manual spans for Auth0/Sumsub calls |
+| Vote Service | Manual spans for eligibility check, fraud check, vote persist |
+| Fraud Service | Manual spans for risk scoring pipeline |
+| Database calls | Auto-instrumentation with query tagging |
+| External APIs | Manual spans with timeout tracking |
+
+**Key Spans to Capture:**
+
+- `http.request` - Incoming HTTP requests
+- `auth.validate_token` - Token validation
+- `auth.check_eligibility` - Voter eligibility check
+- `fraud.check_vote` - Fraud risk assessment
+- `vote.persist` - Vote storage operation
+- `db.query` - Database operations
+- `external.auth0` - Auth0 API calls
+- `external.sumsub` - Sumsub API calls
+
+**Sampling Strategy:**
+
+For 240K RPS, full tracing is not feasible. Use adaptive sampling:
+- 100% sampling for errors and high-latency requests
+- 1% sampling for successful requests
+- 100% sampling for fraud-flagged requests
+- Head-based sampling with tail-based upgrade for anomalies
+
+---
+
+### 9.1.5 Log Aggregation - Loki
+
+Loki provides log aggregation that integrates natively with Grafana and uses the same label model as Prometheus.
+
+**Why Loki:**
+- Open Source (Grafana Labs)
+- Lightweight - indexes labels only, not full text
+- Cost-effective storage (S3-backed)
+- Native Grafana integration
+- LogQL query language (similar to PromQL)
+
+**Log Architecture:**
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                      Log Pipeline                             │
+├──────────────────────────────────────────────────────────────┤
+│                                                                │
+│  ┌──────────────┐                                             │
+│  │ Microservice │──┐                                          │
+│  └──────────────┘  │                                          │
+│  ┌──────────────┐  │    ┌──────────┐    ┌──────────────┐     │
+│  │ Microservice │──┼───▶│ Promtail │───▶│     Loki     │     │
+│  └──────────────┘  │    │ (Agent)  │    │   (Storage)  │     │
+│  ┌──────────────┐  │    └──────────┘    └──────┬───────┘     │
+│  │ Microservice │──┘                           │              │
+│  └──────────────┘                              ▼              │
+│                                          ┌──────────┐         │
+│                                          │ Grafana  │         │
+│                                          │  (Query) │         │
+│                                          └──────────┘         │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Structured Logging Standard:**
+
+All services must emit structured JSON logs:
+
+```json
+{
+  "timestamp": "2026-01-15T10:30:00Z",
+  "level": "INFO",
+  "service": "vote-service",
+  "trace_id": "abc123",
+  "span_id": "def456",
+  "voter_id": "vtr_789",
+  "election_id": "election_2026",
+  "message": "Vote recorded successfully",
+  "duration_ms": 45
+}
+```
+
+**Required Log Labels:**
+- `service` - Service name
+- `environment` - prod/staging/dev
+- `region` - AWS region
+- `level` - Log level (ERROR, WARN, INFO, DEBUG)
+
+**Log Retention Policy:**
+- ERROR logs: 90 days
+- WARN logs: 30 days
+- INFO logs: 14 days
+- DEBUG logs: 3 days (staging only)
+
+---
+
+### 9.1.6 Alerting - Alertmanager
+
+Prometheus Alertmanager handles alert routing, deduplication, and notification.
+
+**Alert Categories:**
+
+| Severity | Response Time | Examples |
+|----------|---------------|----------|
+| Critical (P1) | < 5 min | Service down, data loss risk, security breach |
+| High (P2) | < 30 min | High error rate, degraded performance |
+| Medium (P3) | < 4 hours | Elevated latency, resource warnings |
+| Low (P4) | Next business day | Non-critical warnings |
+
+**Critical Alerts for Voting System:**
+
+```yaml
+# Example alert rules
+groups:
+  - name: voting-critical
+    rules:
+      - alert: VoteServiceDown
+        expr: up{job="vote-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Vote Service is down"
+
+      - alert: HighVoteErrorRate
+        expr: rate(vote_errors_total[5m]) / rate(vote_requests_total[5m]) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Vote error rate exceeds 1%"
+
+      - alert: FraudSpikeDetected
+        expr: rate(fraud_denied_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: high
+        annotations:
+          summary: "Unusual fraud detection spike"
+
+      - alert: DatabaseReplicationLag
+        expr: mysql_slave_lag_seconds > 5
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database replication lag exceeds 5 seconds"
+```
+
+**Notification Channels:**
+- Critical: PagerDuty + Slack + SMS
+- High: Slack + Email
+- Medium: Slack
+- Low: Email digest
+
+---
+
+### 9.1.7 Instrumentation Standard - OpenTelemetry
+
+OpenTelemetry (OTel) provides a vendor-neutral instrumentation standard across all services.
+
+**Why OpenTelemetry:**
+- CNCF standard
+- Unified API for metrics, traces, and logs
+- Auto-instrumentation for common frameworks
+- Collector for processing and routing telemetry
+
+**OpenTelemetry Collector Configuration:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                 OpenTelemetry Collector                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  Receivers          Processors           Exporters               │
+│  ┌─────────┐       ┌───────────┐       ┌────────────┐           │
+│  │  OTLP   │──────▶│  Batch    │──────▶│ Prometheus │           │
+│  │  gRPC   │       │  Sampling │       │   (metrics)│           │
+│  └─────────┘       │  Filter   │       ├────────────┤           │
+│  ┌─────────┐       └───────────┘       │   Jaeger   │           │
+│  │  OTLP   │────────────────────────▶  │  (traces)  │           │
+│  │  HTTP   │                           ├────────────┤           │
+│  └─────────┘                           │    Loki    │           │
+│                                        │   (logs)   │           │
+│                                        └────────────┘           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**SDK Integration per Language:**
+- Node.js: `@opentelemetry/sdk-node`
+- Go: `go.opentelemetry.io/otel`
+- Python: `opentelemetry-sdk`
+- Java: `opentelemetry-java`
+
+---
+
+### 9.1.8 Correlation and Context Propagation
+
+For effective debugging, all telemetry must be correlated:
+
+**Correlation IDs:**
+- `trace_id` - Unique per request, propagated across services
+- `span_id` - Unique per operation
+- `voter_id` - Business context
+- `election_id` - Business context
+- `request_id` - API Gateway assigned
+
+**Context Propagation:**
+- HTTP: W3C Trace Context headers (`traceparent`, `tracestate`)
+- Kafka: Headers with trace context
+- gRPC: Metadata with trace context
+
+**Grafana Correlation:**
+- Click on metric → Jump to related traces
+- Click on trace → Jump to related logs
+- Unified view with `trace_id` as the correlation key
+
+---
+
+### 9.1.9 Observability for Specific Components
+
+**WebSocket Connections (Real-time Results):**
+- Active connection count per region
+- Message throughput (in/out)
+- Connection duration histogram
+- Reconnection rate
+
+**Fraud Service:**
+- Risk score distribution
+- Decision latency (p99 < 100ms)
+- False positive rate (requires manual labeling)
+- Model inference time
+
+**External Dependencies:**
+- Auth0 API latency and error rate
+- Sumsub API latency and error rate
+- AWS service health (via CloudWatch)
+
+---
+
+### 9.1.10 Observability Infrastructure Sizing
+
+| Component | Sizing Recommendation |
+|-----------|----------------------|
+| Prometheus | 3 replicas per region, 500GB storage each |
+| Thanos | Sidecar per Prometheus, centralized Query + Store |
+| Jaeger Collector | 3 replicas, auto-scaling on CPU |
+| Jaeger Storage | Elasticsearch 3-node cluster, 1TB+ |
+| Loki | 3 ingesters, 3 queriers, S3 storage |
+| Grafana | 2 replicas behind LB, PostgreSQL backend |
+| OTel Collector | DaemonSet on all nodes |
+
+---
+
+### 9.1.11 Runbooks and SLOs
+
+**Service Level Objectives:**
+
+| Service | SLO | Error Budget |
+|---------|-----|--------------|
+| Vote Submission | 99.99% success rate | 0.01% (~26 min/month) |
+| Vote Latency | p99 < 500ms | - |
+| Auth Service | 99.95% availability | 0.05% |
+| Real-time Results | 99.9% availability | 0.1% |
+| Fraud Check Latency | p99 < 200ms | - |
+
+**Runbooks to Create:**
+- Vote Service degradation
+- Database failover
+- Fraud spike response
+- DDoS attack response
+- Regional failover procedure 
+
+
+------------------------------------------------------------------------
 
 # 10. Core Services Overview
 
