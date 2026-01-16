@@ -1571,6 +1571,6 @@ It answers one main question: \> "Who is this user inside the voting
 
 ## 2. Notification Service
 
-## 3. Pub Service
+## 3. Producer Service
 
-## 4. Sub Service
+## 4. Consumer Service
