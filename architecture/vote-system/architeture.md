@@ -2053,3 +2053,51 @@ Mark a survey answer session as completed.
 ## 3. Producer Service
 
 ## 4. Consumer Service
+
+## 11. Technology Stack
+
+### Serviços e Infraestrutura
+- Arquitetura: microsserviços, compute stateless
+- Orquestração: Kubernetes (HPA, KEDA)
+- Containers: Docker (imagens imutáveis)
+- Front door / Edge: CloudFront + AWS WAF + AWS Global Accelerator
+- API Gateway: gateway com validação e rate limiting
+- Mensageria / Streaming: Kafka (topics para ingestão, agregação e audit)
+- Cache / Sessões: Redis
+- Banco de dados transacional: PostgreSQL (RDS Multi‑AZ)
+- Autenticação / Identidade: Auth0, JWT
+- Armazenamento de logs/backup: S3 (retenção e WORM para auditoria)
+
+### Frontend / Mobile
+- Web: ReactJS
+- Mobile: React Native + Expo
+- Human verification / anti-bot: Cloudflare Turnstile
+- Device intelligence: FingerprintJS
+- Liveness / KYC: SumSub
+
+### Observabilidade
+- Métricas: Prometheus (federation / Thanos ou Cortex opcional)
+- Visualização: Grafana
+- Tracing: Jaeger (via OpenTelemetry)
+- Logs: Loki
+- Instrumentação: OpenTelemetry Collector / SDKs
+
+### Testes & Qualidade
+- Performance: k6 (testes de carga e smoke)
+- Unit / Integration: JUnit (mobile e serviços), testes de integração com testcontainers
+- Mobile UI / E2E: Espresso (Android), XCUITest (iOS)
+- Mobile network / contract: MockWebServer (Android), URLProtocol stub (iOS)
+- Chaos / Resiliência: injeção de falhas em ambientes controlados (simular AZ/região, latência, etc.)
+
+### Justificativa rápida
+- Combinação de Kubernetes + containers permite escalabilidade horizontal automática e deploys imutáveis.
+- Kafka desacopla ingestão e agregação, oferecendo resiliência e alta taxa de processamento.
+- PostgreSQL RDS Multi‑AZ garante ACID para votos; Redis externaliza estado de sessão para manter compute stateless.
+- Observabilidade (Prometheus/Grafana/Jaeger/Loki + OTel) fornece correlação entre métricas, traces e logs para incident response e auditoria.
+- Ferramentas de teste cobrem performance, integração, contratos e resiliência essenciais para um sistema em larga escala.
+
+### Observações operacionais
+- CI/CD deve executar linters, unit tests, integration tests (com testcontainers), contract tests e k6 smoke tests.
+- Ambientes de staging com instrumentação (Prometheus/Grafana/OTel) para correlação de testes de carga e detecção de anomalias.
+- Planejar runbooks e playbooks para failover de DB, recuperação Kafka e resposta a ataques bloqueados pelo WAF.
+
