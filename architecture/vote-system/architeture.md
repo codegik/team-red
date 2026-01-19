@@ -522,7 +522,15 @@ Level 4: Queue votes offline (process when system recovers)
 
 ## 5.1 🗂️ Overall architecture
 
+![overall](architecture/vote-system/diagrams/overall.architecture.png)
+
+## 5.1 🗂️ Solution architecture
+
+![solution](architecture/vote-system/diagrams/micro.architecture.png)
+
 ## 5.2 🗂️ Deployment
+
+![deployment](architecture/vote-system/diagrams/deployment.app.png)
 
 ## 5.3 🗂️ Use Cases
 
