@@ -1080,33 +1080,33 @@ Grafana serves as the unified observability frontend.
 **Recommended Dashboards:**
 
 1. **System Overview**
-   - Global request rate and error rate
-   - Vote submission success rate
-   - Active users and concurrent connections
-   - Regional health status
+    - Global request rate and error rate
+    - Vote submission success rate
+    - Active users and concurrent connections
+    - Regional health status
 
 2. **Service-Level Dashboards** (per microservice)
-   - RED metrics (Rate, Errors, Duration)
-   - Dependency health
-   - Resource utilization
+    - RED metrics (Rate, Errors, Duration)
+    - Dependency health
+    - Resource utilization
 
 3. **Security & Fraud Dashboard**
-   - Bot detection triggers per minute
-   - Fraud check decisions (ALLOW/CHALLENGE/DENY)
-   - Auth failures and suspicious patterns
-   - WAF block rate
+    - Bot detection triggers per minute
+    - Fraud check decisions (ALLOW/CHALLENGE/DENY)
+    - Auth failures and suspicious patterns
+    - WAF block rate
 
 4. **Infrastructure Dashboard**
-   - Kubernetes cluster health
-   - Node resource saturation
-   - Database replication status
-   - Queue depths and consumer lag
+    - Kubernetes cluster health
+    - Node resource saturation
+    - Database replication status
+    - Queue depths and consumer lag
 
 5. **Business Metrics Dashboard**
-   - Total votes cast (real-time)
-   - Votes per region/election
-   - User registration funnel
-   - Peak traffic patterns
+    - Total votes cast (real-time)
+    - Votes per region/election
+    - User registration funnel
+    - Peak traffic patterns
 
 ---
 
