@@ -125,6 +125,7 @@ We need to design and build a globally distributed, mission-critical real-time v
 
 ---
 
+
 # 2. 🎯 Goals
 
 ## 2.1 Never Lose Data
@@ -140,12 +141,9 @@ This requires:
 - Strict write acknowledgements 
 - Immutable audit logs
 
----
-
 ## 2.2 Be Secure and Prevent Bots & Bad Actors (Primary Ownership Area)
 
-This is one of the hardest challenges at global scale. The system must
-prevent:
+This is one of the hardest challenges at global scale. The system must prevent:
 
 - Automated voting (bots)
 - Credential stuffing
@@ -162,8 +160,6 @@ Security must be implemented in multiple layers (defense in depth):
 - Behavior 
 - Application 
 - Data
-
----
 
 ## 2.3 Handle 300M Users
 
@@ -804,6 +800,7 @@ The API Gateway enforces:
 - Request signing enforcement
 - Request schema validation
 
+
 # 6. 🧭 Trade-offs
 
 TODO: Please complete the trade-offs analysis for the security tools used in this architecture. It must follow the table format below:
@@ -897,11 +894,13 @@ setups
 
 ---
 
+
 # 7. 💾 Migrations
 
 We don't have migration for this architecture since its a new system.
 
 ---
+
 
 # 8. 🧪 Testing strategy
 
@@ -958,6 +957,7 @@ We don't have migration for this architecture since its a new system.
 - Minimizing the usage of mocks
 
 ---
+
 
 # 9. 💿 Data store settings
 
