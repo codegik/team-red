@@ -243,43 +243,6 @@ The architecture is guided by seven foundational design principles that address 
 - Voting events create unpredictable traffic spikes (debates, breaking news, election day)
 - Cost optimization requires scaling down after peak periods
 
-**Implementation Strategy**:
-
-### Stateless API Layer
-
-- **Kubernetes Deployments**: Pods are ephemeral, interchangeable, and horizontally scalable
-- **No In-Memory State**: Session data stored in Redis, not application memory
-- **Container Images**: Immutable Docker images with health checks for fast startup
-- **Auto-Scaling Policies**:
-  - **HPA (Horizontal Pod Autoscaler)**: Scale based on CPU and memory
-  - **KEDA (Kubernetes Event-Driven Autoscaling)**: Scale based on Kafka lag, Redis queue depth, custom Prometheus metrics
-
-### Database Sharding Strategy
-
-- **Geo-Based Sharding**: Users partitioned by geographic region (North America, Europe, Asia-Pacific)
-- **Consistent Hashing**: User ID hashed to determine shard assignment
-- **Read Replicas**: 3-5 read replicas per shard to distribute query load
-
-### Event-Driven Asynchronous Processing
-
-- **Kafka Partitioning**: 50+ partitions per topic for parallel consumption
-- **Consumer Groups**: Multiple consumer instances per group for horizontal scaling
-- **Backpressure Handling**: Kafka provides natural buffering during load spikes
-
-**Trade-offs**:
-
-- Cold-start delays (30-60s) when scaling from zero
-- Higher infrastructure complexity with sharding and caching
-- Eventual consistency in cached data (2-second lag on vote counts)
-
-**Success Metrics**:
-
-- Scale from 1K to 240K RPS in <5 minutes
-- Maintain <100ms p99 API latency during scale-up
-- Auto-scale down to baseline within 10 minutes after traffic drops
-
----
-
 ## 4.3 Event-Driven Architecture (Asynchronous, Decoupled, Resilient)
 
 **Principle**: Decouple producers and consumers through event streams. All critical operations are asynchronous to prevent cascading failures.
@@ -289,29 +252,6 @@ The architecture is guided by seven foundational design principles that address 
 - Synchronous request-response patterns create tight coupling and single points of failure
 - Database writes at 240K RPS would saturate any relational database
 - Real-time result aggregation requires parallel event processing
-
-**Implementation Strategy**:
-
-### Kafka as Central Event Bus
-
-- **Vote Submission Topic**: All votes published as events (producer: API layer)
-- **Vote Aggregation Topic**: Processed vote summaries (producer: aggregation service)
-- **Audit Log Topic**: Immutable event stream for compliance
-- **Replication Factor**: 3 (across availability zones for durability)
-
-**Trade-offs**:
-
-- Eventual consistency—vote confirmation may take 500ms to 2 seconds
-- Increased operational complexity (Kafka cluster management)
-- Debugging asynchronous failures is harder than synchronous flows
-
-**Success Metrics**:
-
-- 99.99% of events processed within 2 seconds
-- Zero message loss (exactly-once semantics)
-- Kafka lag <1000 messages during peak load
-
----
 
 ## 4.4 Stateless Compute (Immutable, Ephemeral, Replaceable)
 
@@ -323,40 +263,6 @@ The architecture is guided by seven foundational design principles that address 
 - Server failures with in-memory state cause data loss
 - Rolling updates and auto-scaling require killing instances without warning
 
-**Implementation Strategy**:
-
-### Session State Externalization
-
-- **Redis for Sessions**: All session data stored in distributed Redis cluster
-- **JWT Tokens**: Stateless authentication—server validates signature without DB lookup
-- **Sticky Session Elimination**: Load balancer distributes requests randomly
-
-### Immutable Infrastructure
-
-- **No SSH Access**: Servers are never modified after deployment
-- **Configuration via Environment Variables**: All config injected at container startup
-- **Blue-Green Deployments**: New versions deployed alongside old, traffic switched atomically
-
-### Health Checks & Auto-Recovery
-
-- **Kubernetes Liveness Probes**: Kill and restart unhealthy pods
-- **Readiness Probes**: Remove pods from load balancer if not ready
-- **Pod Disruption Budgets**: Ensure minimum replicas during voluntary disruptions
-
-**Trade-offs**:
-
-- Redis becomes critical dependency (must be highly available)
-- Cannot use in-memory caching—must use distributed cache
-- Slightly higher latency (network hop to Redis for every request)
-
-**Success Metrics**:
-
-- 100% of requests succeed even when 50% of pods are terminated
-- Zero data loss during rolling updates
-- Mean time to recovery (MTTR) <30 seconds
-
----
-
 ## 4.5 Multi-Layer Anti-Abuse Protection (Adaptive, ML-Driven, Zero Trust)
 
 **Principle**: Assume every request is malicious until proven otherwise. Defense mechanisms adapt in real-time to emerging threats.
@@ -366,52 +272,6 @@ The architecture is guided by seven foundational design principles that address 
 - Bots evolve to bypass static rules (CAPTCHA solving, residential proxies)
 - Credential stuffing attacks leverage millions of stolen username/password pairs
 - Distributed attacks from 100K+ IP addresses bypass simple rate limiting
-
-**Implementation Strategy**:
-
-### Static Defenses (Always Active)
-
-- **Rate Limiting**: 10 requests/second per IP, 1 vote/user/election
-- **IP Reputation**: Block known proxy/VPN/Tor exit nodes
-- **Geo-Fencing**: Restrict voting to eligible geographic regions
-- **User-Agent Validation**: Block non-standard or suspicious user agents
-
-### Dynamic Defenses (ML-Powered)
-
-- **Behavioral Analysis**:
-  - Typing speed anomalies (too fast = bot, too slow = automation)
-  - Mouse movement patterns (linear paths = automation)
-  - Session duration (instant submission = bot)
-- **Anomaly Detection Models**:
-  - Train on legitimate user baselines
-  - Flag deviations >3 standard deviations
-  - Real-time scoring with SageMaker inference endpoints
-- **Graph Analysis**:
-  - Detect coordinated voting rings (same IP block, timing patterns)
-  - Identify bot clusters by behavioral similarity
-
-### Adaptive Challenge Escalation
-
-```
-Low Risk: No challenge
-Medium Risk: Cloudflare Turnstile (invisible)
-High Risk: SumSub liveness re-verification
-Critical Risk: Manual review queue
-```
-
-**Trade-offs**:
-
-- False positives frustrate legitimate users
-- ML model training requires large labeled datasets
-- Real-time inference adds latency
-
-**Success Metrics**:
-
-- Block 99.9% of bot traffic without human intervention
-- False positive rate <0.1% (1 in 1000 legitimate users challenged)
-- Detect novel attack patterns within 5 minutes
-
----
 
 ## 4.6 Auditable Data (Immutable, Tamper-Proof, Forensic-Ready)
 
@@ -423,8 +283,6 @@ Critical Risk: Manual review queue
 - Post-incident forensics require complete event reconstruction
 - Public trust depends on transparent, verifiable vote counting
 
----
-
 ## 4.7 Failure as a Normal Condition (Chaos Engineering, Graceful Degradation)
 
 **Principle**: Expect failures at every level. Design systems that degrade gracefully and self-heal automatically.
@@ -434,48 +292,6 @@ Critical Risk: Manual review queue
 - At 240K RPS, component failures are guaranteed (hardware, network, software bugs)
 - Manual intervention is too slow—recovery must be automatic
 - Partial availability is better than complete outage
-
-**Implementation Strategy**:
-
-### Redundancy & Failover
-
-- **Multi-AZ Deployment**: Every component runs in 3+ availability zones
-- **Database Replicas**: Automatic failover to standby within 30 seconds
-- **Kafka Partition Replication**: Replicas across AZs, leader election on failure
-- **Load Balancer Health Checks**: Remove failed instances within 10 seconds
-
-### Circuit Breakers & Timeouts
-
-- **Hystrix Pattern**: Open circuit after 5 consecutive failures
-- **Timeout Budgets**: Fail fast (200ms max per external call)
-- **Bulkhead Isolation**: Separate thread pools for different dependencies
-
-### Graceful Degradation Strategies
-
-```
-Level 1: All systems operational
-Level 2: Real-time results delayed (cache stale data)
-Level 3: Vote submission only (read-only results page)
-Level 4: Queue votes offline (process when system recovers)
-```
-
-### Chaos Engineering Practice
-
-- **Monthly Chaos Days**: Randomly terminate 20% of pods, kill database replicas
-- **Failure Injection**: Simulate network latency, dropped packets, CPU saturation
-- **Game Days**: Simulate election day load + simultaneous failures
-
-**Trade-offs**:
-
-- Over-provisioning increases costs (3x redundancy)
-- Complexity in managing degraded states
-- Risk of automation making wrong decisions
-
-**Success Metrics**:
-
-- 99.99% uptime (52 minutes downtime/year)
-- Automatic recovery from 95% of failures without human intervention
-- Zero complete outages (always serve degraded service)
 
 ---
 
@@ -494,7 +310,7 @@ Level 4: Queue votes offline (process when system recovers)
 
 ![deployment](diagrams/deployment.app.png)
 
-## 5.3 Security & Anti-Bot Strategy (Primary Focus)
+## 5.4 Security & Anti-Bot Strategy (Primary Focus)
 
 ### Layer 1: Network & Edge Security
 
@@ -685,7 +501,7 @@ This allows detection of:
 - One user trying to vote from multiple devices
 - One device trying to impersonate multiple users
 
-## 5.4. Edge to API
+## 5.5 Edge to API
 
 ``` text
 Mobile App (React Native)
@@ -854,7 +670,7 @@ We don't have migration for this architecture since its a new system.
 ---
 
 
-# 8 🗂️ Use Cases
+# 8. 🗂️ Use Cases
 
 1. Users send requests through a global CDN + security edge
 2. Traffic is validated, filtered, rate-limited, and inspected
@@ -931,7 +747,7 @@ The system uses a multi-database strategy:
 
 Each microservice owns its schema, avoiding cross-service queries through event-driven architecture, this alse reduces the need of FKs in database.
 
-## 10.1. Data Integrity & One-Vote Enforcement
+## 10.1 Data Integrity & One-Vote Enforcement
 
 - Globally unique voting token
 - Single-use cryptographic vote key
@@ -1850,13 +1666,13 @@ Mark a survey answer session as completed.
 }
 ```
 
-## 12.3. Notification Service
+## 12.3 Notification Service
 
 
-## 12.4. Producer Service
+## 12.4 Producer Service
 
 
-## 12.5. Consumer Service
+## 12.5 Consumer Service
 
 ---
 
