@@ -1435,7 +1435,7 @@ For effective debugging, all telemetry must be correlated:
 ---
 
 
-# 11.  Core Services Overview
+# 11. Core Services Overview
 
 This document describes the core domain services of the secure voting platform.
 
