@@ -1,9 +1,12 @@
 <mxfile host="65bd71144e" pages="31">
     <diagram name="overview" id="khjMui8SULHRm5ARyRQg">
-        <mxGraphModel dx="196" dy="483" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="2090" dy="1208" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
+                <mxCell id="80" value="" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="356" y="212" width="1033" height="1078" as="geometry"/>
+                </mxCell>
                 <mxCell id="UzYDV7pSfleydXYVI9vg-1" value="" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" parent="1" vertex="1">
                     <mxGeometry x="798.46" y="258" width="44.5" height="82.75" as="geometry"/>
                 </mxCell>
@@ -222,10 +225,10 @@
                 <mxCell id="GboctOuMScWkaC7FZtUt-95" value="Vote Service Consumer" style="aspect=fixed;sketch=0;html=1;dashed=0;whitespace=wrap;verticalLabelPosition=bottom;verticalAlign=top;fillColor=#2875E2;strokeColor=#ffffff;points=[[0.005,0.63,0],[0.1,0.2,0],[0.9,0.2,0],[0.5,0,0],[0.995,0.63,0],[0.72,0.99,0],[0.5,1,0],[0.28,0.99,0]];shape=mxgraph.kubernetes.icon2;prIcon=pod" parent="1" vertex="1">
                     <mxGeometry x="758.46" y="848" width="50" height="48" as="geometry"/>
                 </mxCell>
-                <mxCell id="77" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.67;entryY=0.095;entryDx=0;entryDy=0;entryPerimeter=0;curved=1;" edge="1" parent="1" source="GboctOuMScWkaC7FZtUt-95" target="75">
+                <mxCell id="77" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.67;entryY=0.095;entryDx=0;entryDy=0;entryPerimeter=0;curved=1;" parent="1" source="GboctOuMScWkaC7FZtUt-95" target="75" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="79" value="&lt;font style=&quot;color: rgb(255, 0, 0);&quot;&gt;Sub&lt;/font&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="77">
+                <mxCell id="79" value="&lt;font style=&quot;color: rgb(255, 0, 0);&quot;&gt;Sub&lt;/font&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="77" vertex="1" connectable="0">
                     <mxGeometry x="-0.082" y="19" relative="1" as="geometry">
                         <mxPoint as="offset"/>
                     </mxGeometry>
