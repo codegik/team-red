@@ -1398,6 +1398,7 @@ For effective debugging, all telemetry must be correlated:
 - Sumsub API latency and error rate
 - AWS service health (via CloudWatch)
 
+
 ## 10.10 Observability Infrastructure Sizing
 
 | Component | Sizing Recommendation |
@@ -1433,7 +1434,8 @@ For effective debugging, all telemetry must be correlated:
 
 ---
 
-# 11. Core Services Overview
+
+# 11.  Core Services Overview
 
 This document describes the core domain services of the secure voting platform.
 
@@ -1891,6 +1893,7 @@ Mark a survey answer session as completed.
 ## 4. Consumer Service
 
 ---
+
 
 # 12. 🥞 Technology Stack
 
