@@ -174,18 +174,11 @@ This implies:
 
 ## 2.4 Handle 240K RPS Peak Traffic
 
-This eliminates:
-- Vertical scaling 
-- Centralized bottlenecks 
-- Stateful monoliths
-
 It requires:
 - Load-based autoscaling 
 - Event-driven processing 
 - Front-door traffic absorption 
 - Backpressure handling
-
----
 
 ## 2.5 One Vote per User (Strict Idempotency)
 
@@ -201,8 +194,6 @@ Vote submissions must be:
 - Conflict-safe 
 - Race-condition proof
 
----
-
 ## 2.6 Real-Time Results
 
 This creates challenges in: 
@@ -214,20 +205,23 @@ This creates challenges in:
 
 ---
 
+
 # 3. 🎯 Non-Goals
 
 - On-prem or hybrid operation
 - Manual moderation for fraud detection
 - Single-region deployment
 - Strong coupling between frontend and backend
+- Vertical scaling
+- Centralized bottlenecks
+- Stateful monoliths
 
 ---
+
 
 # 4. 📐 Design Principles
 
 The architecture is guided by seven foundational design principles that address the unique challenges of building a mission-critical, globally distributed voting system. These principles inform every architectural decision, from technology selection to deployment strategies.
-
----
 
 ## 4.1 Security First (Defense in Depth)
 
@@ -238,64 +232,6 @@ The architecture is guided by seven foundational design principles that address 
 - Voting systems are high-value targets for nation-state actors, organized fraud, and automated bot armies
 - A single security failure can compromise election integrity and destroy public trust
 - Attack vectors evolve constantly—security must be layered and adaptive
-
-**Implementation Strategy**:
-
-### Layer 1: Network & Edge Security
-
-- **AWS WAF**: Block common attack patterns (SQL injection, XSS, CSRF)
-- **DDoS Protection**: AWS Shield Advanced for volumetric attack mitigation
-- **Geographic Filtering**: Route53 + CloudFront geo-restrictions to block suspicious regions
-- **Rate Limiting**: Token bucket algorithm at edge to prevent request flooding
-
-### Layer 2: Identity & Authentication
-
-- **Auth0 SSO + MFA**: Multi-factor authentication (SMS, authenticator apps, push notifications)
-- **Liveness Detection**: SumSub facial biometrics to prevent fake accounts and deepfakes
-- **Document Verification**: Government ID validation with fraud risk scoring
-- **Session Binding**: Tokens tied to device fingerprint and IP address
-
-### Layer 3: Device Intelligence
-
-- **FingerprintJS**: Device fingerprinting to detect emulators, VMs, and bot farms
-- **Jailbreak/Root Detection**: Block compromised devices
-- **Behavioral Biometrics**: Analyze touch patterns, typing speed, mouse movements
-- **Challenge-Response**: Cloudflare Turnstile for invisible human verification
-
-### Layer 4: Application Security
-
-- **OAuth2 Bearer Tokens**: Short-lived access tokens (15 min TTL) with secure refresh flows
-- **API Gateway**: AWS API Gateway with request validation and transformation
-- **Input Sanitization**: Strict schema validation on all API requests
-- **HTTPS Everywhere**: TLS 1.3 with certificate pinning on mobile clients
-
-### Layer 5: Data Protection
-
-- **Encryption at Rest**: AES-256 for database, S3, and backups
-- **Encryption in Transit**: TLS 1.3 for all service-to-service communication
-- **Field-Level Encryption**: Sensitive PII encrypted at application layer
-- **Key Rotation**: Automated rotation via AWS KMS with audit trails
-
-### Layer 6: Audit & Monitoring
-
-- **Immutable Logs**: OpenSearch with WORM (Write-Once-Read-Many) indices
-- **Real-Time Anomaly Detection**: Machine learning models flagging suspicious voting patterns
-- **SIEM Integration**: AWS Security Hub aggregating security events
-- **Forensic Readiness**: Complete audit trail for post-incident investigation
-
-**Trade-offs**:
-
-- Increased latency from security checks at each layer
-- Higher infrastructure costs from redundant security systems
-- Potential false positives requiring manual review workflows
-
-**Success Metrics**:
-
-- Zero successful bot votes detected in production
-- <0.01% false positive rate on fraud detection
-- 100% of attacks blocked at edge (no malicious traffic reaches application layer)
-
----
 
 ## 4.2 Scalability by Default (Horizontal, Stateless, Elastic)
 
@@ -543,48 +479,64 @@ Level 4: Queue votes offline (process when system recovers)
 
 ---
 
+
 # 5. 🏗️ Overall Diagrams
 
 ## 5.1 🗂️ Overall architecture
 
 ![overall](diagrams/overall.architecture.png)
 
-## 5.1 🗂️ Solution architecture
+## 5.2 🗂️ Solution architecture
 
 ![solution](diagrams/micro.architecture.png)
 
-## 5.2 🗂️ Deployment
+## 5.3 🗂️ Deployment
 
 ![deployment](diagrams/deployment.app.png)
 
-## 5.3 🗂️ Use Cases
-
-1. Users send requests through a global CDN + security edge
-2. Traffic is validated, filtered, rate-limited, and inspected
-3. Authenticated users submit votes via secure API
-4. Votes are processed asynchronously
-5. Data is stored redundantly and immutably
-6. Real-time updates are published via streaming
-
 ## 5.3 Security & Anti-Bot Strategy (Primary Focus)
 
-### 5.3.1. End-to-End Mobile Flow (React Native + Expo)
+### Layer 1: Network & Edge Security
 
-**Mobile Application Stack**
+- **AWS WAF**: Block common attack patterns (SQL injection, XSS, CSRF)
+- **DDoS Protection**: AWS Shield Advanced for volumetric attack mitigation
+- **Geographic Filtering**: Route53 + CloudFront geo-restrictions to block suspicious regions
+- **Rate Limiting**: Token bucket algorithm at edge to prevent request flooding
 
-- Mobile framework: **React Native + Expo**
-- Authentication: **Auth0**
-- Liveness & Identity Verification: **SumSub**
-- Bot & Device Intelligence: **FingerprintJS**
-- Human Verification: **Cloudflare Turnstile**
-- API Security: **JWT + OAuth2 Tokens**
+### Layer 2: Identity & Authentication
 
-This stack is designed to ensure:
+- **Auth0 SSO + MFA**: Multi-factor authentication (SMS, authenticator apps, push notifications)
+- **Liveness Detection**: SumSub facial biometrics to prevent fake accounts and deepfakes
+- **Document Verification**: Government ID validation with fraud risk scoring
+- **Session Binding**: Tokens tied to device fingerprint and IP address
 
-- Real users only
-- One-person-one-account enforcement
-- Strong resistance against bots, emulators, and automation
-- Secure session handling across all API calls
+### Layer 3: Device Intelligence
+
+- **FingerprintJS**: Device fingerprinting to detect emulators, VMs, and bot farms
+- **Jailbreak/Root Detection**: Block compromised devices
+- **Behavioral Biometrics**: Analyze touch patterns, typing speed, mouse movements
+- **Challenge-Response**: Cloudflare Turnstile for invisible human verification
+
+### Layer 4: Application Security
+
+- **OAuth2 Bearer Tokens**: Short-lived access tokens (15 min TTL) with secure refresh flows
+- **API Gateway**: AWS API Gateway with request validation and transformation
+- **Input Sanitization**: Strict schema validation on all API requests
+- **HTTPS Everywhere**: TLS 1.3 with certificate pinning on mobile clients
+
+### Layer 5: Data Protection
+
+- **Encryption at Rest**: AES-256 for database, S3, and backups
+- **Encryption in Transit**: TLS 1.3 for all service-to-service communication
+- **Field-Level Encryption**: Sensitive PII encrypted at application layer
+- **Key Rotation**: Automated rotation via AWS KMS with audit trails
+
+### Layer 6: Audit & Monitoring
+
+- **Immutable Logs**: OpenSearch with WORM (Write-Once-Read-Many) indices
+- **Real-Time Anomaly Detection**: Machine learning models flagging suspicious voting patterns
+- **SIEM Integration**: AWS Security Hub aggregating security events
+- **Forensic Readiness**: Complete audit trail for post-incident investigation
 
 
 ### 5.3.2. Liveness Detection & Identity Verification with SumSub
@@ -901,8 +853,16 @@ We don't have migration for this architecture since its a new system.
 
 ---
 
+# 8 🗂️ Use Cases
 
-# 8. 🧪 Testing strategy
+1. Users send requests through a global CDN + security edge
+2. Traffic is validated, filtered, rate-limited, and inspected
+3. Authenticated users submit votes via secure API
+4. Votes are processed asynchronously
+5. Data is stored redundantly and immutably
+6. Real-time updates are published via streaming
+
+# 9. 🧪 Testing strategy
 
 ## Frontend Tests
 
@@ -959,7 +919,7 @@ We don't have migration for this architecture since its a new system.
 ---
 
 
-# 9. 💿 Data store settings
+# 10. 💿 Data store settings
 
 ![Database Diagram](diagrams/database-diagram.png)
 
@@ -969,7 +929,7 @@ The system uses a multi-database strategy:
 
 Each microservice owns its schema, avoiding cross-service queries through event-driven architecture, this alse reduces the need of FKs in database.
 
-## 9.1. Data Integrity & One-Vote Enforcement
+## 10.1. Data Integrity & One-Vote Enforcement
 
 - Globally unique voting token
 - Single-use cryptographic vote key
@@ -981,11 +941,12 @@ Database enforces:
 
 ---
 
-# 10. 👀 Observability and Monitoring
+
+# 11. 👀 Observability and Monitoring
 
 A robust observability strategy is critical for a system of this scale and criticality. We adopt the **three pillars of observability**: Metrics, Logs, and Traces and all using Open Source tools.
 
-## 10.1 Stack Overview
+## 11.1 Stack Overview
 
 | Pillar | Tool | Purpose |
 |--------|------|---------|
@@ -997,7 +958,7 @@ A robust observability strategy is critical for a system of this scale and criti
 | Service Mesh Observability | OpenTelemetry | Instrumentation standard |
 
 
-## 10.2 Metrics - Prometheus
+## 11.2 Metrics - Prometheus
 
 Prometheus is the core metrics engine, chosen for its Open Source nature and Kubernetes-native design.
 
@@ -1063,7 +1024,7 @@ For 300M users and high cardinality, consider **Thanos** or **Cortex** for:
 - Downsampling for historical data
 
 
-## 10.3 Visualization - Grafana
+## 11.3 Visualization - Grafana
 
 Grafana serves as the unified observability frontend.
 
@@ -1107,7 +1068,7 @@ Grafana serves as the unified observability frontend.
     - Peak traffic patterns
 
 
-## 10.4 Distributed Tracing - Jaeger
+## 11.4 Distributed Tracing - Jaeger
 
 For a microservices architecture at this scale, distributed tracing is essential to understand request flow and identify bottlenecks.
 
@@ -1182,7 +1143,7 @@ For 240K RPS, full tracing is not feasible. Use adaptive sampling:
 - Head-based sampling with tail-based upgrade for anomalies
 
 
-## 10.5 Log Aggregation - Loki
+## 11.5 Log Aggregation - Loki
 
 Loki provides log aggregation that integrates natively with Grafana and uses the same label model as Prometheus.
 
@@ -1250,7 +1211,7 @@ All services must emit structured JSON logs:
 - DEBUG logs: 3 days (staging only)
 
 
-## 10.6 Alerting - Alertmanager
+## 11.6 Alerting - Alertmanager
 
 Prometheus Alertmanager handles alert routing, deduplication, and notification.
 
@@ -1311,7 +1272,7 @@ groups:
 - Low: Email digest
 
 
-## 10.7 Instrumentation Standard - OpenTelemetry
+## 11.7 Instrumentation Standard - OpenTelemetry
 
 OpenTelemetry (OTel) provides a vendor-neutral instrumentation standard across all services.
 
@@ -1351,7 +1312,7 @@ OpenTelemetry (OTel) provides a vendor-neutral instrumentation standard across a
 - Java: `opentelemetry-java`
 
 
-## 10.8 Correlation and Context Propagation
+## 11.8 Correlation and Context Propagation
 
 For effective debugging, all telemetry must be correlated:
 
@@ -1376,7 +1337,7 @@ For effective debugging, all telemetry must be correlated:
 - Unified view with `trace_id` as the correlation key
 
 
-## 10.9 Observability for Specific Components
+## 11.9 Observability for Specific Components
 
 **WebSocket Connections (Real-time Results):**
 
@@ -1399,7 +1360,7 @@ For effective debugging, all telemetry must be correlated:
 - AWS service health (via CloudWatch)
 
 
-## 10.10 Observability Infrastructure Sizing
+## 11.10 Observability Infrastructure Sizing
 
 | Component | Sizing Recommendation |
 |-----------|----------------------|
@@ -1412,7 +1373,7 @@ For effective debugging, all telemetry must be correlated:
 | OTel Collector | DaemonSet on all nodes |
 
 
-## 10.11 Runbooks and SLOs
+## 11.11 Runbooks and SLOs
 
 **Service Level Objectives:**
 
@@ -1434,11 +1395,12 @@ For effective debugging, all telemetry must be correlated:
 
 ---
 
-# 11. ⚙️ Core Services Overview
+
+# 12. ⚙️ Core Services Overview
 
 This document describes the core domain services of the secure voting platform.
 
-## 11.1 Auth Service
+## 12.1 Auth Service
 
 The Auth Service is the **internal identity authority** of the voting
 platform.
@@ -1449,7 +1411,7 @@ voting domain** and applies business rules.
 It answers one main question: \> "Who is this user inside the voting
 
 
-## 11.2 Vote Service
+## 12.2 Vote Service
 
 ### Management Endpoints
 
@@ -1886,18 +1848,18 @@ Mark a survey answer session as completed.
 }
 ```
 
-## 11.3. Notification Service
+## 12.3. Notification Service
 
 
-## 11.4. Producer Service
+## 12.4. Producer Service
 
 
-## 11.5. Consumer Service
+## 12.5. Consumer Service
 
 ---
 
 
-# 12. 🥞 Technology Stack
+# 13. 🥞 Technology Stack
 
 ## Services & Infrastructure
 - Architecture: microservices, stateless compute
