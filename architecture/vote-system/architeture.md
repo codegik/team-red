@@ -1434,12 +1434,11 @@ For effective debugging, all telemetry must be correlated:
 
 ---
 
-
-# 11. Core Services Overview
+# 11. ⚙️ Core Services Overview
 
 This document describes the core domain services of the secure voting platform.
 
-## 10.1 Auth Service
+## 11.1 Auth Service
 
 The Auth Service is the **internal identity authority** of the voting
 platform.
@@ -1449,7 +1448,8 @@ voting domain** and applies business rules.
 
 It answers one main question: \> "Who is this user inside the voting
 
-## 10.2 Vote Service
+
+## 11.2 Vote Service
 
 ### Management Endpoints
 
@@ -1886,11 +1886,13 @@ Mark a survey answer session as completed.
 }
 ```
 
-## 2. Notification Service
+## 11.3. Notification Service
 
-## 3. Producer Service
 
-## 4. Consumer Service
+## 11.4. Producer Service
+
+
+## 11.5. Consumer Service
 
 ---
 
