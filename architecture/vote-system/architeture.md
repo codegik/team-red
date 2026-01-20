@@ -129,11 +129,16 @@ We need to design and build a globally distributed, mission-critical real-time v
 
 ## 2.1 Never Lose Data
 
-Voting systems are mission-critical. Any data loss leads to: - Legal
-risks - Loss of public trust - Invalid election outcomes
+Voting systems are mission-critical. Any data loss leads to: 
+- Legal risks 
+- Loss of public trust 
+- Invalid election outcomes
 
-This requires: - Multi-region replication - Strong durability
-guarantees - Strict write acknowledgements - Immutable audit logs
+This requires: 
+- Multi-region replication 
+- Strong durability guarantees
+- Strict write acknowledgements 
+- Immutable audit logs
 
 ---
 
@@ -150,42 +155,66 @@ prevent:
 - API scraping
 - DDoS attacks
 
-Security must be implemented in multiple layers (defense in depth): -
-Network - Identity - Device - Behavior - Application - Data
+Security must be implemented in multiple layers (defense in depth): 
+- Network
+- Identity 
+- Device 
+- Behavior 
+- Application 
+- Data
 
 ---
 
 ## 2.3 Handle 300M Users
 
-This implies: - Massive horizontal scalability - Stateless
-architectures - Global CDNs - Partitioned databases - Multi-region
-deployment
+This implies: 
+- Massive horizontal scalability 
+- Stateless architectures 
+- Global CDNs 
+- Partitioned databases 
+- Multi-region deployment
 
 ---
 
 ## 2.4 Handle 240K RPS Peak Traffic
 
-This eliminates: - Vertical scaling - Centralized bottlenecks - Stateful
-monoliths
+This eliminates:
+- Vertical scaling 
+- Centralized bottlenecks 
+- Stateful monoliths
 
-It requires: - Load-based autoscaling - Event-driven processing -
-Front-door traffic absorption - Backpressure handling
+It requires:
+- Load-based autoscaling 
+- Event-driven processing 
+- Front-door traffic absorption 
+- Backpressure handling
 
 ---
 
 ## 2.5 One Vote per User (Strict Idempotency)
 
-This is a data + security + consistency problem: - Each identity must
-be: - Verified - Unique - Non-replayable - Vote submissions must be: -
-Idempotent - Conflict-safe - Race-condition proof
+This is a data + security + consistency problem: 
+
+Each identity must be: 
+- Verified 
+- Unique 
+- Non-replayable 
+
+Vote submissions must be: 
+- Idempotent 
+- Conflict-safe 
+- Race-condition proof
 
 ---
 
 ## 2.6 Real-Time Results
 
-This creates challenges in: - Data streaming - Cache invalidation -
-Broadcast consistency - Fan-out architectures - WebSocket / pub-sub
-scalability
+This creates challenges in: 
+- Data streaming 
+- Cache invalidation 
+- Broadcast consistency 
+- Fan-out architectures 
+- WebSocket / pub-sub scalability
 
 ---
 
@@ -541,13 +570,11 @@ Level 4: Queue votes offline (process when system recovers)
 5. Data is stored redundantly and immutably
 6. Real-time updates are published via streaming
 
----
+## 5.3 Security & Anti-Bot Strategy (Primary Focus)
 
-# 6. Security & Anti-Bot Strategy (Primary Focus)
+### 5.3.1. End-to-End Mobile Flow (React Native + Expo)
 
-## 6.1. End-to-End Mobile Flow (React Native + Expo)
-
-### 6.1.1 Mobile Application Stack
+**Mobile Application Stack**
 
 - Mobile framework: **React Native + Expo**
 - Authentication: **Auth0**
@@ -563,9 +590,8 @@ This stack is designed to ensure:
 - Strong resistance against bots, emulators, and automation
 - Secure session handling across all API calls
 
----
 
-### 6.1.2 Liveness Detection & Identity Verification with SumSub
+### 5.3.2. Liveness Detection & Identity Verification with SumSub
 
 SumSub is used for:
 
@@ -580,13 +606,13 @@ Chosen for:
 - Strong global compliance (KYC/AML)
 - Support for multiple countries
 - High-quality liveness detection against deepfake, photos, and
-    replays
+  replays
 
 SumSub React Native SDK integration:
 
 Documentation: <https://docs.sumsub.com/docs/react-native-module>
 
-### Mobile Flow with SumSub
+**Mobile Flow with SumSub**
 
 1. User installs and opens the React Native app.
 2. During first access or registration:
@@ -606,9 +632,8 @@ Documentation: <https://docs.sumsub.com/docs/react-native-module>
 
 No raw biometric data is stored directly in the voting backend.
 
----
 
-### 6.1.3 Secure Authentication with Auth0 (SSO + MFA)
+### 5.3.3. Secure Authentication with Auth0 (SSO + MFA)
 
 Auth0 is used for:
 
@@ -620,7 +645,7 @@ Auth0 is used for:
 
 Documentation: <https://auth0.com/docs/quickstart/native/react-native>
 
-### Authentication Flow
+**Authentication Flow**
 
 1. User taps "Login".
 2. React Native app redirects to Auth0 universal login.
@@ -633,27 +658,25 @@ Documentation: <https://auth0.com/docs/quickstart/native/react-native>
     - ID Token
     - Refresh Token (secure storage only)
 
----
 
-### 6.1.4 Bot Detection with Auth0 Challenge + Turnstile
+### 5.3.4. Bot Detection with Auth0 Challenge + Turnstile
 
 To prevent credential stuffing, brute-force, and automated accounts:
 
 - Auth0 Challenges are applied during:
-  - Login
-  - Registration
-  - Password reset
+    - Login
+    - Registration
+    - Password reset
 - Cloudflare Turnstile is used as:
-  - Invisible human challenge
-  - CAPTCHA replacement
-  - Bot traffic filter for mobile and web
+    - Invisible human challenge
+    - CAPTCHA replacement
+    - Bot traffic filter for mobile and web
 
 The Turnstile token is attached to authentication requests and validated
 by the backend before granting access.
 
----
 
-### 6.1.5 Secure API Requests with Tokens
+### 5.3.5. Secure API Requests with Tokens
 
 All API requests use:
 
@@ -661,9 +684,9 @@ All API requests use:
 - Short TTL (e.g., 15 minutes)
 - Secure refresh flow
 - Token binding to:
-  - Device fingerprint
-  - Session
-  - Risk score
+    - Device fingerprint
+    - Session
+    - Risk score
 
 Example:
 
@@ -679,23 +702,22 @@ All backend services:
 - Check device consistency
 - Enforce authorization scope
 
----
 
-### 6.1.6 Device Fingerprinting with FingerprintJS
+### 5.3.6. Device Fingerprinting with FingerprintJS
 
 FingerprintJS is used to:
 
 - Collect passive device signals:
-  - OS
-  - Browser/Runtime
-  - Hardware entropy
-  - Emulator detection
+    - OS
+    - Browser/Runtime
+    - Hardware entropy
+    - Emulator detection
 - Generate a stable device ID
 - Detect:
-  - Multi-account abuse
-  - Bot emulators
-  - Device cloning
-  - Session hijacking
+    - Multi-account abuse
+    - Bot emulators
+    - Device cloning
+    - Session hijacking
 
 How it is used:
 
@@ -715,91 +737,7 @@ This allows detection of:
 - One user trying to vote from multiple devices
 - One device trying to impersonate multiple users
 
----
-
-# 6.2. Tradeoffs Analysis of All Security Tools
-
-## 6.2.1 Auth0
-
-Pros: - Enterprise-grade authentication - Built-in MFA - Secure token
-lifecycle - SSO support - High availability
-
-Cons: - Expensive at large scale - Vendor lock-in - Limited
-flexibility for custom flows
-
-------------------------------------------------------------------------
-
-## 6.2.2 SumSub
-
-Pros: - Strong biometric antifraud - Global KYC compliance -
-High-quality liveness detection - Advanced risk scoring
-
-Cons: - High user friction - Sensitive biometric data handling - High per-verification cost - Not always legally permitted for voting
-
-------------------------------------------------------------------------
-
-## 6.2.3 Cloudflare Turnstile
-
-Pros: - Invisible challenge - Better UX than CAPTCHA - Strong privacy
-guarantees - Blocks simple automation
-
-Cons: - Not sufficient alone against advanced bots - External
-dependency - Needs backend verification
-
-------------------------------------------------------------------------
-
-## 6.2.4 FingerprintJS
-
-Pros: - Passive and invisible - Emulator and device cloning
-detection - Excellent multi-account detection signal
-
-Cons: - Fingerprints can be spoofed by advanced attackers - Privacy
-and compliance concerns - Device replacement causes identity changes
-
-------------------------------------------------------------------------
-
-## 6.3.5 AWS CloudFront
-
-Pros: - Global CDN - Massive traffic absorption - Native integration
-with AWS security - Edge-level DDoS protection
-
-Cons: - Pricing complexity - Cache invalidation cost - Less flexible
-than software-based proxies
-
-------------------------------------------------------------------------
-
-## 6.2.6 AWS WAF
-
-Pros: - Managed OWASP rules - Tight AWS integration - Native
-CloudFront support - Bot Control included
-
- Cons: - Limited advanced behavioral fraud detection - Requires tuning
-to avoid false positives
-
-------------------------------------------------------------------------
-
-## 6.2.7 AWS Global Accelerator
-
-Pros: - Very low global latency - Consistent static IPs -
-Multi-region failover
-
-Cons: - Additional cost - More complex routing model
-
-------------------------------------------------------------------------
-
-## 6.2.8 API Gateway
-
- Pros: - Built-in rate limiting - Strong security posture - Native JWT
-validation
-
- Cons: - Cost at very high RPS - Harder to debug than direct ALB
-setups
-
-------------------------------------------------------------------------
-
-# 7. Architecture Overview (Edge to API)
-
-## 7.1 Global Request Flow
+## 5.4. Edge to API
 
 ``` text
 Mobile App (React Native)
@@ -821,32 +759,29 @@ API Gateway (Rate Limited)
 Microservices (Auth, Voting, Fraud)
 ```
 
----
+### 5.4.1. CloudFront + AWS WAF Responsibilities
 
-## 7.2 CloudFront + AWS WAF Responsibilities
-
-### CloudFront
+**CloudFront**
 
 - Global Anycast Edge
 - TLS Termination
 - Static caching
 - Initial traffic absorption for 300M users
 
-### AWS WAF
+**AWS WAF**
 
 - IP-based rate limits
 - Token-based rate limits
 - Header-based rate limits
 - Protection against:
-  - SQL Injection
-  - XSS
-  - CSRF
-  - API Abuse
+    - SQL Injection
+    - XSS
+    - CSRF
+    - API Abuse
 - Integrated Bot Control
 
----
 
-## 7.3 Global Accelerator & Backbone Routing
+### 5.4.2. Global Accelerator & Backbone Routing
 
 All traffic between edge and API uses:
 
@@ -855,30 +790,120 @@ All traffic between edge and API uses:
 - Low-latency backbone
 - Automatic regional failover
 
----
 
-## 7.4 API Gateway Security Model
+### 5.4.3. API Gateway Security Model
 
 The API Gateway enforces:
 
 - Rate limits per:
-  - API Key
-  - User Token
-  - Device ID
+    - API Key
+    - User Token
+    - Device ID
 - Burst protection
 - Token verification
 - Request signing enforcement
 - Request schema validation
 
+# 6. 🧭 Trade-offs
+
+TODO: Please complete the trade-offs analysis for the security tools used in this architecture. It must follow the table format below:
+
+[ ] Cireneu, need to convert the Security Tools section into trade-offs table format.
+[ ] Pedro
+[ ] Vitor
+[ ] Gabriel
+[ ] Deivid
+[ ] Lima
+[ ] Felipe
+[ ] Kilpp
+
+## Sample of trade-off: Microservices vs Monolith
+
+| **Aspect**               | **Monolith**                                          | **Microservices**                                                           | **Trade-off / Notes**                                                                                                                                                |
+|--------------------------|-------------------------------------------------------|-----------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Complexity**           | Lower – single codebase, simpler to develop initially | Higher – many services, distributed system challenges                       | Monolith is easier to start with; microservices require infrastructure for service coordination, deployment, and monitoring                                          |
+
+
+
+## 6.1. Security Tools
+
+### Auth0
+
+Pros: - Enterprise-grade authentication - Built-in MFA - Secure token
+lifecycle - SSO support - High availability
+
+Cons: - Expensive at large scale - Vendor lock-in - Limited
+flexibility for custom flows
+
+### SumSub
+
+Pros: - Strong biometric antifraud - Global KYC compliance -
+High-quality liveness detection - Advanced risk scoring
+
+Cons: - High user friction - Sensitive biometric data handling - High per-verification cost - Not always legally permitted for voting
+
+
+### Cloudflare Turnstile
+
+Pros: - Invisible challenge - Better UX than CAPTCHA - Strong privacy
+guarantees - Blocks simple automation
+
+Cons: - Not sufficient alone against advanced bots - External
+dependency - Needs backend verification
+
+
+### FingerprintJS
+
+Pros: - Passive and invisible - Emulator and device cloning
+detection - Excellent multi-account detection signal
+
+Cons: - Fingerprints can be spoofed by advanced attackers - Privacy
+and compliance concerns - Device replacement causes identity changes
+
+
+### AWS CloudFront
+
+Pros: - Global CDN - Massive traffic absorption - Native integration
+with AWS security - Edge-level DDoS protection
+
+Cons: - Pricing complexity - Cache invalidation cost - Less flexible
+than software-based proxies
+
+
+### AWS WAF
+
+Pros: - Managed OWASP rules - Tight AWS integration - Native
+CloudFront support - Bot Control included
+
+Cons: - Limited advanced behavioral fraud detection - Requires tuning
+to avoid false positives
+
+
+### AWS Global Accelerator
+
+Pros: - Very low global latency - Consistent static IPs -
+Multi-region failover
+
+Cons: - Additional cost - More complex routing model
+
+
+### API Gateway
+
+Pros: - Built-in rate limiting - Strong security posture - Native JWT
+validation
+
+Cons: - Cost at very high RPS - Harder to debug than direct ALB
+setups
+
 ---
 
-# 8. 💾 Migrations
+# 7. 💾 Migrations
 
 We don't have migration for this architecture since its a new system.
 
-------------------------------------------------------------------------
+---
 
-# 9. 🧪 Testing strategy
+# 8. 🧪 Testing strategy
 
 ## Frontend Tests
 
@@ -932,9 +957,9 @@ We don't have migration for this architecture since its a new system.
 - Focused on happy and unhappy paths
 - Minimizing the usage of mocks
 
-------------------------------------------------------------------------
+---
 
-## 10. Data store settings
+# 9. 💿 Data store settings
 
 ![Database Diagram](diagrams/database-diagram.png)
 
@@ -944,151 +969,17 @@ The system uses a multi-database strategy:
 
 Each microservice owns its schema, avoiding cross-service queries through event-driven architecture, this alse reduces the need of FKs in database.
 
-------------------------------------------------------------------------
-
-## 5.4.2 Cloudflare Turnstile
-
-Pros: - Invisible challenge - Better UX than CAPTCHA - Strong privacy
-guarantees - Blocks simple automation
-
-Cons: - Not sufficient alone against advanced bots - External
-dependency - Needs backend verification
-
-------------------------------------------------------------------------
-
-## 5.4.3 FingerprintJS
-
-Pros: - Passive and invisible - Emulator and device cloning
-detection - Excellent multi-account detection signal
-
-Cons: - Fingerprints can be spoofed by advanced attackers - Privacy
-and compliance concerns - Device replacement causes identity changes
-
-------------------------------------------------------------------------
-
-## 5.4.4 AWS CloudFront
-
-Pros: - Global CDN - Massive traffic absorption - Native integration
-with AWS security - Edge-level DDoS protection
-
-Cons: - Pricing complexity - Cache invalidation cost - Less flexible
-than software-based proxies
-
-------------------------------------------------------------------------
-
-## 5.4.5 AWS WAF
-
-Pros: - Managed OWASP rules - Tight AWS integration - Native
-CloudFront support - Bot Control included
-
- Cons: - Limited advanced behavioral fraud detection - Requires tuning
-to avoid false positives
-
-------------------------------------------------------------------------
-
-## 5.4.6 AWS Global Accelerator
-
-Pros: - Very low global latency - Consistent static IPs -
-Multi-region failover
-
-Cons: - Additional cost - More complex routing model
-
-------------------------------------------------------------------------
-
-## 5.4.7 API Gateway
-
- Pros: - Built-in rate limiting - Strong security posture - Native JWT
-validation
-
- Cons: - Cost at very high RPS - Harder to debug than direct ALB
-setups
-
-------------------------------------------------------------------------
-
-# 6. 💾 Migrations
-
-We don't have migration for this architecture since its a new system.
-
-------------------------------------------------------------------------
-
-# 7. 🧪 Testing strategy
-
-## Frontend Tests
-
-- ReactJS component rendering tests with focus on performance metrics.
-- Client-side state management tests.
-- WebSocket client implementation tests.
-
-## Contract tests
-
-- Test API contracts between decomposed microservices.
-- Verify WebSocket message formats and protocols.
-
-## Integration tests
-
-- Try to cover most of the scenarios.
-- Test WebSocket real-time communication flows.
-- Run in isolated environments before production deployment.
-
-## Infra tests
-
-- Validate Global Accelerator routing behavior.
-
-## Performance tests
-
-- Use K6 to simulate the user behavior and check the system's performance.
-- Measure database query performance under load
-- Measure UI rendering time across device types
-- Benchmark WebSocket vs HTTP performance in real usage scenarios
-- Track CDN cache hit/miss ratios
-- Execute in staging environment with production-like conditions
-
-## Chaos tests
-
-- Simulate AWS region failures to test Global Accelerator failover
-- Test WebSocket reconnection strategies during network disruptions
-- Inject latency between services to identify performance bottlenecks
-- Execute in isolated production environment during low-traffic periods
-
-## Mobile testing
-
-- Unit Android: ViewModel/repository with JUnit.
-- Unit iOS: XCTest with async/await; mocks per protocol.
-- UI Android: Espresso for flows (login, search, dojo).
-- UI iOS: XCUITest with LaunchArguments for mocks.
-- Network/Contract: MockWebServer (Android) / URLProtocol stub (iOS); Pact consumer tests for contracts with the backend.
-- Performance: Cold start and WS connection times measured in CI (staging).
-- Accessibility: Basic TalkBack/VoiceOver per critical screen.
-
-------------------------------------------------------------------------
-
-## 11. Data Integrity & One-Vote Enforcement
+## 9.1. Data Integrity & One-Vote Enforcement
 
 - Globally unique voting token
 - Single-use cryptographic vote key
 
-Database enforces: - Strong uniqueness constraints - Atomic conditional
-writes - Conflict detection
+Database enforces: 
+- Strong uniqueness constraints 
+- Atomic conditional writes 
+- Conflict detection
 
 ---
-
-# 12. Resilience & Fault Tolerance
-
-- Multi-AZ write replication
-- Event queues for vote ingestion
-- Retry with backoff
-- Dead-letter queues
-- Immutable audit log streams
-
-## 10. Real-Time Result Distribution
-
-=======
-
-# 13. Real-Time Result Distribution
-
-- Real-time aggregation pipelines
-- WebSocket / streaming consumers
-- Live dashboards
 
 ### 9.1 Observability and Monitoring
 
@@ -1562,28 +1453,17 @@ voting platform:
 - **Vote Service**
 - **Fraud Service**
 
-These services work together with external providers: - **Auth0**
-(authentication) - **Sumsub** (biometric identity & liveness) - **Edge
-Security / WAF** (Cloudflare or equivalent)
-
-The goal is to ensure: - Strong identity verification - One person = one
-vote - Resilience against bots and organized fraud - Full auditability
-
----
-
 ## 10.1 Auth Service
 
-### 10.1.1 Purpose
-
 The Auth Service is the **internal identity authority** of the voting
-platform.\
+platform.
+
 It does NOT replace Auth0 or Sumsub. Instead, it **connects them to the
 voting domain** and applies business rules.
 
 It answers one main question: \> "Who is this user inside the voting
 
 ## 10.2 Vote Service
-
 
 ### Management Endpoints
 
@@ -1604,11 +1484,8 @@ It answers one main question: \> "Who is this user inside the voting
 | `POST` | `/v1/surveys/:id/answers`                  | Submit an answer        |
 | `PUT`  | `/v1/surveys/:id/answers/:answerId/finish` | Complete survey session |
 
----
 
 ### Key Endpoints
-
-### Management
 
 #### Create Survey
 
@@ -1675,8 +1552,6 @@ It answers one main question: \> "Who is this user inside the voting
     ]
 }
 ```
-
----
 
 #### Update Survey
 
@@ -1805,8 +1680,6 @@ You can update the survey title, add/update/remove questions and their options a
 }
 ```
 
----
-
 #### Publish Survey
 
 `PUT` `/v1/internal/surveys/:id/publish`
@@ -1823,8 +1696,6 @@ Publish a survey making it available for public responses. Sets the startDate to
   "finishDate": null
 }
 ```
-
----
 
 #### Finish Survey
 
@@ -1843,8 +1714,6 @@ Close a survey, preventing new responses. Sets the finishDate to current timesta
 }
 ```
 
----
-
 #### Delete Survey
 
 `DELETE` `/v1/internal/surveys/:id`
@@ -1853,7 +1722,6 @@ Close a survey, preventing new responses. Sets the finishDate to current timesta
 
 `204 No Content`
 
----
 
 #### Get Survey Results
 
@@ -1916,10 +1784,6 @@ Close a survey, preventing new responses. Sets the finishDate to current timesta
 }
 ```
 
----
-
-### Public
-
 #### Get Survey Details
 
 `GET` `/v1/surveys/:id`
@@ -1959,8 +1823,6 @@ Get public survey details including all questions and options.
   ]
 }
 ```
-
----
 
 #### Submit Answer
 
@@ -2021,8 +1883,6 @@ Submit an answer to a question. On the first answer submission, a SurveyAnswer i
 }
 ```
 
----
-
 #### Finish Survey Session
 
 `PUT` `/v1/surveys/:id/answers/:answerId/finish`
@@ -2040,31 +1900,15 @@ Mark a survey answer session as completed.
 }
 ```
 
----
-
-## 10.5 Interaction Summary
-
-  Service         Talks To        Purpose
-  --------------- --------------- ---------------------------------------
-  Auth Service    Auth0           Login & token validation
-  Auth Service    Sumsub          Identity & biometric verification
-  Auth Service    Fraud Service   Signup risk analysis
-  Vote Service    Auth Service    Eligibility validation
-  Vote Service    Fraud Service   Vote risk analysis
-  Fraud Service   All             Receives behavioral events
-  Admin Panel     All             Oversight, investigation, enforcement
-
----
-
 ## 2. Notification Service
 
 ## 3. Producer Service
 
 ## 4. Consumer Service
 
-## 11. Technology Stack
+# 11. 🥞 Technology Stack
 
-### Services & Infrastructure
+## Services & Infrastructure
 - Architecture: microservices, stateless compute
 - Orchestration: Kubernetes (HPA, KEDA)
 - Containers: Docker (immutable images)
@@ -2076,35 +1920,35 @@ Mark a survey answer session as completed.
 - Authentication / Identity: Auth0, JWT
 - Logs / Backup storage: S3 (retention and WORM for audit)
 
-### Frontend / Mobile
+## Frontend / Mobile
 - Web: ReactJS
 - Mobile: React Native + Expo
 - Human verification / anti-bot: Cloudflare Turnstile
 - Device intelligence: FingerprintJS
 - Liveness / KYC: SumSub
 
-### Observability
+## Observability
 - Metrics: Prometheus (federation / Thanos or Cortex optional)
 - Visualization: Grafana
 - Tracing: Jaeger (via OpenTelemetry)
 - Logs: Loki
 - Instrumentation: OpenTelemetry Collector / SDKs
 
-### Testing & Quality
+## Testing & Quality
 - Performance: k6 (load and smoke tests)
 - Unit / Integration: JUnit (mobile and services), integration tests with testcontainers
 - Mobile UI / E2E: Espresso (Android), XCUITest (iOS)
 - Mobile network / contract: MockWebServer (Android), URLProtocol stub (iOS)
 - Chaos / Resilience: failure injection in controlled environments (simulate AZ/region, latency, etc.)
 
-### Quick Rationale
+## Quick Rationale
 - Kubernetes + containers enable automatic horizontal scalability and immutable deployments.
 - Kafka decouples ingestion and aggregation, providing resilience and high throughput.
 - PostgreSQL RDS Multi‑AZ ensures ACID for votes; Redis externalizes session state to keep compute stateless.
 - Observability (Prometheus/Grafana/Jaeger/Loki + OTel) provides correlation between metrics, traces and logs for incident response and audit.
 - Testing tools cover performance, integration, contracts and resilience essential for a large-scale system.
 
-### Operational Notes
+## Operational Notes
 - CI/CD should run linters, unit tests, integration tests (with testcontainers), contract tests and k6 smoke tests.
 - Staging environments instrumented with Prometheus/Grafana/OTel for correlation of load tests and anomaly detection.
 - Plan runbooks and playbooks for DB failover, Kafka recovery and response to attacks blocked by the WAF.
