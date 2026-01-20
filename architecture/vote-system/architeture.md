@@ -981,11 +981,11 @@ Database enforces:
 
 ---
 
-### 9.1 Observability and Monitoring
+# 10. 👀 Observability and Monitoring
 
 A robust observability strategy is critical for a system of this scale and criticality. We adopt the **three pillars of observability**: Metrics, Logs, and Traces and all using Open Source tools.
 
-#### 9.1.1 Observability Stack Overview
+## 10.1 Stack Overview
 
 | Pillar | Tool | Purpose |
 |--------|------|---------|
@@ -996,9 +996,8 @@ A robust observability strategy is critical for a system of this scale and criti
 | Alerting | Alertmanager | Alert routing and notification |
 | Service Mesh Observability | OpenTelemetry | Instrumentation standard |
 
----
 
-### 9.1.2 Metrics - Prometheus
+## 10.2 Metrics - Prometheus
 
 Prometheus is the core metrics engine, chosen for its Open Source nature and Kubernetes-native design.
 
@@ -1063,9 +1062,8 @@ For 300M users and high cardinality, consider **Thanos** or **Cortex** for:
 - Global query view across regions
 - Downsampling for historical data
 
----
 
-### 9.1.3 Visualization - Grafana
+## 10.3 Visualization - Grafana
 
 Grafana serves as the unified observability frontend.
 
@@ -1108,9 +1106,8 @@ Grafana serves as the unified observability frontend.
     - User registration funnel
     - Peak traffic patterns
 
----
 
-### 9.1.4 Distributed Tracing - Jaeger
+## 10.4 Distributed Tracing - Jaeger
 
 For a microservices architecture at this scale, distributed tracing is essential to understand request flow and identify bottlenecks.
 
@@ -1184,9 +1181,8 @@ For 240K RPS, full tracing is not feasible. Use adaptive sampling:
 - 100% sampling for fraud-flagged requests
 - Head-based sampling with tail-based upgrade for anomalies
 
----
 
-### 9.1.5 Log Aggregation - Loki
+## 10.5 Log Aggregation - Loki
 
 Loki provides log aggregation that integrates natively with Grafana and uses the same label model as Prometheus.
 
@@ -1253,9 +1249,8 @@ All services must emit structured JSON logs:
 - INFO logs: 14 days
 - DEBUG logs: 3 days (staging only)
 
----
 
-### 9.1.6 Alerting - Alertmanager
+## 10.6 Alerting - Alertmanager
 
 Prometheus Alertmanager handles alert routing, deduplication, and notification.
 
@@ -1315,9 +1310,8 @@ groups:
 - Medium: Slack
 - Low: Email digest
 
----
 
-### 9.1.7 Instrumentation Standard - OpenTelemetry
+## 10.7 Instrumentation Standard - OpenTelemetry
 
 OpenTelemetry (OTel) provides a vendor-neutral instrumentation standard across all services.
 
@@ -1356,9 +1350,8 @@ OpenTelemetry (OTel) provides a vendor-neutral instrumentation standard across a
 - Python: `opentelemetry-sdk`
 - Java: `opentelemetry-java`
 
----
 
-### 9.1.8 Correlation and Context Propagation
+## 10.8 Correlation and Context Propagation
 
 For effective debugging, all telemetry must be correlated:
 
@@ -1382,9 +1375,8 @@ For effective debugging, all telemetry must be correlated:
 - Click on trace → Jump to related logs
 - Unified view with `trace_id` as the correlation key
 
----
 
-### 9.1.9 Observability for Specific Components
+## 10.9 Observability for Specific Components
 
 **WebSocket Connections (Real-time Results):**
 
@@ -1406,9 +1398,7 @@ For effective debugging, all telemetry must be correlated:
 - Sumsub API latency and error rate
 - AWS service health (via CloudWatch)
 
----
-
-### 9.1.10 Observability Infrastructure Sizing
+## 10.10 Observability Infrastructure Sizing
 
 | Component | Sizing Recommendation |
 |-----------|----------------------|
@@ -1420,9 +1410,8 @@ For effective debugging, all telemetry must be correlated:
 | Grafana | 2 replicas behind LB, PostgreSQL backend |
 | OTel Collector | DaemonSet on all nodes |
 
----
 
-### 9.1.11 Runbooks and SLOs
+## 10.11 Runbooks and SLOs
 
 **Service Level Objectives:**
 
@@ -1442,9 +1431,9 @@ For effective debugging, all telemetry must be correlated:
 - DDoS attack response
 - Regional failover procedure
 
-------------------------------------------------------------------------
+---
 
-# 10. Core Services Overview
+# 11. Core Services Overview
 
 This document describes the core domain services of the secure voting platform.
 
@@ -1903,7 +1892,7 @@ Mark a survey answer session as completed.
 
 ---
 
-# 11. 🥞 Technology Stack
+# 12. 🥞 Technology Stack
 
 ## Services & Infrastructure
 - Architecture: microservices, stateless compute
