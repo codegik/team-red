@@ -354,8 +354,7 @@ The architecture is guided by seven foundational design principles that address 
 - **SIEM Integration**: AWS Security Hub aggregating security events
 - **Forensic Readiness**: Complete audit trail for post-incident investigation
 
-
-### 5.3.2. Liveness Detection & Identity Verification with SumSub
+### Liveness Detection & Identity Verification with SumSub
 
 SumSub is used for:
 
@@ -396,8 +395,7 @@ Documentation: <https://docs.sumsub.com/docs/react-native-module>
 
 No raw biometric data is stored directly in the voting backend.
 
-
-### 5.3.3. Secure Authentication with Auth0 (SSO + MFA)
+### Secure Authentication with Auth0 (SSO + MFA)
 
 Auth0 is used for:
 
@@ -422,8 +420,7 @@ Documentation: <https://auth0.com/docs/quickstart/native/react-native>
     - ID Token
     - Refresh Token (secure storage only)
 
-
-### 5.3.4. Bot Detection with Auth0 Challenge + Turnstile
+### Bot Detection with Auth0 Challenge + Turnstile
 
 To prevent credential stuffing, brute-force, and automated accounts:
 
@@ -439,8 +436,7 @@ To prevent credential stuffing, brute-force, and automated accounts:
 The Turnstile token is attached to authentication requests and validated
 by the backend before granting access.
 
-
-### 5.3.5. Secure API Requests with Tokens
+### Secure API Requests with Tokens
 
 All API requests use:
 
@@ -466,8 +462,7 @@ All backend services:
 - Check device consistency
 - Enforce authorization scope
 
-
-### 5.3.6. Device Fingerprinting with FingerprintJS
+### Device Fingerprinting with FingerprintJS
 
 FingerprintJS is used to:
 
