@@ -853,6 +853,7 @@ We don't have migration for this architecture since its a new system.
 
 ---
 
+
 # 8 🗂️ Use Cases
 
 1. Users send requests through a global CDN + security edge
@@ -861,6 +862,7 @@ We don't have migration for this architecture since its a new system.
 4. Votes are processed asynchronously
 5. Data is stored redundantly and immutably
 6. Real-time updates are published via streaming
+
 
 # 9. 🧪 Testing strategy
 
@@ -1396,7 +1398,7 @@ For effective debugging, all telemetry must be correlated:
 ---
 
 
-# 12. ⚙️ Core Services Overview
+# 12. ⚙️ Core Services
 
 This document describes the core domain services of the secure voting platform.
 
