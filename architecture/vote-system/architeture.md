@@ -1446,12 +1446,7 @@ For effective debugging, all telemetry must be correlated:
 
 # 10. Core Services Overview
 
-This document describes the three core domain services of the secure
-voting platform:
-
-- **Auth Service**
-- **Vote Service**
-- **Fraud Service**
+This document describes the core domain services of the secure voting platform.
 
 ## 10.1 Auth Service
 
@@ -1905,6 +1900,8 @@ Mark a survey answer session as completed.
 ## 3. Producer Service
 
 ## 4. Consumer Service
+
+---
 
 # 11. 🥞 Technology Stack
 
