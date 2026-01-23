@@ -740,6 +740,40 @@ We don't have migration for this architecture since its a new system.
 5. Data is stored redundantly and immutably
 6. Real-time updates are published via streaming
 
+Overall User Use Cases: 
+![img_6.png](imgs/img_6.png)
+
+- Registration
+
+![img_9.png](imgs/img_9.png)
+
+- Login
+
+![img_10.png](imgs/img_10.png)
+
+- Deleting Account
+
+![img_8.png](imgs/img_8.png)
+
+- Recover Password
+
+![img_11.png](imgs/img_11.png)
+
+- User voting
+
+![img_12.png](imgs/img_12.png)
+
+- Filter by region
+
+![img_13.png](imgs/img_13.png)
+
+- Filter by Option
+
+![img_14.png](imgs/img_14.png)
+
+- Export Results
+
+![img_15.png](imgs/img_15.png)
 
 # 9. 🧪 Testing strategy
 
