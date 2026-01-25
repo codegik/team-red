@@ -1774,47 +1774,55 @@ Mark a survey answer session as completed.
 
 # 13. 🥞 Technology Stack
 
-## Services & Infrastructure
-- Architecture: microservices, stateless compute
-- Orchestration: Kubernetes (HPA, KEDA)
-- Containers: Docker (immutable images)
-- Front door / Edge: CloudFront + AWS WAF + AWS Global Accelerator
-- API Gateway: gateway with validation and rate limiting
-- Messaging / Streaming: Kafka (topics for ingestion, aggregation and audit)
-- Cache / Sessions: Redis
-- Transactional database: PostgreSQL (RDS Multi‑AZ)
-- Authentication / Identity: Auth0, JWT
-- Logs / Backup storage: S3 (retention and WORM for audit)
+## Backend Services
 
-## Frontend / Mobile
-- Web: ReactJS
-- Mobile: React Native + Expo
-- Human verification / anti-bot: Cloudflare Turnstile
-- Device intelligence: FingerprintJS
-- Liveness / KYC: SumSub
+### Primary Language
+- **Scala (Latest Stable Version)**
+    - Strong static typing for reliability
+    - Functional and object-oriented paradigms
+    - Excellent concurrency support and mature web ecosystem
 
-## Observability
-- Metrics: Prometheus (federation / Thanos or Cortex optional)
-- Visualization: Grafana
-- Tracing: Jaeger (via OpenTelemetry)
-- Logs: Loki
-- Instrumentation: OpenTelemetry Collector / SDKs
+### Framework
+- **ZIO**
+    - Simplifies asynchronous and concurrent programming
+    - Strong type safety and functional principles
+    - Robust error handling and deterministic resource management (ZIO Scope)
+    - Minimal external dependencies when using the ZIO ecosystem
 
-## Testing & Quality
-- Performance: k6 (load and smoke tests)
-- Unit / Integration: JUnit (mobile and services), integration tests with testcontainers
-- Mobile UI / E2E: Espresso (Android), XCUITest (iOS)
-- Mobile network / contract: MockWebServer (Android), URLProtocol stub (iOS)
-- Chaos / Resilience: failure injection in controlled environments (simulate AZ/region, latency, etc.)
+### Build Tool
+- **SBT**
+    - Native Scala support and incremental compilation
+    - Rich plugin ecosystem and multi-project build capabilities
+    - Well suited for CI pipelines and artifact publishing
 
-## Quick Rationale
-- Kubernetes + containers enable automatic horizontal scalability and immutable deployments.
-- Kafka decouples ingestion and aggregation, providing resilience and high throughput.
-- PostgreSQL RDS Multi‑AZ ensures ACID for votes; Redis externalizes session state to keep compute stateless.
-- Observability (Prometheus/Grafana/Jaeger/Loki + OTel) provides correlation between metrics, traces and logs for incident response and audit.
-- Testing tools cover performance, integration, contracts and resilience essential for a large-scale system.
+### AI Assistant
+- **GitHub Copilot**
+    - Accelerates development with context-aware code suggestions
+    - Helps generate boilerplate and supports learning new libraries
+    - Use as a developer aid; do not rely on it as the sole validator for security-sensitive code
 
-## Operational Notes
-- CI/CD should run linters, unit tests, integration tests (with testcontainers), contract tests and k6 smoke tests.
-- Staging environments instrumented with Prometheus/Grafana/OTel for correlation of load tests and anomaly detection.
-- Plan runbooks and playbooks for DB failover, Kafka recovery and response to attacks blocked by the WAF.
+---
+
+## Tests
+
+### Performance Testing
+- **K6**
+    - Easy scenario scripting and built-in metrics
+    - Integrates with CI/CD and Grafana for results visualization
+
+### Unit / Integration Testing
+- **ZIO Test**
+    - Type-safe assertions with compile-time checks
+    - Scoped resource management and concurrency-friendly test execution
+    - Native integration with ZIO effects (no blocking awaits)
+
+### API Mocking & Contract Simulation
+- **MockServer**
+    - Simulates external APIs for faster, deterministic tests
+    - Useful for contract validation, debugging, and WAF egress security testing
+
+### Network Failure Simulation
+- **Toxiproxy**
+    - Injects latency, timeouts, and packet loss to validate resilience
+    - Tests retry logic, circuit breakers, and idempotency under failure conditions
+
