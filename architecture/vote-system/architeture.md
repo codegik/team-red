@@ -431,6 +431,33 @@ Critical Risk: Manual review queue
 - Post-incident forensics require complete event reconstruction
 - Public trust depends on transparent, verifiable vote counting
 
+**Implementation Strategy**:
+
+### Immutable Audit Infrastructure
+- **OpenSearch WORM Indices**: Write-once-read-many storage prevents log tampering
+- **Event Sourcing**: Every state change captured as immutable event in Kafka
+- **Cryptographic Chaining**: Events hashed and linked to detect unauthorized modifications
+- **Multi-Region Replication**: Audit logs replicated across 3+ regions for disaster recovery
+
+### Backoffice & Administrative Controls
+- **Admin Panel with RBAC**: Separate roles for auditors, fraud investigators, and system administrators
+- **Real-Time Monitoring Dashboard**: Live metrics on voting activity, security alerts, system health
+- **Fraud Investigation Console**: Deep-dive voter profiles, device correlation, behavioral analysis
+- **Manual Review Workflows**: Queue system for high-risk votes flagged by ML models
+- **Audit Trail Queries**: Search and export capabilities for compliance reporting
+- **Administrative Actions**: Block/unblock voters, trigger re-verification, adjust fraud thresholds with full logging
+
+**Trade-offs**:
+- Storage costs for long-term audit retention (mitigated with tiered storage)
+- Manual review becomes bottleneck during mass attacks (mitigated with ML prioritization)
+- Admin panel is security-sensitive surface (mitigated with MFA, IP whitelisting, comprehensive logging)
+
+**Success Metrics**:
+- 100% of votes traceable from submission to final tally
+- <5 minute query response time for audit investigations
+- Zero unauthorized admin access
+- <1 hour mean time to investigate flagged voters
+
 ---
 
 ## 4.7 Failure as a Normal Condition (Chaos Engineering, Graceful Degradation)
