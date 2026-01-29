@@ -874,9 +874,36 @@ writes - Conflict detection
 
 # 9. Real-Time Result Distribution
 
-- Real-time aggregation pipelines
-- WebSocket / streaming consumers
-- Live dashboards
+Real-time result distribution is critical for voter engagement and system transparency. The architecture must stream aggregated vote counts to 300M users with <2 second latency while maintaining system stability under peak load.
+
+## 9.1 Technology Selection: Server-Sent Events (SSE)
+
+**Decision**: SSE chosen as the primary real-time communication protocol over WebSockets, Long Polling, and Short Polling.
+
+**Rationale**:
+- **Unidirectional Communication**: Results only flow server-to-client (no client messages needed)
+- **Automatic Reconnection**: Built-in browser retry mechanism reduces client complexity
+- **HTTP Compatibility**: Works through firewalls/proxies that block WebSocket upgrades
+- **Resource Efficiency**: 4-8KB memory per connection vs higher WebSocket overhead
+- **Native Browser Support**: EventSource API available in all modern browsers
+- **Event IDs**: Clients can resume from last received event after network interruption
+
+**When SSE is Not Suitable**:
+- Bidirectional chat or collaboration features (use WebSockets)
+- Interactive voting UI requiring client-to-server messages (use WebSockets)
+- Legacy browser support without polyfills (fallback to Long Polling)
+
+---
+
+## 9.2 Alternative Protocols (Not Chosen)
+
+| Protocol | Why Not Chosen |
+|----------|---------------|
+| **WebSockets** | Overkill for unidirectional broadcast; higher complexity; firewall issues |
+| **Long Polling** | Higher overhead than SSE; manual reconnection logic; increased server load |
+| **Short Polling** | Unacceptable latency; massive bandwidth waste; doesn't scale to 300M users |
+| **GraphQL Subscriptions** | Adds unnecessary layer; WebSocket-based; overkill for simple broadcasts |
+
 
 ---
 
