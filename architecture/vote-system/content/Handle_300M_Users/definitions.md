@@ -19,6 +19,34 @@ There are many methods of database sharding. For our scenario, the our choice wa
 Reference: https://aws.amazon.com/what-is/database-sharding/?nc1=h_ls
 
 
+# Trade-offs
+
+## SQL vs No-SQL
+
+| **Criteria**                   | **SQL Databases**                                                                   |**No-SQL databases**                                       | **Notes** |
+|------------------------------|---------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|-----------|
+| **Consistency** | Strong (ACID)    | Eventual (in most cases)                                 | **SQL**: Guarantees ACID properties (Atomicity, Consistency, Isolation, Durability). Changes are immediately visible to all users after commit. Critical for voting systems where vote counts must be accurate in real-time. **NoSQL**: Most NoSQL databases prioritize availability and partition tolerance (CAP theorem), using eventual consistency where changes propagate over time. Cassandra, DynamoDB offer tunable consistency but at performance cost. |
+| **Scalability** |  Mainly vertical                     | Horizontal | **SQL**: Scales by adding more CPU, RAM, or storage to a single server (vertical scaling). Sharding is possible but complex. **NoSQL**: Designed for horizontal scaling - adding more servers to distribute load. Handles massive data volumes across distributed nodes naturally. |
+| **Schema**       | Rigid | Flexible                  | **SQL**: Requires predefined schema with strict data types and relationships. Changes require migrations (ALTER TABLE). Ensures data integrity but less adaptable. **NoSQL**: Schema-less or flexible schema allows storing varied document structures. Easy to add new fields without migrations, but application must handle data validation. |
+| **Transaction**  | Complex and fully supported                 | Limited           | **SQL**: Full ACID transaction support across multiple tables with JOIN operations, foreign keys, and complex queries. Can handle multi-step operations atomically. **NoSQL**: Most support single-document/row transactions only. Some (MongoDB, DynamoDB) added multi-document transactions but with performance penalties. Complex transactions require application-level coordination. |
+| **Complexity**   | Lower for relational data                                  |    Higher at the application level                   | **SQL**: Database handles relationships, constraints, and data integrity. Application code is simpler for relational data. Mature tooling and widespread expertise. **NoSQL**: Application must handle data relationships, consistency checks, and complex queries. Requires careful data modeling and denormalization strategies. |
+| **Performance**     | Good for transactional workloads           | Excelent for high data volume                        | **SQL**: Optimized for complex queries with JOINs, aggregations, and ACID transactions. Performance degrades with very large datasets without sharding. **NoSQL**: Excels at simple read/write operations on massive datasets. Optimized for high throughput and low latency at scale. Less efficient for complex analytical queries. |
+
+## Pros
+
+- High horizontal scalability
+- Schema flexibility
+- Better performance for large data volumes
+- High availability
+- Ideal for distributed workloads
+
+## Cons
+
+- Eventual consistency (in most cases)
+- Less support for complex transactions
+- Complex queries can be more difficult
+- Greater application responsibility for data consistency
+
 ## NoSQL or SQL?
 
 In my searches, all recommendations for voting systems are to use SQL databases. 
