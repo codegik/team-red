@@ -639,6 +639,19 @@ This document captures the key architectural decisions and their tradeoffs for t
 4. **Horizontal over vertical scaling**
 
 
+## DB-enforced FK vs Application-enforced
+
+| **Aspect**                           | **DB-enforced FK (with indexes & CASCADE)**                                                                             | **Application-enforced (no DB constraints)**                                                             | **Analysis**                                                                                                                                                                                               |
+|--------------------------------------|-------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Data Integrity & Consistency**     | **Guaranteed** – ACID-compliant, impossible to create orphaned records. Constraints validated in every transaction.     | **Risk-prone** – depends on application logic. Bugs or race conditions create inconsistencies over time. | DB-enforced is rigid but mathematically sound. Application-enforced needs eventual consistency patterns and reconciliation. Orphaned data often discovered late. Distributed systems with multiple DBs force app-enforced. |
+| **Write Performance & Throughput**   | **Moderate to Low** – FK validation overhead on INSERT/UPDATE (index lookup + lock acquisition per write).              | **High** – No constraint checks. Critical for >10k writes/sec where FK checks become bottleneck.         | DB FKs add ~10-30% overhead per write. Each INSERT/UPDATE validates relationships. App-enforced wins for write-heavy workloads but sacrifices safety. Measure with production-like volume.                                  |
+| **Read Performance & Query Patterns** | **Excellent** – Auto-indexed FK columns, JOINs use index seeks O(log n), optimizer leverages FK metadata.               | **Same if indexed** – Must manually index FK columns. Without indexes, JOINs = full table scans O(n²).   | Non-indexed FKs catastrophic: 100ms query becomes 30s+. DB-enforced auto-creates indexes. App-enforced needs disciplined index management and monitoring.                                                                   |
+| **Scalability & Distribution**       | **Poor for microservices** – FKs cannot span databases. Forces monolithic DB or complex 2PC. Sharding breaks FKs.       | **Natural fit** – Services own data, manage relationships via APIs/events. Enables polyglot persistence. | DB FKs lock into single-DB. Moving to microservices requires removing FKs (risky). App-enforced needs saga patterns, event sourcing, idempotency. Choose based on 5-year vision.                                           |
+| **Operational Complexity & Risk**    | **High** – Migrations on 100M+ rows take hours with locks. Cascades can accidentally delete millions (production horror stories). | **Lower for changes** – Logic in code, zero-downtime deploys. Higher risk of silent corruption.          | Adding FK to existing data = full scan + lock. Tools like gh-ost help but add complexity. RESTRICT prevents cascade disasters but needs explicit cleanup. App-enforced enables agile deploys.                               |
+| **Debugging & Observability**        | **Explicit errors** – FK violations fail fast with clear messages. Root cause immediate. Impossible states prevented.   | **Silent failures** – Issues found late in reports/audits. Needs data quality metrics and reconciliation. | DB FKs = immediate feedback. App-enforced issues manifest as "data doesn't add up". Needs orphaned record detection and dashboards. Long-term cleanup costs can exceed performance gains.                                  |
+| **Best For**                         | Monolithic apps, transactional systems, regulated domains (finance/healthcare), small teams, data quality > performance | Microservices, high-scale writes, eventual consistency OK, mature DevOps teams, flexibility > safety     | **Use DB FKs for**: orders, payments, user accounts. **Use app-enforced for**: cross-service relationships, analytics, >10k writes/sec. Hybrid common. Re-evaluate when scaling. Migration later is painful.                |
+
+
 ## 6.1. Security Tools
 
 ### Auth0
@@ -710,19 +723,6 @@ Cons: - Cost at very high RPS - Harder to debug than direct ALB
 setups
 
 ---
-
-## DB-enforced FK vs Application-enforced
-
-| **Aspect**                           | **DB-enforced FK (with indexes & CASCADE)**                                                                             | **Application-enforced (no DB constraints)**                                                             | **Analysis**                                                                                                                                                                                               |
-|--------------------------------------|-------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Data Integrity & Consistency**     | **Guaranteed** – ACID-compliant, impossible to create orphaned records. Constraints validated in every transaction.     | **Risk-prone** – depends on application logic. Bugs or race conditions create inconsistencies over time. | DB-enforced is rigid but mathematically sound. Application-enforced needs eventual consistency patterns and reconciliation. Orphaned data often discovered late. Distributed systems with multiple DBs force app-enforced. |
-| **Write Performance & Throughput**   | **Moderate to Low** – FK validation overhead on INSERT/UPDATE (index lookup + lock acquisition per write).              | **High** – No constraint checks. Critical for >10k writes/sec where FK checks become bottleneck.         | DB FKs add ~10-30% overhead per write. Each INSERT/UPDATE validates relationships. App-enforced wins for write-heavy workloads but sacrifices safety. Measure with production-like volume.                                  |
-| **Read Performance & Query Patterns** | **Excellent** – Auto-indexed FK columns, JOINs use index seeks O(log n), optimizer leverages FK metadata.               | **Same if indexed** – Must manually index FK columns. Without indexes, JOINs = full table scans O(n²).   | Non-indexed FKs catastrophic: 100ms query becomes 30s+. DB-enforced auto-creates indexes. App-enforced needs disciplined index management and monitoring.                                                                   |
-| **Scalability & Distribution**       | **Poor for microservices** – FKs cannot span databases. Forces monolithic DB or complex 2PC. Sharding breaks FKs.       | **Natural fit** – Services own data, manage relationships via APIs/events. Enables polyglot persistence. | DB FKs lock into single-DB. Moving to microservices requires removing FKs (risky). App-enforced needs saga patterns, event sourcing, idempotency. Choose based on 5-year vision.                                           |
-| **Operational Complexity & Risk**    | **High** – Migrations on 100M+ rows take hours with locks. Cascades can accidentally delete millions (production horror stories). | **Lower for changes** – Logic in code, zero-downtime deploys. Higher risk of silent corruption.          | Adding FK to existing data = full scan + lock. Tools like gh-ost help but add complexity. RESTRICT prevents cascade disasters but needs explicit cleanup. App-enforced enables agile deploys.                               |
-| **Debugging & Observability**        | **Explicit errors** – FK violations fail fast with clear messages. Root cause immediate. Impossible states prevented.   | **Silent failures** – Issues found late in reports/audits. Needs data quality metrics and reconciliation. | DB FKs = immediate feedback. App-enforced issues manifest as "data doesn't add up". Needs orphaned record detection and dashboards. Long-term cleanup costs can exceed performance gains.                                  |
-| **Best For**                         | Monolithic apps, transactional systems, regulated domains (finance/healthcare), small teams, data quality > performance | Microservices, high-scale writes, eventual consistency OK, mature DevOps teams, flexibility > safety     | **Use DB FKs for**: orders, payments, user accounts. **Use app-enforced for**: cross-service relationships, analytics, >10k writes/sec. Hybrid common. Re-evaluate when scaling. Migration later is painful.                |
-
 
 # 7. 💾 Migrations
 
@@ -1315,6 +1315,13 @@ This document describes the core domain services of the secure voting platform.
 
 ## 12.1 Auth Service
 
+**Scope:**
+- User registration and identity verification
+- Session management and token issuance
+- Integration with Auth0 for authentication
+- Integration with Sumsub for KYC validation
+- One-person-one-vote enforcement through identity uniqueness
+
 The Auth Service is the **internal identity authority** of the voting
 platform.
 
@@ -1325,6 +1332,13 @@ It answers one main question: \> "Who is this user inside the voting
 
 
 ## 12.2 Vote Service
+
+**Scope:**
+- Survey creation and management (CRUD operations)
+- Vote submission and validation
+- Idempotency enforcement (one vote per user per survey)
+- Vote aggregation and results calculation
+- Eligibility verification before accepting votes
 
 ### Management Endpoints
 
@@ -1763,11 +1777,10 @@ Mark a survey answer session as completed.
 
 ## 12.3 Notification Service
 
-
-## 12.4 Producer Service
-
-
-## 12.5 Consumer Service
+**Scope:**
+- Real-time result broadcasting 
+- Managing concurrent connections from up to 250K users
+- Aggregated vote count distribution
 
 ---
 
