@@ -283,6 +283,35 @@ The architecture is guided by seven foundational design principles that address 
 - Post-incident forensics require complete event reconstruction
 - Public trust depends on transparent, verifiable vote counting
 
+**Implementation Strategy**:
+
+### Immutable Audit Infrastructure
+- **OpenSearch WORM Indices**: Write-once-read-many storage prevents log tampering
+- **Event Sourcing**: Every state change captured as immutable event in Kafka
+- **Cryptographic Chaining**: Events hashed and linked to detect unauthorized modifications
+- **Multi-Region Replication**: Audit logs replicated across 3+ regions for disaster recovery
+
+### Backoffice & Administrative Controls
+- **Admin Panel with RBAC**: Separate roles for auditors, fraud investigators, and system administrators
+- **Real-Time Monitoring Dashboard**: Live metrics on voting activity, security alerts, system health
+- **Fraud Investigation Console**: Deep-dive voter profiles, device correlation, behavioral analysis
+- **Manual Review Workflows**: Queue system for high-risk votes flagged by ML models
+- **Audit Trail Queries**: Search and export capabilities for compliance reporting
+- **Administrative Actions**: Block/unblock voters, trigger re-verification, adjust fraud thresholds with full logging
+
+**Trade-offs**:
+- Storage costs for long-term audit retention (mitigated with tiered storage)
+- Manual review becomes bottleneck during mass attacks (mitigated with ML prioritization)
+- Admin panel is security-sensitive surface (mitigated with MFA, IP whitelisting, comprehensive logging)
+
+**Success Metrics**:
+- 100% of votes traceable from submission to final tally
+- <5 minute query response time for audit investigations
+- Zero unauthorized admin access
+- <1 hour mean time to investigate flagged voters
+
+---
+
 ## 4.7 Failure as a Normal Condition (Chaos Engineering, Graceful Degradation)
 
 **Principle**: Expect failures at every level. Design systems that degrade gracefully and self-heal automatically.
@@ -875,14 +904,36 @@ A robust observability strategy is critical for a system of this scale and criti
 
 ## 11.1 Stack Overview
 
-| Pillar | Tool | Purpose |
-|--------|------|---------|
-| Metrics | Prometheus | Time-series collection and alerting |
-| Visualization | Grafana | Dashboards and unified observability UI |
-| Tracing | Jaeger | Distributed tracing |
-| Logs | Loki | Log aggregation (Prometheus-native) |
-| Alerting | Alertmanager | Alert routing and notification |
-| Service Mesh Observability | OpenTelemetry | Instrumentation standard |
+Real-time result distribution is critical for voter engagement and system transparency. The architecture must stream aggregated vote counts to 300M users with <2 second latency while maintaining system stability under peak load.
+
+## 9.1 Technology Selection: Server-Sent Events (SSE)
+
+**Decision**: SSE chosen as the primary real-time communication protocol over WebSockets, Long Polling, and Short Polling.
+
+**Rationale**:
+- **Unidirectional Communication**: Results only flow server-to-client (no client messages needed)
+- **Automatic Reconnection**: Built-in browser retry mechanism reduces client complexity
+- **HTTP Compatibility**: Works through firewalls/proxies that block WebSocket upgrades
+- **Resource Efficiency**: 4-8KB memory per connection vs higher WebSocket overhead
+- **Native Browser Support**: EventSource API available in all modern browsers
+- **Event IDs**: Clients can resume from last received event after network interruption
+
+**When SSE is Not Suitable**:
+- Bidirectional chat or collaboration features (use WebSockets)
+- Interactive voting UI requiring client-to-server messages (use WebSockets)
+- Legacy browser support without polyfills (fallback to Long Polling)
+
+---
+
+## 9.2 Alternative Protocols (Not Chosen)
+
+| Protocol | Why Not Chosen |
+|----------|---------------|
+| **WebSockets** | Overkill for unidirectional broadcast; higher complexity; firewall issues |
+| **Long Polling** | Higher overhead than SSE; manual reconnection logic; increased server load |
+| **Short Polling** | Unacceptable latency; massive bandwidth waste; doesn't scale to 300M users |
+| **GraphQL Subscriptions** | Adds unnecessary layer; WebSocket-based; overkill for simple broadcasts |
+
 
 
 ## 11.2 Metrics - Prometheus
