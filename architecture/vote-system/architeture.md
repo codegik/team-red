@@ -613,26 +613,29 @@ This document captures the key architectural decisions and their tradeoffs for t
 
 ### Decision Categories
 
-| Category                  | Decision              | Chosen               | Rejected                          | Rationale                                                        |
-| ------------------------- | --------------------- | -------------------- | --------------------------------- | ---------------------------------------------------------------- |
-| **Database**              | Data store            | PostgreSQL (RDS)     | MongoDB, NoSQL                    | Guarantees required for vote integrity                           |
-| **Database**              | Scaling strategy      | Geo-based sharding   | Single instance, vertical scaling | 300M users require horizontal scaling                            |
-| **Database**              | Audit/Logs store      | OpenSearch.          | PostgreSQL, DynamoDB              | Add content                                                      |
-| **Cloud Provider**        | Infrastructure        | AWS                  | GCP, Azure, On-premise            | Add content                                                      |
-| **Architecture**          | Style                 | Microservices        | Monolith                          | Scale requirements; independent service scaling                  |
-| **Authentication**        | Provider              | Social Login (Gmail) | Auth0, Cognito, Custom            | Direct provider integration; lower cost                          |
-| **Identity Verification** | Provider              | SumSub               | Jumio, Onfido                     | Add content                                                      |
-| **Bot Detection**         | Human verification    | Cloudflare Turnstile | reCAPTCHA, hCaptcha               | Add content                                                      |
-| **Bot Detection**         | Device fingerprinting | FingerprintJS        | Custom solution                   | Add content                                                      |
-| **Compute**               | Runtime               | Kubernetes (EKS)     | ECS, Lambda                       | Add content                                                      |
-| **Messaging**             | Event streaming       | Kafka                | SQS, RabbitMQ                     | High throughput for 240k RPS; Add content                        |
-| **Caching**               | Layer                 | Redis                | Memcached, ElastiCache            | Real-time counters, session data, rate limiting                  |
-| **Real-time**             | Updates               | WebSocket + SSE      | Polling, Long-polling             | True real-time results; accepts connection management complexity |
+| Category                  | Decision                  | Chosen               | Rejected                          | Rationale                                                                          |
+|---------------------------|---------------------------|----------------------|-----------------------------------|------------------------------------------------------------------------------------|
+| **Database**              | Data store                | PostgreSQL (RDS)     | MongoDB, MySql                    | Guarantees required for vote integrity                                             |
+| **Database**              | Scaling strategy          | Geo-based sharding   | Single instance, vertical scaling | 300M users require horizontal scaling                                              |
+| **Database**              | Audit/Logs store          | OpenSearch.          | PostgreSQL, DynamoDB              | OpenSearch with WORM (Write-Once-Read-Many) indices                                |
+| **Database**              | Partitioning              | PostgreSQL           | MySQL                             | PostgreSQL natively supports: RANGE, LIST, HASH, Subpartitioning                   |
+| **Database**              | Replication               | PostgreSQL           | MySQL                             | Physical and Logical replication (streaming replication)                           |
+| **Database**              | Security and auditability | PostgreSQL           | MySQL                             | WAL is extremely reliable, Strong support for auditing, Extensions such as pgAudit |
+| **Cloud Provider**        | Infrastructure            | AWS                  | GCP, Azure, On-premise            | Add content                                                                        |
+| **Architecture**          | Style                     | Microservices        | Monolith                          | Scale requirements; independent service scaling                                    |
+| **Authentication**        | Provider                  | Social Login (Gmail) | Auth0, Cognito, Custom            | Direct provider integration; lower cost                                            |
+| **Identity Verification** | Provider                  | SumSub               | Jumio, Onfido                     | Add content                                                                        |
+| **Bot Detection**         | Human verification        | Cloudflare Turnstile | reCAPTCHA, hCaptcha               | Add content                                                                        |
+| **Bot Detection**         | Device fingerprinting     | FingerprintJS        | Custom solution                   | Add content                                                                        |
+| **Compute**               | Runtime                   | Kubernetes (EKS)     | ECS, Lambda                       | Add content                                                                        |
+| **Messaging**             | Event streaming           | Kafka                | SQS, RabbitMQ                     | High throughput for 240k RPS; Add content                                          |
+| **Caching**               | Layer                     | Redis                | Memcached, ElastiCache            | Real-time counters, session data, rate limiting                                    |
+| **Real-time**             | Updates                   | WebSocket + SSE      | Polling, Long-polling             | True real-time results; accepts connection management complexity                   |
 
 ### Security Tradeoffs Summary
 
 | Tool              | Pros                                    | Cons     | Risk Accepted |
-| ----------------- | --------------------------------------- | -------- | ------------- |
+|-------------------|-----------------------------------------|----------|---------------|
 | **Social Login**  | Direct provider integration, lower cost | add cons | add risk      |
 | **SumSub**        | Strong biometric antifraud, global KYC  | add cons | add risk      |
 | **Turnstile**     | Good UX                                 | add cons | add risk      |
@@ -642,7 +645,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 ### Scalability Tradeoffs
 
 | Requirement       | Solution                                 | Tradeoff |
-| ----------------- | ---------------------------------------- | -------- |
+|-------------------|------------------------------------------|----------|
 | 300M users        | Geo-based DB sharding                    | Add      |
 | 240k RPS          | HPA + KEDA autoscaling                   | Add      |
 | Zero data loss    | Synchronous replication, WAL             | Add      |
@@ -651,22 +654,22 @@ This document captures the key architectural decisions and their tradeoffs for t
 
 ## EKS vs ECS
 
-| **Aspect**                     | **ECS (Elastic Container Service)**                                    | **EKS (Elastic Kubernetes Service)**                                  | **Trade-off / Notes**                                                                                                  |
-|--------------------------------|------------------------------------------------------------------------|-----------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
-| **Complexity**                 | Lower – managed container orchestration, simpler setup                 | Higher – Kubernetes has more configurations that can be managed                          | ECS is easier for teams new to container orchestration; EKS gives full Kubernetes features but requires more expertise |
-| **Flexibility**                | Moderate – AWS-native features, some limitations                       | High – full Kubernetes ecosystem, offers HPA and KEDA for Auto Scaling  | EKS allows more customization in term of metrics to use for Auto Scaling                        |
-| **Deployment & Management**    | Simpler – integrates tightly with AWS, less operational overhead       | More complex – need to manage clusters, nodes, and Kubernetes objects | ECS is faster to deploy; EKS offers more granular control and standardization                                          |
-| **Scalability**                | High – integrates with Auto Scaling, Fargate for serverless containers | High – Kubernetes-native autoscaling, multi-cluster management        | Both scale well; EKS gives more control at cost of complexity                                                          |
-| **Community & Ecosystem**      | AWS-focused – smaller ecosystem outside AWS                            | Kubernetes ecosystem – large, active community and tools              | EKS benefits from portability and community support; ECS is simpler but AWS-locked                                     |
-| **Observability & Monitoring** | AWS CloudWatch integration, simpler metrics/logs                       | Observability tools (Prometheus, Grafana) plus CloudWatch         | ECS offers simplier observability; EKS provides more flexibility for advanced observability setups                   |
-| **Cost**                       | Lower for small/simple workloads – less management overhead            | Higher – cluster management costs, but flexible with Fargate          | ECS is cost-efficient for simpler use cases; EKS scales better for complex or multi-team environments                  |
-| **Operational Overhead**       | Low – managed service, minimal Kubernetes knowledge required           | Higher – need Kubernetes expertise, more components to maintain       | ECS is “easier to run”; EKS offers powerful orchestration but requires DevOps maturity                                 |
+| **Aspect**                     | **ECS (Elastic Container Service)**                                    | **EKS (Elastic Kubernetes Service)**                                   | **Trade-off / Notes**                                                                                                  |
+|--------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| **Complexity**                 | Lower – managed container orchestration, simpler setup                 | Higher – Kubernetes has more configurations that can be managed        | ECS is easier for teams new to container orchestration; EKS gives full Kubernetes features but requires more expertise |
+| **Flexibility**                | Moderate – AWS-native features, some limitations                       | High – full Kubernetes ecosystem, offers HPA and KEDA for Auto Scaling | EKS allows more customization in term of metrics to use for Auto Scaling                                               |
+| **Deployment & Management**    | Simpler – integrates tightly with AWS, less operational overhead       | More complex – need to manage clusters, nodes, and Kubernetes objects  | ECS is faster to deploy; EKS offers more granular control and standardization                                          |
+| **Scalability**                | High – integrates with Auto Scaling, Fargate for serverless containers | High – Kubernetes-native autoscaling, multi-cluster management         | Both scale well; EKS gives more control at cost of complexity                                                          |
+| **Community & Ecosystem**      | AWS-focused – smaller ecosystem outside AWS                            | Kubernetes ecosystem – large, active community and tools               | EKS benefits from portability and community support; ECS is simpler but AWS-locked                                     |
+| **Observability & Monitoring** | AWS CloudWatch integration, simpler metrics/logs                       | Observability tools (Prometheus, Grafana) plus CloudWatch              | ECS offers simplier observability; EKS provides more flexibility for advanced observability setups                     |
+| **Cost**                       | Lower for small/simple workloads – less management overhead            | Higher – cluster management costs, but flexible with Fargate           | ECS is cost-efficient for simpler use cases; EKS scales better for complex or multi-team environments                  |
+| **Operational Overhead**       | Low – managed service, minimal Kubernetes knowledge required           | Higher – need Kubernetes expertise, more components to maintain        | ECS is “easier to run”; EKS offers powerful orchestration but requires DevOps maturity                                 |
 
 
 ### Infrastructure Tradeoffs: Microservices vs Monolith
 
 | Aspect              | Monolith                          | Microservices                             | Tradeoff                                      |
-| ------------------- | --------------------------------- | ----------------------------------------- | --------------------------------------------- |
+|---------------------|-----------------------------------|-------------------------------------------|-----------------------------------------------|
 | **Complexity**      | Lower; single codebase            | Higher; distributed system challenges     | Accept complexity for independent scaling     |
 | **Scaling**         | Vertical; scale entire app        | Horizontal; scale individual services     | Required for 240k RPS peak traffic            |
 | **Deployment**      | Single deployment unit            | Independent deployments per service       | Faster iteration; more operational overhead   |
@@ -684,15 +687,15 @@ This document captures the key architectural decisions and their tradeoffs for t
 
 ## DB-enforced FK vs Application-enforced
 
-| **Aspect**                           | **DB-enforced FK (with indexes & CASCADE)**                                                                             | **Application-enforced (no DB constraints)**                                                             | **Analysis**                                                                                                                                                                                               |
-|--------------------------------------|-------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Data Integrity & Consistency**     | **Guaranteed** – ACID-compliant, impossible to create orphaned records. Constraints validated in every transaction.     | **Risk-prone** – depends on application logic. Bugs or race conditions create inconsistencies over time. | DB-enforced is rigid but mathematically sound. Application-enforced needs eventual consistency patterns and reconciliation. Orphaned data often discovered late. Distributed systems with multiple DBs force app-enforced. |
-| **Write Performance & Throughput**   | **Moderate to Low** – FK validation overhead on INSERT/UPDATE (index lookup + lock acquisition per write).              | **High** – No constraint checks. Critical for >10k writes/sec where FK checks become bottleneck.         | DB FKs add ~10-30% overhead per write. Each INSERT/UPDATE validates relationships. App-enforced wins for write-heavy workloads but sacrifices safety. Measure with production-like volume.                                  |
-| **Read Performance & Query Patterns** | **Excellent** – Auto-indexed FK columns, JOINs use index seeks O(log n), optimizer leverages FK metadata.               | **Same if indexed** – Must manually index FK columns. Without indexes, JOINs = full table scans O(n²).   | Non-indexed FKs catastrophic: 100ms query becomes 30s+. DB-enforced auto-creates indexes. App-enforced needs disciplined index management and monitoring.                                                                   |
-| **Scalability & Distribution**       | **Poor for microservices** – FKs cannot span databases. Forces monolithic DB or complex 2PC. Sharding breaks FKs.       | **Natural fit** – Services own data, manage relationships via APIs/events. Enables polyglot persistence. | DB FKs lock into single-DB. Moving to microservices requires removing FKs (risky). App-enforced needs saga patterns, event sourcing, idempotency. Choose based on 5-year vision.                                           |
-| **Operational Complexity & Risk**    | **High** – Migrations on 100M+ rows take hours with locks. Cascades can accidentally delete millions (production horror stories). | **Lower for changes** – Logic in code, zero-downtime deploys. Higher risk of silent corruption.          | Adding FK to existing data = full scan + lock. Tools like gh-ost help but add complexity. RESTRICT prevents cascade disasters but needs explicit cleanup. App-enforced enables agile deploys.                               |
-| **Debugging & Observability**        | **Explicit errors** – FK violations fail fast with clear messages. Root cause immediate. Impossible states prevented.   | **Silent failures** – Issues found late in reports/audits. Needs data quality metrics and reconciliation. | DB FKs = immediate feedback. App-enforced issues manifest as "data doesn't add up". Needs orphaned record detection and dashboards. Long-term cleanup costs can exceed performance gains.                                  |
-| **Best For**                         | Monolithic apps, transactional systems, regulated domains (finance/healthcare), small teams, data quality > performance | Microservices, high-scale writes, eventual consistency OK, mature DevOps teams, flexibility > safety     | **Use DB FKs for**: orders, payments, user accounts. **Use app-enforced for**: cross-service relationships, analytics, >10k writes/sec. Hybrid common. Re-evaluate when scaling. Migration later is painful.                |
+| **Aspect**                            | **DB-enforced FK (with indexes & CASCADE)**                                                                                       | **Application-enforced (no DB constraints)**                                                              | **Analysis**                                                                                                                                                                                                               |
+|---------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Data Integrity & Consistency**      | **Guaranteed** – ACID-compliant, impossible to create orphaned records. Constraints validated in every transaction.               | **Risk-prone** – depends on application logic. Bugs or race conditions create inconsistencies over time.  | DB-enforced is rigid but mathematically sound. Application-enforced needs eventual consistency patterns and reconciliation. Orphaned data often discovered late. Distributed systems with multiple DBs force app-enforced. |
+| **Write Performance & Throughput**    | **Moderate to Low** – FK validation overhead on INSERT/UPDATE (index lookup + lock acquisition per write).                        | **High** – No constraint checks. Critical for >10k writes/sec where FK checks become bottleneck.          | DB FKs add ~10-30% overhead per write. Each INSERT/UPDATE validates relationships. App-enforced wins for write-heavy workloads but sacrifices safety. Measure with production-like volume.                                 |
+| **Read Performance & Query Patterns** | **Excellent** – Auto-indexed FK columns, JOINs use index seeks O(log n), optimizer leverages FK metadata.                         | **Same if indexed** – Must manually index FK columns. Without indexes, JOINs = full table scans O(n²).    | Non-indexed FKs catastrophic: 100ms query becomes 30s+. DB-enforced auto-creates indexes. App-enforced needs disciplined index management and monitoring.                                                                  |
+| **Scalability & Distribution**        | **Poor for microservices** – FKs cannot span databases. Forces monolithic DB or complex 2PC. Sharding breaks FKs.                 | **Natural fit** – Services own data, manage relationships via APIs/events. Enables polyglot persistence.  | DB FKs lock into single-DB. Moving to microservices requires removing FKs (risky). App-enforced needs saga patterns, event sourcing, idempotency. Choose based on 5-year vision.                                           |
+| **Operational Complexity & Risk**     | **High** – Migrations on 100M+ rows take hours with locks. Cascades can accidentally delete millions (production horror stories). | **Lower for changes** – Logic in code, zero-downtime deploys. Higher risk of silent corruption.           | Adding FK to existing data = full scan + lock. Tools like gh-ost help but add complexity. RESTRICT prevents cascade disasters but needs explicit cleanup. App-enforced enables agile deploys.                              |
+| **Debugging & Observability**         | **Explicit errors** – FK violations fail fast with clear messages. Root cause immediate. Impossible states prevented.             | **Silent failures** – Issues found late in reports/audits. Needs data quality metrics and reconciliation. | DB FKs = immediate feedback. App-enforced issues manifest as "data doesn't add up". Needs orphaned record detection and dashboards. Long-term cleanup costs can exceed performance gains.                                  |
+| **Best For**                          | Monolithic apps, transactional systems, regulated domains (finance/healthcare), small teams, data quality > performance           | Microservices, high-scale writes, eventual consistency OK, mature DevOps teams, flexibility > safety      | **Use DB FKs for**: orders, payments, user accounts. **Use app-enforced for**: cross-service relationships, analytics, >10k writes/sec. Hybrid common. Re-evaluate when scaling. Migration later is painful.               |
 
 
 ## 6.1. Security Tools
@@ -970,29 +973,29 @@ Prometheus is the core metrics engine, chosen for its Open Source nature and Kub
 **Prometheus Architecture for Scale:**
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────────┐
 │                     Prometheus Federation                        │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
-│  │ Prometheus  │  │ Prometheus  │  │ Prometheus  │              │
-│  │  Region A   │  │  Region B   │  │  Region C   │              │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘              │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐               │
+│  │ Prometheus  │  │ Prometheus  │  │ Prometheus  │               │
+│  │  Region A   │  │  Region B   │  │  Region C   │               │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘               │
 │         │                │                │                      │
 │         └────────────────┼────────────────┘                      │
-│                          │                                        │
-│                          ▼                                        │
+│                          │                                       │
+│                          ▼                                       │
 │                 ┌─────────────────┐                              │
-│                 │ Global Prometheus│                              │
-│                 │   (Federation)   │                              │
+│                 │ Global Prometheus│                             │
+│                 │   (Federation)   │                             │
 │                 └────────┬────────┘                              │
-│                          │                                        │
-│                          ▼                                        │
+│                          │                                       │
+│                          ▼                                       │
 │                 ┌─────────────────┐                              │
 │                 │    Thanos /     │ ← Long-term storage          │
 │                 │   Cortex (opt)  │                              │
 │                 └─────────────────┘                              │
-└─────────────────────────────────────────────────────────────────┘
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 For 300M users and high cardinality, consider **Thanos** or **Cortex** for:
@@ -1061,31 +1064,31 @@ For a microservices architecture at this scale, distributed tracing is essential
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│                         Tracing Flow                                  │
+│                         Tracing Flow                                 │
 ├──────────────────────────────────────────────────────────────────────┤
-│                                                                        │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐           │
-│  │ Mobile  │───▶│   API   │───▶│  Auth   │───▶│  Vote   │           │
-│  │   App   │    │ Gateway │    │ Service │    │ Service │           │
-│  └─────────┘    └────┬────┘    └────┬────┘    └────┬────┘           │
-│                      │              │              │                  │
+│                                                                      │
+│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐            │
+│  │ Mobile  │───▶│   API   │───▶│  Auth   │───▶│  Vote   │            │
+│  │   App   │    │ Gateway │    │ Service │    │ Service │            │
+│  └─────────┘    └────┬────┘    └────┬────┘    └────┬────┘            │
+│                      │              │              │                 │
 │         ┌────────────┴──────────────┴──────────────┘                 │
-│         │  trace-id: abc123                                           │
+│         │  trace-id: abc123                                          │
 │         │  span-id propagated via headers                            │
-│         ▼                                                             │
+│         ▼                                                            │
 │  ┌─────────────────────────────────────────────────────────┐         │
-│  │              OpenTelemetry Collector                     │         │
+│  │              OpenTelemetry Collector                    │         │
 │  │  (sampling, batching, export to Jaeger)                 │         │
 │  └────────────────────────┬────────────────────────────────┘         │
-│                           │                                           │
-│                           ▼                                           │
+│                           │                                          │
+│                           ▼                                          │
 │  ┌─────────────────────────────────────────────────────────┐         │
-│  │                    Jaeger Backend                        │         │
-│  │  ┌──────────┐    ┌─────────────┐    ┌──────────────┐   │         │
-│  │  │Collector │───▶│    Kafka    │───▶│ Elasticsearch│   │         │
-│  │  └──────────┘    └─────────────┘    └──────────────┘   │         │
+│  │                    Jaeger Backend                       │         │
+│  │  ┌──────────┐    ┌─────────────┐    ┌──────────────┐    │         │
+│  │  │Collector │───▶│    Kafka    │───▶│ Elasticsearch│    │         │
+│  │  └──────────┘    └─────────────┘    └──────────────┘    │         │
 │  └─────────────────────────────────────────────────────────┘         │
-│                                                                        │
+│                                                                      │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1137,22 +1140,22 @@ Loki provides log aggregation that integrates natively with Grafana and uses the
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                      Log Pipeline                             │
+│                      Log Pipeline                            │
 ├──────────────────────────────────────────────────────────────┤
-│                                                                │
-│  ┌──────────────┐                                             │
-│  │ Microservice │──┐                                          │
-│  └──────────────┘  │                                          │
+│                                                              │
+│  ┌──────────────┐                                            │
+│  │ Microservice │──┐                                         │
+│  └──────────────┘  │                                         │
 │  ┌──────────────┐  │    ┌──────────┐    ┌──────────────┐     │
 │  │ Microservice │──┼───▶│ Promtail │───▶│     Loki     │     │
 │  └──────────────┘  │    │ (Agent)  │    │   (Storage)  │     │
 │  ┌──────────────┐  │    └──────────┘    └──────┬───────┘     │
-│  │ Microservice │──┘                           │              │
-│  └──────────────┘                              ▼              │
-│                                          ┌──────────┐         │
-│                                          │ Grafana  │         │
-│                                          │  (Query) │         │
-│                                          └──────────┘         │
+│  │ Microservice │──┘                           │             │
+│  └──────────────┘                              ▼             │
+│                                          ┌──────────┐        │
+│                                          │ Grafana  │        │
+│                                          │  (Query) │        │
+│                                          └──────────┘        │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -1265,10 +1268,10 @@ OpenTelemetry (OTel) provides a vendor-neutral instrumentation standard across a
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                 OpenTelemetry Collector                          │
+│                 OpenTelemetry Collector                         │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  Receivers          Processors           Exporters               │
+│                                                                 │
+│  Receivers          Processors           Exporters              │
 │  ┌─────────┐       ┌───────────┐       ┌────────────┐           │
 │  │  OTLP   │──────▶│  Batch    │──────▶│ Prometheus │           │
 │  │  gRPC   │       │  Sampling │       │   (metrics)│           │
@@ -1408,7 +1411,7 @@ It answers one main question: \> "Who is this user inside the voting
 ### Management Endpoints
 
 | Method   | Endpoint                           | Description         |
-| -------- | ---------------------------------- | ------------------- |
+|----------|------------------------------------|---------------------|
 | `POST`   | `/v1/internal/surveys`             | Create a new survey |
 | `PUT`    | `/v1/internal/surveys/:id`         | Update survey       |
 | `PUT`    | `/v1/internal/surveys/:id/publish` | Publish survey      |
@@ -1419,7 +1422,7 @@ It answers one main question: \> "Who is this user inside the voting
 ### Public Endpoints
 
 | Method | Endpoint                                   | Description             |
-| ------ | ------------------------------------------ | ----------------------- |
+|--------|--------------------------------------------|-------------------------|
 | `GET`  | `/v1/surveys/:id`                          | Get survey details      |
 | `POST` | `/v1/surveys/:id/answers`                  | Submit an answer        |
 | `PUT`  | `/v1/surveys/:id/answers/:answerId/finish` | Complete survey session |
@@ -1463,26 +1466,26 @@ It answers one main question: \> "Who is this user inside the voting
 
 ```json
 {
-  "id": "1"
+  "id": "1",
   "title": "Elections Survey",
   "startDate": null,
   "finishDate": null,
   "questions": [
       {
-        "id": "1"
+        "id": "1",
         "title": "Who would you vote for president?",
         "min": 1,
         "max": 2,
         "order": 0,
         "options": [
           {
-            "id": "1"
+            "id": "1",
             "text": "Homer Simpsom",
             "image": "https://example.com/homer.jpg",
             "order": 0
           },
           {
-            "id": "2"
+            "id": "2",
             "text": "Ned Flanders",
             "image": "https://example.com/ned.jpg",
             "order": 1
@@ -1671,56 +1674,55 @@ Close a survey, preventing new responses. Sets the finishDate to current timesta
 
 ```json
 {
-  "survey": {
+"survey": {
+"id": "1",
+"title": "Elections Survey"
+},
+"totalResponses": 150,
+"questions": [
+  {
     "id": "1",
-    "title": "Elections Survey"
-  },
-  "totalResponses": 150,
-  "questions": [
+    "title": "Who would you vote for president?",
+    "order": 0,
+    "options": [
       {
         "id": "1",
-        "title": "Who would you vote for president?",
+        "text": "Homer Simpson",
+        "image": "https://example.com/homer.jpg",
         "order": 0,
-        "options": [
-          {
-            "id": "1",
-            "text": "Homer Simpson",
-            "image": "https://example.com/homer.jpg",
-            "order": 0,
-            "votes": 85
-          },
-          {
-            "id": "2",
-            "text": "Ned Flanders",
-            "image": "https://example.com/ned.jpg",
-            "order": 1,
-            "votes": 65
-          }
-        ]
+        "votes": 85
       },
       {
         "id": "2",
-        "title": "Who would you vote for minister?",
+        "text": "Ned Flanders",
+        "image": "https://example.com/ned.jpg",
         "order": 1,
-        "options": [
-          {
-            "id": "3",
-            "text": "Montgomery Burns",
-            "image": "https://example.com/burns.jpg",
-            "order": 0,
-            "votes": 70
-          },
-          {
-            "id": "4",
-            "text": "Sideshow Bob",
-            "image": "https://example.com/bob.jpg",
-            "order": 1,
-            "votes": 80
-          }
-        ]
+        "votes": 65
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "title": "Who would you vote for minister?",
+    "order": 1,
+    "options": [
+      {
+        "id": "3",
+        "text": "Montgomery Burns",
+        "image": "https://example.com/burns.jpg",
+        "order": 0,
+        "votes": 70
+      },
+      {
+        "id": "4",
+        "text": "Sideshow Bob",
+        "image": "https://example.com/bob.jpg",
+        "order": 1,
+        "votes": 80
       }
     ]
   }
+]
 }
 ```
 
