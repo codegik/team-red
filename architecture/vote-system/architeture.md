@@ -1381,50 +1381,124 @@ For effective debugging, all telemetry must be correlated:
 
 This document describes the core domain services of the secure voting platform.
 
+---
+
 ## 12.1 Auth Service
 
 **Scope:**
-The Auth Service is the **internal identity authority** of the voting
-platform.
+The Auth Service is the **internal identity authority** of the voting platform.
 
-It does NOT replace Auth0 or Sumsub. Instead, it **connects them to the
-voting domain** and applies business rules.
+It does NOT replace Auth0 or Sumsub. Instead, it **connects them to the voting domain** and applies business rules.
 
-It answers one main question: \> "Who is this user inside the voting
+It answers one main question: *"Who is this user inside the voting system?"*
 
+**Responsibilities:**
 - User registration and identity verification
 - Session management and token issuance
-- Integration with Auth0 for authentication
-- Integration with Sumsub for KYC validation
+- Integration with Auth0 for authentication (SSO, MFA)
+- Integration with Sumsub for KYC/liveness validation
+- Device fingerprint binding to user sessions
+- Token refresh and revocation
 
-## 12.2 Vote Service Producer
+**Key Interactions:**
+- Receives authentication callbacks from Auth0
+- Receives verification results from Sumsub
+- Issues internal JWT tokens for downstream services
+
+---
+
+## 12.2 Vote Service
 
 **Scope:**
-- Vote submission
-- Idempotency enforcement through cache
-- Send vote to kafka topic
+The Vote Service is the **core voting engine** of the platform. It operates as both **Kafka producer and consumer**, handling the full vote lifecycle from submission to persistence.
 
-## 12.3 Vote Service Consumer
+**Producer Responsibilities (API Layer):**
+- Receives vote submissions from authenticated users
+- Validates vote payload structure and eligibility
+- Enforces idempotency through Redis cache (vote deduplication)
+- Publishes vote events to Kafka topic
+- Returns immediate acknowledgment to client
 
-**Scope:**
+**Consumer Responsibilities (Processing Layer):**
+- Consumes vote events from Kafka
+- Performs final vote validation and fraud check integration
+- Persists vote to PostgreSQL with unique constraints
+- Updates real-time vote counters in Redis
+- Publishes vote counted events for downstream consumers
+- Handles retry logic for transient failures
+
+**Survey Management:**
 - Survey creation and management (CRUD operations)
-- Idempotency enforcement (one vote per user per survey)
-- Vote aggregation and results calculation
-- Eligibility verification before accepting votes
-- Vote validation
+- Survey lifecycle (draft → published → finished)
+- Eligibility rules configuration per survey
+
+**Key Guarantees:**
+- Exactly-once vote processing via idempotency keys
+- One vote per user per survey enforced at DB level
+
+---
 
 ## 12.3 Notification Service
 
 **Scope:**
-- Vote contabilization notification
-- Votes summary
+The Notification Service handles **real-time result broadcasting** to connected clients via Server-Sent Events (SSE).
 
+**Responsibilities:**
+- Consumes `vote.counted` events from Kafka
+- Aggregates vote counts per survey/option
+- Broadcasts real-time updates to SSE clients
+
+**Notification Types:**
+- Vote count updates (real-time totals)
+- Survey status changes (published, finished)
+- System announcements
+
+---
 
 ## 12.4 Auditability Service
 
 **Scope:**
-- Consume vote events from kafka
-- Save event into S3
+The Auditability Service maintains the **immutable audit trail** for all voting activity, ensuring legal compliance and forensic readiness.
+
+**Responsibilities:**
+- Consumes all domain events from Kafka (votes, fraud, auth)
+- Archives events to S3 for long-term retention
+- Provides query API for audit investigations
+
+**Events Captured:**
+- `vote.submitted`, `vote.counted`, `vote.rejected`
+- `fraud.detected`, `fraud.blocked`
+- `user.registered`, `user.verified`, `user.blocked`
+- `survey.created`, `survey.published`, `survey.finished`
+
+**Retention Policy:**
+- Cold storage (S3 Glacier): 7 years (legal compliance)
+
+---
+
+## 12.5 Backoffice Service
+
+**Scope:**
+The Backoffice Service provides **administrative controls and operational tools** for system operators, auditors, and fraud investigators.
+
+**Responsibilities:**
+- Admin panel with Role-Based Access Control (RBAC)
+- Real-time monitoring dashboard (voting activity, system health)
+- Survey management interface (create, publish, finish surveys)
+
+**User Roles:**
+| Role | Permissions |
+|------|-------------|
+| **System Admin** | Full system configuration, user management, service health |
+| **Election Manager** | Survey CRUD, publish/finish surveys, view results |
+| **Fraud Investigator** | View flagged votes, analyze patterns, block suspicious users |
+
+**Key Features:**
+- MFA required for all admin access
+
+**Security Controls:**
+- Separate network segment (internal only, no public access)
+
 
 ### Management Endpoints
 
