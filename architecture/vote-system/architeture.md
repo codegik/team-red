@@ -1384,12 +1384,6 @@ This document describes the core domain services of the secure voting platform.
 ## 12.1 Auth Service
 
 **Scope:**
-- User registration and identity verification
-- Session management and token issuance
-- Integration with Auth0 for authentication
-- Integration with Sumsub for KYC validation
-- One-person-one-vote enforcement through identity uniqueness
-
 The Auth Service is the **internal identity authority** of the voting
 platform.
 
@@ -1398,15 +1392,39 @@ voting domain** and applies business rules.
 
 It answers one main question: \> "Who is this user inside the voting
 
+- User registration and identity verification
+- Session management and token issuance
+- Integration with Auth0 for authentication
+- Integration with Sumsub for KYC validation
 
-## 12.2 Vote Service
+## 12.2 Vote Service Producer
+
+**Scope:**
+- Vote submission
+- Idempotency enforcement through cache
+- Send vote to kafka topic
+
+## 12.3 Vote Service Consumer
 
 **Scope:**
 - Survey creation and management (CRUD operations)
-- Vote submission and validation
 - Idempotency enforcement (one vote per user per survey)
 - Vote aggregation and results calculation
 - Eligibility verification before accepting votes
+- Vote validation
+
+## 12.3 Notification Service
+
+**Scope:**
+- Vote contabilization notification
+- Votes summary
+
+
+## 12.4 Auditability Service
+
+**Scope:**
+- Consume vote events from kafka
+- Save event into S3
 
 ### Management Endpoints
 
@@ -1841,13 +1859,6 @@ Mark a survey answer session as completed.
   "finished": "2025-11-21T10:35:00Z"
 }
 ```
-
-## 12.3 Notification Service
-
-**Scope:**
-- Real-time result broadcasting 
-- Managing concurrent connections from up to 250K users
-- Aggregated vote count distribution
 
 ---
 
