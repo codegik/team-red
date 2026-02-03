@@ -1,0 +1,10 @@
+{
+  "name": "electrored-csv-generator",
+  "version": "1.0.0",
+  "description": "Generates mock CSV sales files for electrored (simulates acquired company legacy system)",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {}
+}

@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: electrored-postgres
+    environment:
+      POSTGRES_USER: electrored
+      POSTGRES_PASSWORD: electrored123
+      POSTGRES_DB: electrored
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U electrored -d electrored"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - electrored-network
+
+  postgres-data-generator:
+    build:
+      context: ./data-sources/postgresql
+      dockerfile: Dockerfile
+    container_name: electrored-postgres-generator
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: electrored
+      DB_PASSWORD: electrored123
+      DB_NAME: electrored
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - electrored-network
+
+  csv-files:
+    build:
+      context: ./data-sources/csv-files
+      dockerfile: Dockerfile
+    container_name: electrored-csv-files
+    environment:
+      OUTPUT_DIR: /data/inbox
+      GENERATION_INTERVAL: 10000
+      RECORDS_PER_FILE: 50
+    volumes:
+      - csv_data:/data/inbox
+    networks:
+      - electrored-network
+
+volumes:
+  postgres_data:
+  csv_data:
+
+networks:
+  electrored-network:
+    driver: bridge
