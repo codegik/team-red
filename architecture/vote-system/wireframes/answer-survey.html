@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Answer Survey - Wireframe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-white min-h-screen p-6">
+    <div class="max-w-2xl mx-auto">
+      <div class="border-2 border-black p-4 mb-4">
+        <h1 class="text-lg font-bold">Elections Survey</h1>
+        <p class="text-sm text-gray-600">Share your opinion on the upcoming elections</p>
+      </div>
+
+      <div class="border-2 border-black p-4 mb-4">
+        <div class="flex justify-between text-sm mb-2">
+          <span>Question 1 of 3</span>
+          <span>33% Complete</span>
+        </div>
+        <div class="w-full h-3 border border-black">
+          <div class="h-full bg-black" style="width: 33%"></div>
+        </div>
+      </div>
+
+      <div class="border-2 border-black p-4 mb-4">
+        <div class="mb-4">
+          <h2 class="font-bold mb-1">Who would you vote for president?</h2>
+          <p class="text-sm text-gray-600">Select 1 to 2 options</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="border border-black p-3 cursor-pointer hover:bg-gray-100">
+            <div class="flex items-start gap-2">
+              <input type="checkbox" class="mt-1" />
+              <div class="flex-1 text-center">
+                <div class="w-20 h-20 border border-black mx-auto mb-2 flex items-center justify-center text-xs bg-gray-50">
+                  [IMAGE]
+                </div>
+                <span class="text-sm font-medium">Homer Simpson</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="border border-black p-3 cursor-pointer hover:bg-gray-100">
+            <div class="flex items-start gap-2">
+              <input type="checkbox" class="mt-1" />
+              <div class="flex-1 text-center">
+                <div class="w-20 h-20 border border-black mx-auto mb-2 flex items-center justify-center text-xs bg-gray-50">
+                  [IMAGE]
+                </div>
+                <span class="text-sm font-medium">Ned Flanders</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="border border-black p-3 cursor-pointer hover:bg-gray-100">
+            <div class="flex items-start gap-2">
+              <input type="checkbox" class="mt-1" />
+              <div class="flex-1 text-center">
+                <div class="w-20 h-20 border border-black mx-auto mb-2 flex items-center justify-center text-xs bg-gray-50">
+                  [IMAGE]
+                </div>
+                <span class="text-sm font-medium">Marge Simpson</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="border border-black p-3 cursor-pointer hover:bg-gray-100">
+            <div class="flex items-start gap-2">
+              <input type="checkbox" class="mt-1" />
+              <div class="flex-1 text-center">
+                <div class="w-20 h-20 border border-black mx-auto mb-2 flex items-center justify-center text-xs bg-gray-50">
+                  [IMAGE]
+                </div>
+                <span class="text-sm font-medium">Mr. Burns</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-2 border-black p-4">
+        <div class="flex justify-between items-center">
+          <button class="px-4 py-2 border border-black text-sm text-gray-400" disabled>
+            ← Previous
+          </button>
+          <span class="text-sm">Question 1 of 3</span>
+          <button class="px-4 py-2 bg-black text-white text-sm">
+            Next Question →
+          </button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

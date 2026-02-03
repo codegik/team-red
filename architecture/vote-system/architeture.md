@@ -283,6 +283,35 @@ The architecture is guided by seven foundational design principles that address 
 - Post-incident forensics require complete event reconstruction
 - Public trust depends on transparent, verifiable vote counting
 
+**Implementation Strategy**:
+
+### Immutable Audit Infrastructure
+- **OpenSearch WORM Indices**: Write-once-read-many storage prevents log tampering
+- **Event Sourcing**: Every state change captured as immutable event in Kafka
+- **Cryptographic Chaining**: Events hashed and linked to detect unauthorized modifications
+- **Multi-Region Replication**: Audit logs replicated across 3+ regions for disaster recovery
+
+### Backoffice & Administrative Controls
+- **Admin Panel with RBAC**: Separate roles for auditors, fraud investigators, and system administrators
+- **Real-Time Monitoring Dashboard**: Live metrics on voting activity, security alerts, system health
+- **Fraud Investigation Console**: Deep-dive voter profiles, device correlation, behavioral analysis
+- **Manual Review Workflows**: Queue system for high-risk votes flagged by ML models
+- **Audit Trail Queries**: Search and export capabilities for compliance reporting
+- **Administrative Actions**: Block/unblock voters, trigger re-verification, adjust fraud thresholds with full logging
+
+**Trade-offs**:
+- Storage costs for long-term audit retention (mitigated with tiered storage)
+- Manual review becomes bottleneck during mass attacks (mitigated with ML prioritization)
+- Admin panel is security-sensitive surface (mitigated with MFA, IP whitelisting, comprehensive logging)
+
+**Success Metrics**:
+- 100% of votes traceable from submission to final tally
+- <5 minute query response time for audit investigations
+- Zero unauthorized admin access
+- <1 hour mean time to investigate flagged voters
+
+---
+
 ## 4.7 Failure as a Normal Condition (Chaos Engineering, Graceful Degradation)
 
 **Principle**: Expect failures at every level. Design systems that degrade gracefully and self-heal automatically.
@@ -321,7 +350,7 @@ The architecture is guided by seven foundational design principles that address 
 
 ### Layer 2: Identity & Authentication
 
-- **Auth0 SSO + MFA**: Multi-factor authentication (SMS, authenticator apps, push notifications)
+- **OAuth-based Social Login (Google, Facebook, Apple)**: Multi-factor authentication (SMS, authenticator apps, push notifications)
 - **Liveness Detection**: SumSub facial biometrics to prevent fake accounts and deepfakes
 - **Document Verification**: Government ID validation with fraud risk scoring
 - **Session Binding**: Tokens tied to device fingerprint and IP address
@@ -335,7 +364,7 @@ The architecture is guided by seven foundational design principles that address 
 
 ### Layer 4: Application Security
 
-- **OAuth2 Bearer Tokens**: Short-lived access tokens (15 min TTL) with secure refresh flows
+- **OAuth-based Social Login Tokens**: Short-lived provider identity tokens validated by the Java Auth Service
 - **API Gateway**: AWS API Gateway with request validation and transformation
 - **Input Sanitization**: Strict schema validation on all API requests
 - **HTTPS Everywhere**: TLS 1.3 with certificate pinning on mobile clients
@@ -395,9 +424,9 @@ Documentation: <https://docs.sumsub.com/docs/react-native-module>
 
 No raw biometric data is stored directly in the voting backend.
 
-### Secure Authentication with Auth0 (SSO + MFA)
+### Secure Authentication with OAuth-based Social Login
 
-Auth0 is used for:
+OAuth-based Social Login is used for:
 
 - Secure login
 - Social SSO
@@ -405,29 +434,30 @@ Auth0 is used for:
 - Multi-Factor Authentication (MFA)
 - Token lifecycle management
 
-Documentation: <https://auth0.com/docs/quickstart/native/react-native>
 
 **Authentication Flow**
 
 1. User taps "Login".
-2. React Native app redirects to Auth0 universal login.
-3. Auth0 performs:
-    - Credential validation
-    - Social login (if enabled)
-    - MFA (Authenticator App, SMS, Push, etc.)
-4. On success, the app receives:
-    - Access Token (short-lived)
-    - ID Token
-    - Refresh Token (secure storage only)
+2. React Native app redirects the user to the selected OAuth social provider
+   (Google, Apple, or Facebook).
+3. The provider performs:
+    - User authentication
+    - Consent validation
+    - Provider-native MFA (if enabled by the user)
+4. On success, the provider returns an authorization code or identity token.
+5. The Auth Service:
+    - Validates token signature and claims
+    - Verifies issuer, audience, and expiration
+    - Links or creates the internal user identity
+6. The app receives:
+    - Internal Access Token (short-lived)
+    - Internal ID Token
 
-### Bot Detection with Auth0 Challenge + Turnstile
+### Bot Detection with OAuth-based Login + Turnstile
 
 To prevent credential stuffing, brute-force, and automated accounts:
 
-- Auth0 Challenges are applied during:
-    - Login
-    - Registration
-    - Password reset
+
 - Cloudflare Turnstile is used as:
     - Invisible human challenge
     - CAPTCHA replacement
@@ -584,46 +614,62 @@ This document captures the key architectural decisions and their tradeoffs for t
 
 ### Decision Categories
 
-| Category                  | Decision              | Chosen               | Rejected                          | Rationale                                                        |
-| ------------------------- | --------------------- | -------------------- | --------------------------------- | ---------------------------------------------------------------- |
-| **Database**              | Data store            | PostgreSQL (RDS)     | MongoDB, NoSQL                    | Guarantees required for vote integrity                           |
-| **Database**              | Scaling strategy      | Geo-based sharding   | Single instance, vertical scaling | 300M users require horizontal scaling                            |
-| **Database**              | Audit/Logs store      | OpenSearch.          | PostgreSQL, DynamoDB              | Add content                                                      |
-| **Cloud Provider**        | Infrastructure        | AWS                  | GCP, Azure, On-premise            | Add content                                                      |
-| **Architecture**          | Style                 | Microservices        | Monolith                          | Scale requirements; independent service scaling                  |
-| **Authentication**        | Provider              | Social Login (Gmail) | Auth0, Cognito, Custom            | Direct provider integration; lower cost                          |
-| **Identity Verification** | Provider              | SumSub               | Jumio, Onfido                     | Add content                                                      |
-| **Bot Detection**         | Human verification    | Cloudflare Turnstile | reCAPTCHA, hCaptcha               | Add content                                                      |
-| **Bot Detection**         | Device fingerprinting | FingerprintJS        | Custom solution                   | Add content                                                      |
-| **Compute**               | Runtime               | Kubernetes (EKS)     | ECS, Lambda                       | Add content                                                      |
-| **Messaging**             | Event streaming       | Kafka                | SQS, RabbitMQ                     | High throughput for 240k RPS; Add content                        |
-| **Caching**               | Layer                 | Redis                | Memcached, ElastiCache            | Real-time counters, session data, rate limiting                  |
-| **Real-time**             | Updates               | WebSocket + SSE      | Polling, Long-polling             | True real-time results; accepts connection management complexity |
+| Category                  | Decision                  | Chosen               | Rejected                          | Rationale                                                                          |
+|---------------------------|---------------------------|----------------------|-----------------------------------|------------------------------------------------------------------------------------|
+| **Database**              | Data store                | PostgreSQL (RDS)     | MongoDB, MySql                    | Guarantees required for vote integrity                                             |
+| **Database**              | Scaling strategy          | Geo-based sharding   | Single instance, vertical scaling | 300M users require horizontal scaling                                              |
+| **Database**              | Audit/Logs store          | OpenSearch.          | PostgreSQL, DynamoDB              | OpenSearch with WORM (Write-Once-Read-Many) indices                                |
+| **Database**              | Partitioning              | PostgreSQL           | MySQL                             | PostgreSQL natively supports: RANGE, LIST, HASH, Subpartitioning                   |
+| **Database**              | Replication               | PostgreSQL           | MySQL                             | Physical and Logical replication (streaming replication)                           |
+| **Database**              | Security and auditability | PostgreSQL           | MySQL                             | WAL is extremely reliable, Strong support for auditing, Extensions such as pgAudit |
+| **Cloud Provider**        | Infrastructure            | AWS                  | GCP, Azure, On-premise            | Add content                                                                        |
+| **Architecture**          | Style                     | Microservices        | Monolith                          | Scale requirements; independent service scaling                                    |
+| **Authentication**        | Provider                  | OAuth-based Social Login (Google, Apple, Facebook) | Auth0, Cognito | Direct provider integration; no IAM vendor lock-in; lower cost at scale |
+| **Identity Verification** | Provider                  | SumSub               | Jumio, Onfido                     | Add content                                                                        |
+| **Bot Detection**         | Human verification        | Cloudflare Turnstile | reCAPTCHA, hCaptcha               | Add content                                                                        |
+| **Bot Detection**         | Device fingerprinting     | FingerprintJS        | Custom solution                   | Add content                                                                        |
+| **Compute**               | Runtime                   | Kubernetes (EKS)     | ECS, Lambda                       | Add content                                                                        |
+| **Messaging**             | Event streaming           | Kafka                | SQS, RabbitMQ                     | High throughput for 240k RPS; Add content                                          |
+| **Caching**               | Layer                     | Redis                | Memcached, ElastiCache            | Real-time counters, session data, rate limiting                                    |
+| **Real-time**             | Updates                   | WebSocket + SSE      | Polling, Long-polling             | True real-time results; accepts connection management complexity                   |
 
-### Security Tradeoffs Summary
+### SumSub Vs Keycloak
+
+| **Aspect**                     | **SumSub (With Social Login)**                                    | **Keycloak**                                   | **Trade-off / Notes**                                                                                                  |
+|--------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| **Authentication & Identification**                 | Social Identity via major providers                  | Username/Password, OTP, MFA, SSO and fine grained rules/permissions| SumSub centralize social login; Keycloak is a full IAM |
+| **Compliance & Risk Management**                 | Higher - Automated checks against different sources                | Lower - No built-in feature, need to integrate manuall | SumSub already provides the integrations and audits |
+| **Flexibility**                | Lower - Limited to predefined flows                      | Higher - customizable authentication flows | Keycloack offers more customizations
+| **Deployment & Management**    | Simpler – is a SAAS, no infra management       | More complex – self hosted  | SumSub has vendor dependency;Keycloak is a component on your infra that you should manage (update, scale, patch) 
+
+
 
 | Tool              | Pros                                    | Cons     | Risk Accepted |
-| ----------------- | --------------------------------------- | -------- | ------------- |
+|-------------------|-----------------------------------------|----------|---------------|
 | **Social Login**  | Direct provider integration, lower cost | add cons | add risk      |
 | **SumSub**        | Strong biometric antifraud, global KYC  | add cons | add risk      |
 | **Turnstile**     | Good UX                                 | add cons | add risk      |
 | **FingerprintJS** | Passive, emulator detection             | add cons | add risk      |
 | **AWS WAF**       | Managed rules, native integration       | add cons | add risk      |
 
-### Scalability Tradeoffs
+## EKS vs ECS
 
-| Requirement       | Solution                                 | Tradeoff |
-| ----------------- | ---------------------------------------- | -------- |
-| 300M users        | Geo-based DB sharding                    | Add      |
-| 240k RPS          | HPA + KEDA autoscaling                   | Add      |
-| Zero data loss    | Synchronous replication, WAL             | Add      |
-| One-vote-per-user | DB unique constraints + idempotency keys | Add      |
-| Real-time results | Event streaming + WebSocket fan-out      | Add      |
+| **Aspect**                     | **ECS (Elastic Container Service)**                                    | **EKS (Elastic Kubernetes Service)**                                   | **Trade-off / Notes**                                                                                                  |
+|--------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| **Complexity**                 | Lower – managed container orchestration, simpler setup                 | Higher – Kubernetes has more configurations that can be managed        | ECS is easier for teams new to container orchestration; EKS gives full Kubernetes features but requires more expertise |
+| **Flexibility**                | Moderate – AWS-native features, some limitations                       | High – full Kubernetes ecosystem, offers HPA and KEDA for Auto Scaling | EKS allows more customization in term of metrics to use for Auto Scaling                                               |
+| **Deployment & Management**    | Simpler – integrates tightly with AWS, less operational overhead       | More complex – need to manage clusters, nodes, and Kubernetes objects  | ECS is faster to deploy; EKS offers more granular control and standardization                                          |
+| **Scalability**                | High – integrates with Auto Scaling, Fargate for serverless containers | High – Kubernetes-native autoscaling, multi-cluster management         | Both scale well; EKS gives more control at cost of complexity                                                          |
+| **Community & Ecosystem**      | AWS-focused – smaller ecosystem outside AWS                            | Kubernetes ecosystem – large, active community and tools               | EKS benefits from portability and community support; ECS is simpler but AWS-locked                                     |
+| **Observability & Monitoring** | AWS CloudWatch integration, simpler metrics/logs                       | Observability tools (Prometheus, Grafana) plus CloudWatch              | ECS offers simplier observability; EKS provides more flexibility for advanced observability setups                     |
+| **Cost**                       | Lower for small/simple workloads – less management overhead            | Higher – cluster management costs, but flexible with Fargate           | ECS is cost-efficient for simpler use cases; EKS scales better for complex or multi-team environments                  |
+| **Operational Overhead**       | Low – managed service, minimal Kubernetes knowledge required           | Higher – need Kubernetes expertise, more components to maintain        | ECS is “easier to run”; EKS offers powerful orchestration but requires DevOps maturity                                 |
+
 
 ### Infrastructure Tradeoffs: Microservices vs Monolith
 
 | Aspect              | Monolith                          | Microservices                             | Tradeoff                                      |
-| ------------------- | --------------------------------- | ----------------------------------------- | --------------------------------------------- |
+|---------------------|-----------------------------------|-------------------------------------------|-----------------------------------------------|
 | **Complexity**      | Lower; single codebase            | Higher; distributed system challenges     | Accept complexity for independent scaling     |
 | **Scaling**         | Vertical; scale entire app        | Horizontal; scale individual services     | Required for 240k RPS peak traffic            |
 | **Deployment**      | Single deployment unit            | Independent deployments per service       | Faster iteration; more operational overhead   |
@@ -653,15 +699,27 @@ This document captures the key architectural decisions and their tradeoffs for t
 
 ## DB-enforced FK vs Application-enforced
 
-| **Aspect**                           | **DB-enforced FK (with indexes & CASCADE)**                                                                             | **Application-enforced (no DB constraints)**                                                             | **Analysis**                                                                                                                                                                                               |
-|--------------------------------------|-------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Data Integrity & Consistency**     | **Guaranteed** – ACID-compliant, impossible to create orphaned records. Constraints validated in every transaction.     | **Risk-prone** – depends on application logic. Bugs or race conditions create inconsistencies over time. | DB-enforced is rigid but mathematically sound. Application-enforced needs eventual consistency patterns and reconciliation. Orphaned data often discovered late. Distributed systems with multiple DBs force app-enforced. |
-| **Write Performance & Throughput**   | **Moderate to Low** – FK validation overhead on INSERT/UPDATE (index lookup + lock acquisition per write).              | **High** – No constraint checks. Critical for >10k writes/sec where FK checks become bottleneck.         | DB FKs add ~10-30% overhead per write. Each INSERT/UPDATE validates relationships. App-enforced wins for write-heavy workloads but sacrifices safety. Measure with production-like volume.                                  |
-| **Read Performance & Query Patterns** | **Excellent** – Auto-indexed FK columns, JOINs use index seeks O(log n), optimizer leverages FK metadata.               | **Same if indexed** – Must manually index FK columns. Without indexes, JOINs = full table scans O(n²).   | Non-indexed FKs catastrophic: 100ms query becomes 30s+. DB-enforced auto-creates indexes. App-enforced needs disciplined index management and monitoring.                                                                   |
-| **Scalability & Distribution**       | **Poor for microservices** – FKs cannot span databases. Forces monolithic DB or complex 2PC. Sharding breaks FKs.       | **Natural fit** – Services own data, manage relationships via APIs/events. Enables polyglot persistence. | DB FKs lock into single-DB. Moving to microservices requires removing FKs (risky). App-enforced needs saga patterns, event sourcing, idempotency. Choose based on 5-year vision.                                           |
-| **Operational Complexity & Risk**    | **High** – Migrations on 100M+ rows take hours with locks. Cascades can accidentally delete millions (production horror stories). | **Lower for changes** – Logic in code, zero-downtime deploys. Higher risk of silent corruption.          | Adding FK to existing data = full scan + lock. Tools like gh-ost help but add complexity. RESTRICT prevents cascade disasters but needs explicit cleanup. App-enforced enables agile deploys.                               |
-| **Debugging & Observability**        | **Explicit errors** – FK violations fail fast with clear messages. Root cause immediate. Impossible states prevented.   | **Silent failures** – Issues found late in reports/audits. Needs data quality metrics and reconciliation. | DB FKs = immediate feedback. App-enforced issues manifest as "data doesn't add up". Needs orphaned record detection and dashboards. Long-term cleanup costs can exceed performance gains.                                  |
-| **Best For**                         | Monolithic apps, transactional systems, regulated domains (finance/healthcare), small teams, data quality > performance | Microservices, high-scale writes, eventual consistency OK, mature DevOps teams, flexibility > safety     | **Use DB FKs for**: orders, payments, user accounts. **Use app-enforced for**: cross-service relationships, analytics, >10k writes/sec. Hybrid common. Re-evaluate when scaling. Migration later is painful.                |
+| **Aspect**                            | **DB-enforced FK (with indexes & CASCADE)**                                                                                       | **Application-enforced (no DB constraints)**                                                              | **Analysis**                                                                                                                                                                                                               |
+|---------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Data Integrity & Consistency**      | **Guaranteed** – ACID-compliant, impossible to create orphaned records. Constraints validated in every transaction.               | **Risk-prone** – depends on application logic. Bugs or race conditions create inconsistencies over time.  | DB-enforced is rigid but mathematically sound. Application-enforced needs eventual consistency patterns and reconciliation. Orphaned data often discovered late. Distributed systems with multiple DBs force app-enforced. |
+| **Write Performance & Throughput**    | **Moderate to Low** – FK validation overhead on INSERT/UPDATE (index lookup + lock acquisition per write).                        | **High** – No constraint checks. Critical for >10k writes/sec where FK checks become bottleneck.          | DB FKs add ~10-30% overhead per write. Each INSERT/UPDATE validates relationships. App-enforced wins for write-heavy workloads but sacrifices safety. Measure with production-like volume.                                 |
+| **Read Performance & Query Patterns** | **Excellent** – Auto-indexed FK columns, JOINs use index seeks O(log n), optimizer leverages FK metadata.                         | **Same if indexed** – Must manually index FK columns. Without indexes, JOINs = full table scans O(n²).    | Non-indexed FKs catastrophic: 100ms query becomes 30s+. DB-enforced auto-creates indexes. App-enforced needs disciplined index management and monitoring.                                                                  |
+| **Scalability & Distribution**        | **Poor for microservices** – FKs cannot span databases. Forces monolithic DB or complex 2PC. Sharding breaks FKs.                 | **Natural fit** – Services own data, manage relationships via APIs/events. Enables polyglot persistence.  | DB FKs lock into single-DB. Moving to microservices requires removing FKs (risky). App-enforced needs saga patterns, event sourcing, idempotency. Choose based on 5-year vision.                                           |
+| **Operational Complexity & Risk**     | **High** – Migrations on 100M+ rows take hours with locks. Cascades can accidentally delete millions (production horror stories). | **Lower for changes** – Logic in code, zero-downtime deploys. Higher risk of silent corruption.           | Adding FK to existing data = full scan + lock. Tools like gh-ost help but add complexity. RESTRICT prevents cascade disasters but needs explicit cleanup. App-enforced enables agile deploys.                              |
+| **Debugging & Observability**         | **Explicit errors** – FK violations fail fast with clear messages. Root cause immediate. Impossible states prevented.             | **Silent failures** – Issues found late in reports/audits. Needs data quality metrics and reconciliation. | DB FKs = immediate feedback. App-enforced issues manifest as "data doesn't add up". Needs orphaned record detection and dashboards. Long-term cleanup costs can exceed performance gains.                                  |
+| **Best For**                          | Monolithic apps, transactional systems, regulated domains (finance/healthcare), small teams, data quality > performance           | Microservices, high-scale writes, eventual consistency OK, mature DevOps teams, flexibility > safety      | **Use DB FKs for**: orders, payments, user accounts. **Use app-enforced for**: cross-service relationships, analytics, >10k writes/sec. Hybrid common. Re-evaluate when scaling. Migration later is painful.               |
+
+### Real-Time Technology Tradeoffs
+
+| Aspect                  | SSE                                      | WebSockets                                | Tradeoff                                           |
+|-------------------------|------------------------------------------|-------------------------------------------|----------------------------------------------------|
+| **Communication**       | Unidirectional (server→client)           | Bidirectional (full-duplex)               | SSE sufficient for results broadcast; simpler      |
+| **Connection Overhead** | 4-8KB per connection                     | 10-20KB per connection                    | Lower memory footprint at 300M user scale          |
+| **Reconnection**        | Automatic browser retry + event IDs      | Manual reconnection logic required        | Reduced client complexity and failure recovery     |
+| **Firewall/Proxy**      | Standard HTTP; works everywhere          | WebSocket upgrade often blocked           | Better compatibility in enterprise/mobile networks |
+| **Scalability**         | HTTP/2 multiplexing supported            | Requires persistent TCP connections       | Easier horizontal scaling with standard HTTP       |
+| **Browser Support**     | Native EventSource API                   | Native WebSocket API                      | Both well-supported; SSE simpler for broadcast     |
+| **Latency**             | ~100ms for broadcasts                    | ~50ms for bidirectional messages          | Accept minor latency increase for simplicity       |
 
 ## Database SQL vs No-SQL
 
@@ -706,7 +764,7 @@ Why Not NoSQL for Vote System?
 
 ## 6.1. Security Tools
 
-### Auth0
+### OAuth-based Social Login (Custom Java Service)
 
 Pros: - Enterprise-grade authentication - Built-in MFA - Secure token
 lifecycle - SSO support - High availability
@@ -913,15 +971,7 @@ A robust observability strategy is critical for a system of this scale and criti
 
 ## 11.1 Stack Overview
 
-| Pillar | Tool | Purpose |
-|--------|------|---------|
-| Metrics | Prometheus | Time-series collection and alerting |
-| Visualization | Grafana | Dashboards and unified observability UI |
-| Tracing | Jaeger | Distributed tracing |
-| Logs | Loki | Log aggregation (Prometheus-native) |
-| Alerting | Alertmanager | Alert routing and notification |
-| Service Mesh Observability | OpenTelemetry | Instrumentation standard |
-
+Real-time result distribution is critical for voter engagement and system transparency. The architecture must stream aggregated vote counts to 300M users with <2 second latency while maintaining system stability under peak load.
 
 ## 11.2 Metrics - Prometheus
 
@@ -957,29 +1007,29 @@ Prometheus is the core metrics engine, chosen for its Open Source nature and Kub
 **Prometheus Architecture for Scale:**
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────────┐
 │                     Prometheus Federation                        │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
-│  │ Prometheus  │  │ Prometheus  │  │ Prometheus  │              │
-│  │  Region A   │  │  Region B   │  │  Region C   │              │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘              │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐               │
+│  │ Prometheus  │  │ Prometheus  │  │ Prometheus  │               │
+│  │  Region A   │  │  Region B   │  │  Region C   │               │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘               │
 │         │                │                │                      │
 │         └────────────────┼────────────────┘                      │
-│                          │                                        │
-│                          ▼                                        │
+│                          │                                       │
+│                          ▼                                       │
 │                 ┌─────────────────┐                              │
-│                 │ Global Prometheus│                              │
-│                 │   (Federation)   │                              │
+│                 │ Global Prometheus│                             │
+│                 │   (Federation)   │                             │
 │                 └────────┬────────┘                              │
-│                          │                                        │
-│                          ▼                                        │
+│                          │                                       │
+│                          ▼                                       │
 │                 ┌─────────────────┐                              │
 │                 │    Thanos /     │ ← Long-term storage          │
 │                 │   Cortex (opt)  │                              │
 │                 └─────────────────┘                              │
-└─────────────────────────────────────────────────────────────────┘
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 For 300M users and high cardinality, consider **Thanos** or **Cortex** for:
@@ -1048,31 +1098,31 @@ For a microservices architecture at this scale, distributed tracing is essential
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│                         Tracing Flow                                  │
+│                         Tracing Flow                                 │
 ├──────────────────────────────────────────────────────────────────────┤
-│                                                                        │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐           │
-│  │ Mobile  │───▶│   API   │───▶│  Auth   │───▶│  Vote   │           │
-│  │   App   │    │ Gateway │    │ Service │    │ Service │           │
-│  └─────────┘    └────┬────┘    └────┬────┘    └────┬────┘           │
-│                      │              │              │                  │
+│                                                                      │
+│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐            │
+│  │ Mobile  │───▶│   API   │───▶│  Auth   │───▶│  Vote   │            │
+│  │   App   │    │ Gateway │    │ Service │    │ Service │            │
+│  └─────────┘    └────┬────┘    └────┬────┘    └────┬────┘            │
+│                      │              │              │                 │
 │         ┌────────────┴──────────────┴──────────────┘                 │
-│         │  trace-id: abc123                                           │
+│         │  trace-id: abc123                                          │
 │         │  span-id propagated via headers                            │
-│         ▼                                                             │
+│         ▼                                                            │
 │  ┌─────────────────────────────────────────────────────────┐         │
-│  │              OpenTelemetry Collector                     │         │
+│  │              OpenTelemetry Collector                    │         │
 │  │  (sampling, batching, export to Jaeger)                 │         │
 │  └────────────────────────┬────────────────────────────────┘         │
-│                           │                                           │
-│                           ▼                                           │
+│                           │                                          │
+│                           ▼                                          │
 │  ┌─────────────────────────────────────────────────────────┐         │
-│  │                    Jaeger Backend                        │         │
-│  │  ┌──────────┐    ┌─────────────┐    ┌──────────────┐   │         │
-│  │  │Collector │───▶│    Kafka    │───▶│ Elasticsearch│   │         │
-│  │  └──────────┘    └─────────────┘    └──────────────┘   │         │
+│  │                    Jaeger Backend                       │         │
+│  │  ┌──────────┐    ┌─────────────┐    ┌──────────────┐    │         │
+│  │  │Collector │───▶│    Kafka    │───▶│ Elasticsearch│    │         │
+│  │  └──────────┘    └─────────────┘    └──────────────┘    │         │
 │  └─────────────────────────────────────────────────────────┘         │
-│                                                                        │
+│                                                                      │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1081,7 +1131,7 @@ For a microservices architecture at this scale, distributed tracing is essential
 | Service | Instrumentation |
 |---------|-----------------|
 | API Gateway | Auto-instrumentation via OpenTelemetry |
-| Auth Service | Manual spans for Auth0/Sumsub calls |
+| Auth Service | Manual spans for OAuth provider calls (Google / Apple / Facebook) and SumSub |
 | Vote Service | Manual spans for eligibility check, fraud check, vote persist |
 | Fraud Service | Manual spans for risk scoring pipeline |
 | Database calls | Auto-instrumentation with query tagging |
@@ -1095,7 +1145,7 @@ For a microservices architecture at this scale, distributed tracing is essential
 - `fraud.check_vote` - Fraud risk assessment
 - `vote.persist` - Vote storage operation
 - `db.query` - Database operations
-- `external.auth0` - Auth0 API calls
+- `external.oauth_provider` - Auth API calls
 - `external.sumsub` - Sumsub API calls
 
 **Sampling Strategy:**
@@ -1124,22 +1174,22 @@ Loki provides log aggregation that integrates natively with Grafana and uses the
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                      Log Pipeline                             │
+│                      Log Pipeline                            │
 ├──────────────────────────────────────────────────────────────┤
-│                                                                │
-│  ┌──────────────┐                                             │
-│  │ Microservice │──┐                                          │
-│  └──────────────┘  │                                          │
+│                                                              │
+│  ┌──────────────┐                                            │
+│  │ Microservice │──┐                                         │
+│  └──────────────┘  │                                         │
 │  ┌──────────────┐  │    ┌──────────┐    ┌──────────────┐     │
 │  │ Microservice │──┼───▶│ Promtail │───▶│     Loki     │     │
 │  └──────────────┘  │    │ (Agent)  │    │   (Storage)  │     │
 │  ┌──────────────┐  │    └──────────┘    └──────┬───────┘     │
-│  │ Microservice │──┘                           │              │
-│  └──────────────┘                              ▼              │
-│                                          ┌──────────┐         │
-│                                          │ Grafana  │         │
-│                                          │  (Query) │         │
-│                                          └──────────┘         │
+│  │ Microservice │──┘                           │             │
+│  └──────────────┘                              ▼             │
+│                                          ┌──────────┐        │
+│                                          │ Grafana  │        │
+│                                          │  (Query) │        │
+│                                          └──────────┘        │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -1252,10 +1302,10 @@ OpenTelemetry (OTel) provides a vendor-neutral instrumentation standard across a
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                 OpenTelemetry Collector                          │
+│                 OpenTelemetry Collector                         │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  Receivers          Processors           Exporters               │
+│                                                                 │
+│  Receivers          Processors           Exporters              │
 │  ┌─────────┐       ┌───────────┐       ┌────────────┐           │
 │  │  OTLP   │──────▶│  Batch    │──────▶│ Prometheus │           │
 │  │  gRPC   │       │  Sampling │       │   (metrics)│           │
@@ -1320,7 +1370,7 @@ For effective debugging, all telemetry must be correlated:
 
 **External Dependencies:**
 
-- Auth0 API latency and error rate
+- OAuth provider API latency and error rate
 - Sumsub API latency and error rate
 - AWS service health (via CloudWatch)
 
@@ -1795,37 +1845,206 @@ The verification process ensures no tampering has occurred by validating the ent
 
 This document describes the core domain services of the secure voting platform.
 
-## 13.1 Auth Service
+---
+
+## 12.1 Auth Service
 
 **Scope:**
+The Auth Service is the **internal identity authority** of the voting platform.
+
+It acts as a **custom OAuth-based identity service**, integrating directly with
+social identity providers (Google, Apple, Facebook) and applying voting-domain
+business rules.
+
+The platform does **not** rely on external IAM providers such as Auth0 or Cognito.
+All authentication flows, token validation, and session issuance are handled
+internally by this service.
+
+**Responsibilities:**
 - User registration and identity verification
 - Session management and token issuance
-- Integration with Auth0 for authentication
-- Integration with Sumsub for KYC validation
-- One-person-one-vote enforcement through identity uniqueness
+- Integration with OAuth-based Social Login providers (Google, Facebook, Apple)
+- Integration with Sumsub for KYC/liveness validation
+- Device fingerprint binding to user sessions
+- Token refresh and revocation
 
-The Auth Service is the **internal identity authority** of the voting
-platform.
-
-It does NOT replace Auth0 or Sumsub. Instead, it **connects them to the
-voting domain** and applies business rules.
-
-It answers one main question: \> "Who is this user inside the voting
+**Key Interactions:**
+- Receives authentication callbacks from OAuth providers
+- Receives verification results from Sumsub
+- Issues internal JWT tokens for downstream services
 
 
-## 13.2 Vote Service
+
+**Authentication Trade-offs: OAuth Social Login vs Auth0**
+| Aspect | OAuth-based Social Login (Custom Java Service) | Auth0 |
+|------|-----------------------------------------------|-------|
+| Control | Full architectural and operational control over authentication flows, token lifecycle, data storage, and domain-specific rules | Control limited to vendor-supported flows, configuration options, and extension points |
+| Cost | Lower long-term cost at large scale; infrastructure and engineering costs are predictable and internally controlled | Becomes expensive at high MAU due to per-user and per-feature pricing |
+| Vendor Lock-in | Low; providers can be added or removed independently and implementation is protocol-based | High; deep dependency on vendor APIs, pricing model, and roadmap |
+| Customization | High; authentication flows can be tailored to voting-domain requirements and security policies | Medium; customization constrained by platform capabilities and policies |
+| Time to Market | Medium; requires initial engineering effort to implement and validate provider integrations | Fast; ready-to-use authentication flows and UI components |
+| Operational Effort | Higher; responsibility for monitoring, incident response, key rotation, and provider changes | Lower; IAM operations and availability handled by the vendor |
+| Compliance Scope | Reduced; no password storage and minimal IAM surface owned by the platform | Broader; platform is responsible for IAM configuration, audits, and vendor compliance |
+| Scalability | Fully controlled; scaling behavior is predictable and aligned with internal infrastructure | Vendor-dependent; scaling limits, throttling, and outages are external risks |
+| Integration Complexity | High; requires implementing, testing, and maintaining three distinct OAuth/OIDC integrations (Google, Apple, Facebook), each with different behaviors and edge cases | Low; unified abstraction over providers with consistent behavior |
+
+
+**Decision**: OAuth-based Social Login was chosen to reduce cost, avoid vendor
+lock-in, and maintain full architectural control at 300M-user scale.
+
+### OAuth-based Social Login — Java Implementation
+
+The Auth Service implements OAuth 2.0 / OpenID Connect flows using a
+custom Java-based authentication service. The platform does not rely on
+external IAM providers (Auth0, Cognito, etc.).
+
+The service integrates directly with each social identity provider and
+is responsible for token validation, identity linking, and internal
+session issuance.
+
+#### Provider Integrations
+
+**Google**
+- Protocol: OpenID Connect
+- Token Type: ID Token (JWT)
+- Validation Strategy:
+  - Signature validation
+  - Issuer, audience, and expiration checks
+- Java Libraries:
+  - `com.google.api-client:google-api-client`
+  - `GoogleIdTokenVerifier`
+
+**Apple**
+- Protocol: OAuth 2.0 + OpenID Connect
+- Token Type: ID Token (JWT)
+- Validation Strategy:
+  - JWT signature validation using Apple public keys (JWK)
+  - Issuer, audience, and expiration checks
+- Java Libraries:
+  - `com.nimbusds:nimbus-jose-jwt`
+  - Standard JWK fetching via HTTPS
+
+**Facebook**
+- Protocol: OAuth 2.0
+- Token Type: Access Token
+- Validation Strategy:
+  - Token introspection using Facebook Graph API (`debug_token`)
+- Java Libraries:
+  - No mandatory SDK required
+  - Standard Java HTTP client (e.g., `java.net.http.HttpClient` or OkHttp)
+
+#### Token Validation Without SDKs (Protocol-only Option)
+
+All providers can be integrated without official SDKs by implementing
+OAuth 2.0 / OpenID Connect directly:
+
+- Authorization Code Flow
+- HTTPS calls to token endpoints
+- JWK retrieval and caching
+- JWT signature and claim validation
+- Strict issuer and audience enforcement
+
+This approach minimizes third-party dependencies and vendor lock-in,
+at the cost of increased implementation complexity.
+---
+
+## 12.2 Vote Service
 
 **Scope:**
+The Vote Service is the **core voting engine** of the platform. It operates as both **Kafka producer and consumer**, handling the full vote lifecycle from submission to persistence.
+
+**Producer Responsibilities (API Layer):**
+- Receives vote submissions from authenticated users
+- Validates vote payload structure and eligibility
+- Enforces idempotency through Redis cache (vote deduplication)
+- Publishes vote events to Kafka topic
+- Returns immediate acknowledgment to client
+
+**Consumer Responsibilities (Processing Layer):**
+- Consumes vote events from Kafka
+- Performs final vote validation and fraud check integration
+- Persists vote to PostgreSQL with unique constraints
+- Updates real-time vote counters in Redis
+- Publishes vote counted events for downstream consumers
+- Handles retry logic for transient failures
+
+**Survey Management:**
 - Survey creation and management (CRUD operations)
-- Vote submission and validation
-- Idempotency enforcement (one vote per user per survey)
-- Vote aggregation and results calculation
-- Eligibility verification before accepting votes
+- Survey lifecycle (draft → published → finished)
+- Eligibility rules configuration per survey
+
+**Key Guarantees:**
+- Exactly-once vote processing via idempotency keys
+- One vote per user per survey enforced at DB level
+
+---
+
+## 12.3 Notification Service
+
+**Scope:**
+The Notification Service handles **real-time result broadcasting** to connected clients via Server-Sent Events (SSE).
+
+**Responsibilities:**
+- Consumes `vote.counted` events from Kafka
+- Aggregates vote counts per survey/option
+- Broadcasts real-time updates to SSE clients
+
+**Notification Types:**
+- Vote count updates (real-time totals)
+- Survey status changes (published, finished)
+- System announcements
+
+---
+
+## 12.4 Auditability Service
+
+**Scope:**
+The Auditability Service maintains the **immutable audit trail** for all voting activity, ensuring legal compliance and forensic readiness.
+
+**Responsibilities:**
+- Consumes all domain events from Kafka (votes, fraud, auth)
+- Archives events to S3 for long-term retention
+- Provides query API for audit investigations
+
+**Events Captured:**
+- `vote.submitted`, `vote.counted`, `vote.rejected`
+- `fraud.detected`, `fraud.blocked`
+- `user.registered`, `user.verified`, `user.blocked`
+- `survey.created`, `survey.published`, `survey.finished`
+
+**Retention Policy:**
+- Cold storage (S3 Glacier): 7 years (legal compliance)
+
+---
+
+## 12.5 Backoffice Service
+
+**Scope:**
+The Backoffice Service provides **administrative controls and operational tools** for system operators, auditors, and fraud investigators.
+
+**Responsibilities:**
+- Admin panel with Role-Based Access Control (RBAC)
+- Real-time monitoring dashboard (voting activity, system health)
+- Survey management interface (create, publish, finish surveys)
+
+**User Roles:**
+| Role | Permissions |
+|------|-------------|
+| **System Admin** | Full system configuration, user management, service health |
+| **Election Manager** | Survey CRUD, publish/finish surveys, view results |
+| **Fraud Investigator** | View flagged votes, analyze patterns, block suspicious users |
+
+**Key Features:**
+- MFA required for all admin access
+
+**Security Controls:**
+- Separate network segment (internal only, no public access)
+
 
 ### Management Endpoints
 
 | Method   | Endpoint                           | Description         |
-| -------- | ---------------------------------- | ------------------- |
+|----------|------------------------------------|---------------------|
 | `POST`   | `/v1/internal/surveys`             | Create a new survey |
 | `PUT`    | `/v1/internal/surveys/:id`         | Update survey       |
 | `PUT`    | `/v1/internal/surveys/:id/publish` | Publish survey      |
@@ -1836,7 +2055,7 @@ It answers one main question: \> "Who is this user inside the voting
 ### Public Endpoints
 
 | Method | Endpoint                                   | Description             |
-| ------ | ------------------------------------------ | ----------------------- |
+|--------|--------------------------------------------|-------------------------|
 | `GET`  | `/v1/surveys/:id`                          | Get survey details      |
 | `POST` | `/v1/surveys/:id/answers`                  | Submit an answer        |
 | `PUT`  | `/v1/surveys/:id/answers/:answerId/finish` | Complete survey session |
@@ -1880,26 +2099,26 @@ It answers one main question: \> "Who is this user inside the voting
 
 ```json
 {
-  "id": "1"
+  "id": "1",
   "title": "Elections Survey",
   "startDate": null,
   "finishDate": null,
   "questions": [
       {
-        "id": "1"
+        "id": "1",
         "title": "Who would you vote for president?",
         "min": 1,
         "max": 2,
         "order": 0,
         "options": [
           {
-            "id": "1"
+            "id": "1",
             "text": "Homer Simpsom",
             "image": "https://example.com/homer.jpg",
             "order": 0
           },
           {
-            "id": "2"
+            "id": "2",
             "text": "Ned Flanders",
             "image": "https://example.com/ned.jpg",
             "order": 1
@@ -2088,56 +2307,55 @@ Close a survey, preventing new responses. Sets the finishDate to current timesta
 
 ```json
 {
-  "survey": {
+"survey": {
+"id": "1",
+"title": "Elections Survey"
+},
+"totalResponses": 150,
+"questions": [
+  {
     "id": "1",
-    "title": "Elections Survey"
-  },
-  "totalResponses": 150,
-  "questions": [
+    "title": "Who would you vote for president?",
+    "order": 0,
+    "options": [
       {
         "id": "1",
-        "title": "Who would you vote for president?",
+        "text": "Homer Simpson",
+        "image": "https://example.com/homer.jpg",
         "order": 0,
-        "options": [
-          {
-            "id": "1",
-            "text": "Homer Simpson",
-            "image": "https://example.com/homer.jpg",
-            "order": 0,
-            "votes": 85
-          },
-          {
-            "id": "2",
-            "text": "Ned Flanders",
-            "image": "https://example.com/ned.jpg",
-            "order": 1,
-            "votes": 65
-          }
-        ]
+        "votes": 85
       },
       {
         "id": "2",
-        "title": "Who would you vote for minister?",
+        "text": "Ned Flanders",
+        "image": "https://example.com/ned.jpg",
         "order": 1,
-        "options": [
-          {
-            "id": "3",
-            "text": "Montgomery Burns",
-            "image": "https://example.com/burns.jpg",
-            "order": 0,
-            "votes": 70
-          },
-          {
-            "id": "4",
-            "text": "Sideshow Bob",
-            "image": "https://example.com/bob.jpg",
-            "order": 1,
-            "votes": 80
-          }
-        ]
+        "votes": 65
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "title": "Who would you vote for minister?",
+    "order": 1,
+    "options": [
+      {
+        "id": "3",
+        "text": "Montgomery Burns",
+        "image": "https://example.com/burns.jpg",
+        "order": 0,
+        "votes": 70
+      },
+      {
+        "id": "4",
+        "text": "Sideshow Bob",
+        "image": "https://example.com/bob.jpg",
+        "order": 1,
+        "votes": 80
       }
     ]
   }
+]
 }
 ```
 
@@ -2257,13 +2475,6 @@ Mark a survey answer session as completed.
 }
 ```
 
-## 13.3 Notification Service
-
-**Scope:**
-- Real-time result broadcasting 
-- Managing concurrent connections from up to 250K users
-- Aggregated vote count distribution
-
 ---
 
 
@@ -2320,4 +2531,6 @@ Mark a survey answer session as completed.
 - **Toxiproxy**
     - Injects latency, timeouts, and packet loss to validate resilience
     - Tests retry logic, circuit breakers, and idempotency under failure conditions
+
+
 
