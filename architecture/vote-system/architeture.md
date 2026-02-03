@@ -632,7 +632,16 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Caching**               | Layer                     | Redis                | Memcached, ElastiCache            | Real-time counters, session data, rate limiting                                    |
 | **Real-time**             | Updates                   | WebSocket + SSE      | Polling, Long-polling             | True real-time results; accepts connection management complexity                   |
 
-### Security Tradeoffs Summary
+### SumSub Vs Keycloak
+
+| **Aspect**                     | **SumSub (With Social Login)**                                    | **Keycloak**                                   | **Trade-off / Notes**                                                                                                  |
+|--------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| **Authentication & Identification**                 | Social Identity via major providers                  | Username/Password, OTP, MFA, SSO and fine grained rules/permissions| SumSub centralize social login; Keycloak is a full IAM |
+| **Compliance & Risk Management**                 | Higher - Automated checks against different sources                | Lower - No built-in feature, need to integrate manuall | SumSub already provides the integrations and audits |
+| **Flexibility**                | Lower - Limited to predefined flows                      | Higher - customizable authentication flows | Keycloack offers more customizations
+| **Deployment & Management**    | Simpler – is a SAAS, no infra management       | More complex – self hosted  | SumSub has vendor dependency;Keycloak is a component on your infra that you should manage (update, scale, patch) 
+
+
 
 | Tool              | Pros                                    | Cons     | Risk Accepted |
 |-------------------|-----------------------------------------|----------|---------------|
@@ -641,16 +650,6 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Turnstile**     | Good UX                                 | add cons | add risk      |
 | **FingerprintJS** | Passive, emulator detection             | add cons | add risk      |
 | **AWS WAF**       | Managed rules, native integration       | add cons | add risk      |
-
-### Scalability Tradeoffs
-
-| Requirement       | Solution                                 | Tradeoff |
-|-------------------|------------------------------------------|----------|
-| 300M users        | Geo-based DB sharding                    | Add      |
-| 240k RPS          | HPA + KEDA autoscaling                   | Add      |
-| Zero data loss    | Synchronous replication, WAL             | Add      |
-| One-vote-per-user | DB unique constraints + idempotency keys | Add      |
-| Real-time results | Event streaming + WebSocket fan-out      | Add      |
 
 ## EKS vs ECS
 
