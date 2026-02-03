@@ -1409,6 +1409,79 @@ internally by this service.
 - Receives verification results from Sumsub
 - Issues internal JWT tokens for downstream services
 
+
+
+**Authentication Trade-offs: OAuth Social Login vs Auth0**
+| Aspect | OAuth-based Social Login (Custom Java Service) | Auth0 |
+|------|-----------------------------------------------|-------|
+| Control | Full architectural and operational control over authentication flows, token lifecycle, data storage, and domain-specific rules | Control limited to vendor-supported flows, configuration options, and extension points |
+| Cost | Lower long-term cost at large scale; infrastructure and engineering costs are predictable and internally controlled | Becomes expensive at high MAU due to per-user and per-feature pricing |
+| Vendor Lock-in | Low; providers can be added or removed independently and implementation is protocol-based | High; deep dependency on vendor APIs, pricing model, and roadmap |
+| Customization | High; authentication flows can be tailored to voting-domain requirements and security policies | Medium; customization constrained by platform capabilities and policies |
+| Time to Market | Medium; requires initial engineering effort to implement and validate provider integrations | Fast; ready-to-use authentication flows and UI components |
+| Operational Effort | Higher; responsibility for monitoring, incident response, key rotation, and provider changes | Lower; IAM operations and availability handled by the vendor |
+| Compliance Scope | Reduced; no password storage and minimal IAM surface owned by the platform | Broader; platform is responsible for IAM configuration, audits, and vendor compliance |
+| Scalability | Fully controlled; scaling behavior is predictable and aligned with internal infrastructure | Vendor-dependent; scaling limits, throttling, and outages are external risks |
+| Integration Complexity | High; requires implementing, testing, and maintaining three distinct OAuth/OIDC integrations (Google, Apple, Facebook), each with different behaviors and edge cases | Low; unified abstraction over providers with consistent behavior |
+
+
+**Decision**: OAuth-based Social Login was chosen to reduce cost, avoid vendor
+lock-in, and maintain full architectural control at 300M-user scale.
+
+### OAuth-based Social Login — Java Implementation
+
+The Auth Service implements OAuth 2.0 / OpenID Connect flows using a
+custom Java-based authentication service. The platform does not rely on
+external IAM providers (Auth0, Cognito, etc.).
+
+The service integrates directly with each social identity provider and
+is responsible for token validation, identity linking, and internal
+session issuance.
+
+#### Provider Integrations
+
+**Google**
+- Protocol: OpenID Connect
+- Token Type: ID Token (JWT)
+- Validation Strategy:
+  - Signature validation
+  - Issuer, audience, and expiration checks
+- Java Libraries:
+  - `com.google.api-client:google-api-client`
+  - `GoogleIdTokenVerifier`
+
+**Apple**
+- Protocol: OAuth 2.0 + OpenID Connect
+- Token Type: ID Token (JWT)
+- Validation Strategy:
+  - JWT signature validation using Apple public keys (JWK)
+  - Issuer, audience, and expiration checks
+- Java Libraries:
+  - `com.nimbusds:nimbus-jose-jwt`
+  - Standard JWK fetching via HTTPS
+
+**Facebook**
+- Protocol: OAuth 2.0
+- Token Type: Access Token
+- Validation Strategy:
+  - Token introspection using Facebook Graph API (`debug_token`)
+- Java Libraries:
+  - No mandatory SDK required
+  - Standard Java HTTP client (e.g., `java.net.http.HttpClient` or OkHttp)
+
+#### Token Validation Without SDKs (Protocol-only Option)
+
+All providers can be integrated without official SDKs by implementing
+OAuth 2.0 / OpenID Connect directly:
+
+- Authorization Code Flow
+- HTTPS calls to token endpoints
+- JWK retrieval and caching
+- JWT signature and claim validation
+- Strict issuer and audience enforcement
+
+This approach minimizes third-party dependencies and vendor lock-in,
+at the cost of increased implementation complexity.
 ---
 
 ## 12.2 Vote Service
@@ -1997,19 +2070,3 @@ Mark a survey answer session as completed.
 
 
 
-
-## 6.X Authentication Trade-offs: OAuth Social Login vs Auth0
-
-| Aspect | OAuth-based Social Login (Custom Java Service) | Auth0 |
-|------|-----------------------------------------------|-------|
-| Control | Full control over flows and data | Limited by vendor |
-| Cost | Lower at scale | Expensive at high MAU |
-| Vendor Lock-in | Low | High |
-| Customization | High | Medium |
-| Time to Market | Medium | Fast |
-| Operational Effort | Higher | Lower |
-| Compliance Scope | Reduced (no passwords) | Broader (IAM responsibility) |
-| Scalability | Fully controlled | Vendor-dependent |
-
-**Decision**: OAuth-based Social Login was chosen to reduce cost, avoid vendor
-lock-in, and maintain full architectural control at 300M-user scale.
