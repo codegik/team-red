@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard - Wireframe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-white min-h-screen">
+    <nav class="border-b-2 border-black px-6 py-3">
+      <div class="max-w-5xl mx-auto flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 border border-black flex items-center justify-center text-xs">[L]</div>
+          <span class="font-bold">Voting System</span>
+          <span class="text-xs border border-black px-2 py-0.5">Admin</span>
+        </div>
+        <div class="flex items-center gap-4 text-sm">
+          <span>admin@example.com</span>
+          <button class="underline">Logout</button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="max-w-5xl mx-auto p-6">
+      <div class="border-2 border-black p-4 mb-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <h1 class="text-lg font-bold">Survey Management</h1>
+            <p class="text-sm text-gray-600">Create and manage your surveys</p>
+          </div>
+          <a href="create-survey.html" class="px-4 py-2 bg-black text-white text-sm">
+            + Create Survey
+          </a>
+        </div>
+      </div>
+
+      <div class="border-2 border-black p-4 mb-4">
+        <div class="flex gap-4 mb-4">
+          <input
+            type="text"
+            placeholder="Search surveys..."
+            class="flex-1 px-3 py-2 border border-black text-sm"
+          />
+          <select class="px-3 py-2 border border-black text-sm">
+            <option>All Status</option>
+            <option>Active</option>
+            <option>Draft</option>
+            <option>Closed</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-4 gap-3 text-sm">
+          <div class="border border-black p-3 text-center">
+            <div class="text-xl font-bold">12</div>
+            <div class="text-gray-600">Total</div>
+          </div>
+          <div class="border border-black p-3 text-center">
+            <div class="text-xl font-bold">5</div>
+            <div class="text-gray-600">Active</div>
+          </div>
+          <div class="border border-black p-3 text-center">
+            <div class="text-xl font-bold">3</div>
+            <div class="text-gray-600">Drafts</div>
+          </div>
+          <div class="border border-black p-3 text-center">
+            <div class="text-xl font-bold">4</div>
+            <div class="text-gray-600">Closed</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-2 border-black">
+        <table class="w-full text-sm">
+          <thead class="border-b-2 border-black bg-gray-100">
+            <tr>
+              <th class="text-left px-4 py-2">Survey Title</th>
+              <th class="text-left px-4 py-2">Status</th>
+              <th class="text-left px-4 py-2">Responses</th>
+              <th class="text-left px-4 py-2">Created</th>
+              <th class="text-right px-4 py-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-black">
+              <td class="px-4 py-3">
+                <div class="font-medium">Elections Survey</div>
+                <div class="text-xs text-gray-600">3 questions</div>
+              </td>
+              <td class="px-4 py-3">
+                <span class="border border-black px-2 py-0.5 text-xs">Active</span>
+              </td>
+              <td class="px-4 py-3">142</td>
+              <td class="px-4 py-3">Jan 15, 2026</td>
+              <td class="px-4 py-3 text-right">
+                <button class="underline mr-2">View</button>
+                <button class="underline mr-2">Edit</button>
+                <button class="underline">Delete</button>
+              </td>
+            </tr>
+            <tr class="border-b border-black">
+              <td class="px-4 py-3">
+                <div class="font-medium">Employee Satisfaction</div>
+                <div class="text-xs text-gray-600">10 questions</div>
+              </td>
+              <td class="px-4 py-3">
+                <span class="border border-black px-2 py-0.5 text-xs">Active</span>
+              </td>
+              <td class="px-4 py-3">89</td>
+              <td class="px-4 py-3">Jan 10, 2026</td>
+              <td class="px-4 py-3 text-right">
+                <button class="underline mr-2">View</button>
+                <button class="underline mr-2">Edit</button>
+                <button class="underline">Delete</button>
+              </td>
+            </tr>
+            <tr class="border-b border-black">
+              <td class="px-4 py-3">
+                <div class="font-medium">Product Feedback Q1</div>
+                <div class="text-xs text-gray-600">5 questions</div>
+              </td>
+              <td class="px-4 py-3">
+                <span class="border border-black px-2 py-0.5 text-xs">Draft</span>
+              </td>
+              <td class="px-4 py-3">-</td>
+              <td class="px-4 py-3">Jan 20, 2026</td>
+              <td class="px-4 py-3 text-right">
+                <button class="underline mr-2">Publish</button>
+                <button class="underline mr-2">Edit</button>
+                <button class="underline">Delete</button>
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3">
+                <div class="font-medium">Annual Meeting Vote</div>
+                <div class="text-xs text-gray-600">2 questions</div>
+              </td>
+              <td class="px-4 py-3">
+                <span class="border border-black px-2 py-0.5 text-xs">Closed</span>
+              </td>
+              <td class="px-4 py-3">256</td>
+              <td class="px-4 py-3">Dec 01, 2025</td>
+              <td class="px-4 py-3 text-right">
+                <button class="underline mr-2">View</button>
+                <button class="underline mr-2">Clone</button>
+                <button class="underline">Delete</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="px-4 py-3 border-t border-black flex justify-between items-center text-sm">
+          <span>Showing 4 of 12 surveys</span>
+          <div class="flex gap-1">
+            <button class="px-2 py-1 border border-black">Prev</button>
+            <button class="px-2 py-1 bg-black text-white">1</button>
+            <button class="px-2 py-1 border border-black">2</button>
+            <button class="px-2 py-1 border border-black">3</button>
+            <button class="px-2 py-1 border border-black">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

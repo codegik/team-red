@@ -697,6 +697,18 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Debugging & Observability**         | **Explicit errors** – FK violations fail fast with clear messages. Root cause immediate. Impossible states prevented.             | **Silent failures** – Issues found late in reports/audits. Needs data quality metrics and reconciliation. | DB FKs = immediate feedback. App-enforced issues manifest as "data doesn't add up". Needs orphaned record detection and dashboards. Long-term cleanup costs can exceed performance gains.                                  |
 | **Best For**                          | Monolithic apps, transactional systems, regulated domains (finance/healthcare), small teams, data quality > performance           | Microservices, high-scale writes, eventual consistency OK, mature DevOps teams, flexibility > safety      | **Use DB FKs for**: orders, payments, user accounts. **Use app-enforced for**: cross-service relationships, analytics, >10k writes/sec. Hybrid common. Re-evaluate when scaling. Migration later is painful.               |
 
+### Real-Time Technology Tradeoffs
+
+| Aspect                  | SSE                                      | WebSockets                                | Tradeoff                                           |
+|-------------------------|------------------------------------------|-------------------------------------------|----------------------------------------------------|
+| **Communication**       | Unidirectional (server→client)           | Bidirectional (full-duplex)               | SSE sufficient for results broadcast; simpler      |
+| **Connection Overhead** | 4-8KB per connection                     | 10-20KB per connection                    | Lower memory footprint at 300M user scale          |
+| **Reconnection**        | Automatic browser retry + event IDs      | Manual reconnection logic required        | Reduced client complexity and failure recovery     |
+| **Firewall/Proxy**      | Standard HTTP; works everywhere          | WebSocket upgrade often blocked           | Better compatibility in enterprise/mobile networks |
+| **Scalability**         | HTTP/2 multiplexing supported            | Requires persistent TCP connections       | Easier horizontal scaling with standard HTTP       |
+| **Browser Support**     | Native EventSource API                   | Native WebSocket API                      | Both well-supported; SSE simpler for broadcast     |
+| **Latency**             | ~100ms for broadcasts                    | ~50ms for bidirectional messages          | Accept minor latency increase for simplicity       |
+
 
 ## 6.1. Security Tools
 
@@ -908,36 +920,6 @@ A robust observability strategy is critical for a system of this scale and criti
 ## 11.1 Stack Overview
 
 Real-time result distribution is critical for voter engagement and system transparency. The architecture must stream aggregated vote counts to 300M users with <2 second latency while maintaining system stability under peak load.
-
-## 9.1 Technology Selection: Server-Sent Events (SSE)
-
-**Decision**: SSE chosen as the primary real-time communication protocol over WebSockets, Long Polling, and Short Polling.
-
-**Rationale**:
-- **Unidirectional Communication**: Results only flow server-to-client (no client messages needed)
-- **Automatic Reconnection**: Built-in browser retry mechanism reduces client complexity
-- **HTTP Compatibility**: Works through firewalls/proxies that block WebSocket upgrades
-- **Resource Efficiency**: 4-8KB memory per connection vs higher WebSocket overhead
-- **Native Browser Support**: EventSource API available in all modern browsers
-- **Event IDs**: Clients can resume from last received event after network interruption
-
-**When SSE is Not Suitable**:
-- Bidirectional chat or collaboration features (use WebSockets)
-- Interactive voting UI requiring client-to-server messages (use WebSockets)
-- Legacy browser support without polyfills (fallback to Long Polling)
-
----
-
-## 9.2 Alternative Protocols (Not Chosen)
-
-| Protocol | Why Not Chosen |
-|----------|---------------|
-| **WebSockets** | Overkill for unidirectional broadcast; higher complexity; firewall issues |
-| **Long Polling** | Higher overhead than SSE; manual reconnection logic; increased server load |
-| **Short Polling** | Unacceptable latency; massive bandwidth waste; doesn't scale to 300M users |
-| **GraphQL Subscriptions** | Adds unnecessary layer; WebSocket-based; overkill for simple broadcasts |
-
-
 
 ## 11.2 Metrics - Prometheus
 

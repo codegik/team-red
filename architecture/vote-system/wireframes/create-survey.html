@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Survey - Wireframe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-white p-6">
+    <div class="max-w-3xl mx-auto">
+      <div class="border-2 border-black p-4 mb-4">
+        <h1 class="text-lg font-bold">Create Survey</h1>
+        <p class="text-sm text-gray-600">Design your survey with questions and options</p>
+      </div>
+
+      <div class="border-2 border-black p-4 mb-4">
+        <h2 class="font-bold mb-3">Survey Details</h2>
+        <label class="block text-sm mb-1">Survey Title</label>
+        <input
+          type="text"
+          placeholder="Enter survey title"
+          class="w-full px-3 py-2 border border-black text-sm"
+        />
+      </div>
+
+      <div class="border-2 border-black p-4 mb-4">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="font-bold">Questions</h2>
+          <button class="px-3 py-1 bg-black text-white text-sm">+ Add Question</button>
+        </div>
+
+        <div class="border border-black p-4 mb-4 bg-gray-50">
+          <div class="flex justify-between items-center mb-3">
+            <span class="text-sm text-gray-600">Question 1</span>
+            <button class="text-sm underline">Remove</button>
+          </div>
+
+          <label class="block text-sm mb-1">Question Title</label>
+          <input
+            type="text"
+            placeholder="Enter question"
+            class="w-full px-3 py-2 border border-black text-sm mb-3"
+          />
+
+          <label class="block text-sm mb-1">Description (optional)</label>
+          <textarea
+            placeholder="Add description"
+            rows="2"
+            class="w-full px-3 py-2 border border-black text-sm mb-3"
+          ></textarea>
+
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-sm mb-1">Min Selections</label>
+              <input
+                type="number"
+                value="1"
+                class="w-full px-3 py-2 border border-black text-sm"
+              />
+            </div>
+            <div>
+              <label class="block text-sm mb-1">Max Selections</label>
+              <input
+                type="number"
+                value="1"
+                class="w-full px-3 py-2 border border-black text-sm"
+              />
+            </div>
+          </div>
+
+          <div class="border border-dashed border-black p-3">
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-sm font-bold">Options</span>
+              <button class="text-sm underline">+ Add Option</button>
+            </div>
+
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-sm w-4">1.</span>
+              <input type="text" placeholder="Option text" class="flex-1 px-2 py-1 border border-black text-sm" />
+              <input type="text" placeholder="Image URL" class="flex-1 px-2 py-1 border border-black text-sm" />
+              <button class="w-6 h-6 border border-black text-sm">×</button>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <span class="text-sm w-4">2.</span>
+              <input type="text" placeholder="Option text" class="flex-1 px-2 py-1 border border-black text-sm" />
+              <input type="text" placeholder="Image URL" class="flex-1 px-2 py-1 border border-black text-sm" />
+              <button class="w-6 h-6 border border-black text-sm">×</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="border border-dashed border-black p-4 bg-gray-50">
+          <div class="flex justify-between items-center">
+            <div>
+              <span class="text-sm text-gray-600">Question 2</span>
+              <p class="text-sm">Click to expand</p>
+            </div>
+            <div class="flex gap-2">
+              <button class="text-sm underline">Edit</button>
+              <button class="text-sm underline">Remove</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-2 border-black p-4">
+        <div class="flex justify-between items-center">
+          <button class="px-4 py-2 border border-black text-sm">Cancel</button>
+          <div class="flex gap-2">
+            <button class="px-4 py-2 border border-black text-sm">Save Draft</button>
+            <button class="px-4 py-2 bg-black text-white text-sm">Create Survey</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
