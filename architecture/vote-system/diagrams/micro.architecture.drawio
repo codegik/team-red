@@ -1,9 +1,12 @@
 <mxfile host="65bd71144e" pages="31">
     <diagram name="overview" id="khjMui8SULHRm5ARyRQg">
-        <mxGraphModel dx="1285" dy="791" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="2570" dy="1582" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
+                <mxCell id="107" value="" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="246" y="218" width="1140" height="1038" as="geometry"/>
+                </mxCell>
                 <mxCell id="37" value="EKS Worker node" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;verticalAlign=top;align=left;fillColor=none;strokeColor=light-dark(#000000,#9B89FF);fontColor=light-dark(#000000,#9B89FF);" parent="1" vertex="1">
                     <mxGeometry x="333" y="670" width="811" height="258" as="geometry"/>
                 </mxCell>
