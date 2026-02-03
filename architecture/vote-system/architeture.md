@@ -350,7 +350,7 @@ The architecture is guided by seven foundational design principles that address 
 
 ### Layer 2: Identity & Authentication
 
-- **Auth0 SSO + MFA**: Multi-factor authentication (SMS, authenticator apps, push notifications)
+- **OAuth-based Social Login (Google, Facebook, Apple)**: Multi-factor authentication (SMS, authenticator apps, push notifications)
 - **Liveness Detection**: SumSub facial biometrics to prevent fake accounts and deepfakes
 - **Document Verification**: Government ID validation with fraud risk scoring
 - **Session Binding**: Tokens tied to device fingerprint and IP address
@@ -364,7 +364,7 @@ The architecture is guided by seven foundational design principles that address 
 
 ### Layer 4: Application Security
 
-- **OAuth2 Bearer Tokens**: Short-lived access tokens (15 min TTL) with secure refresh flows
+- **OAuth-based Social Login Tokens**: Short-lived provider identity tokens validated by the Java Auth Service
 - **API Gateway**: AWS API Gateway with request validation and transformation
 - **Input Sanitization**: Strict schema validation on all API requests
 - **HTTPS Everywhere**: TLS 1.3 with certificate pinning on mobile clients
@@ -424,9 +424,9 @@ Documentation: <https://docs.sumsub.com/docs/react-native-module>
 
 No raw biometric data is stored directly in the voting backend.
 
-### Secure Authentication with Auth0 (SSO + MFA)
+### Secure Authentication with OAuth-based Social Login
 
-Auth0 is used for:
+OAuth-based Social Login is used for:
 
 - Secure login
 - Social SSO
@@ -434,29 +434,30 @@ Auth0 is used for:
 - Multi-Factor Authentication (MFA)
 - Token lifecycle management
 
-Documentation: <https://auth0.com/docs/quickstart/native/react-native>
 
 **Authentication Flow**
 
 1. User taps "Login".
-2. React Native app redirects to Auth0 universal login.
-3. Auth0 performs:
-    - Credential validation
-    - Social login (if enabled)
-    - MFA (Authenticator App, SMS, Push, etc.)
-4. On success, the app receives:
-    - Access Token (short-lived)
-    - ID Token
-    - Refresh Token (secure storage only)
+2. React Native app redirects the user to the selected OAuth social provider
+   (Google, Apple, or Facebook).
+3. The provider performs:
+    - User authentication
+    - Consent validation
+    - Provider-native MFA (if enabled by the user)
+4. On success, the provider returns an authorization code or identity token.
+5. The Auth Service:
+    - Validates token signature and claims
+    - Verifies issuer, audience, and expiration
+    - Links or creates the internal user identity
+6. The app receives:
+    - Internal Access Token (short-lived)
+    - Internal ID Token
 
-### Bot Detection with Auth0 Challenge + Turnstile
+### Bot Detection with OAuth-based Login + Turnstile
 
 To prevent credential stuffing, brute-force, and automated accounts:
 
-- Auth0 Challenges are applied during:
-    - Login
-    - Registration
-    - Password reset
+
 - Cloudflare Turnstile is used as:
     - Invisible human challenge
     - CAPTCHA replacement
@@ -623,7 +624,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Database**              | Security and auditability | PostgreSQL           | MySQL                             | WAL is extremely reliable, Strong support for auditing, Extensions such as pgAudit |
 | **Cloud Provider**        | Infrastructure            | AWS                  | GCP, Azure, On-premise            | Add content                                                                        |
 | **Architecture**          | Style                     | Microservices        | Monolith                          | Scale requirements; independent service scaling                                    |
-| **Authentication**        | Provider                  | Social Login (Gmail) | Auth0, Cognito, Custom            | Direct provider integration; lower cost                                            |
+| **Authentication**        | Provider                  | OAuth-based Social Login (Google, Apple, Facebook) | Auth0, Cognito | Direct provider integration; no IAM vendor lock-in; lower cost at scale |
 | **Identity Verification** | Provider                  | SumSub               | Jumio, Onfido                     | Add content                                                                        |
 | **Bot Detection**         | Human verification        | Cloudflare Turnstile | reCAPTCHA, hCaptcha               | Add content                                                                        |
 | **Bot Detection**         | Device fingerprinting     | FingerprintJS        | Custom solution                   | Add content                                                                        |
@@ -711,7 +712,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 
 ## 6.1. Security Tools
 
-### Auth0
+### OAuth-based Social Login (Custom Java Service)
 
 Pros: - Enterprise-grade authentication - Built-in MFA - Secure token
 lifecycle - SSO support - High availability
@@ -1078,7 +1079,7 @@ For a microservices architecture at this scale, distributed tracing is essential
 | Service | Instrumentation |
 |---------|-----------------|
 | API Gateway | Auto-instrumentation via OpenTelemetry |
-| Auth Service | Manual spans for Auth0/Sumsub calls |
+| Auth Service | Manual spans for OAuth provider calls (Google / Apple / Facebook) and SumSub |
 | Vote Service | Manual spans for eligibility check, fraud check, vote persist |
 | Fraud Service | Manual spans for risk scoring pipeline |
 | Database calls | Auto-instrumentation with query tagging |
@@ -1092,7 +1093,7 @@ For a microservices architecture at this scale, distributed tracing is essential
 - `fraud.check_vote` - Fraud risk assessment
 - `vote.persist` - Vote storage operation
 - `db.query` - Database operations
-- `external.auth0` - Auth0 API calls
+- `external.oauth_provider` - Auth API calls
 - `external.sumsub` - Sumsub API calls
 
 **Sampling Strategy:**
@@ -1317,7 +1318,7 @@ For effective debugging, all telemetry must be correlated:
 
 **External Dependencies:**
 
-- Auth0 API latency and error rate
+- OAuth provider API latency and error rate
 - Sumsub API latency and error rate
 - AWS service health (via CloudWatch)
 
@@ -1369,23 +1370,100 @@ This document describes the core domain services of the secure voting platform.
 **Scope:**
 The Auth Service is the **internal identity authority** of the voting platform.
 
-It does NOT replace Auth0 or Sumsub. Instead, it **connects them to the voting domain** and applies business rules.
+It acts as a **custom OAuth-based identity service**, integrating directly with
+social identity providers (Google, Apple, Facebook) and applying voting-domain
+business rules.
 
-It answers one main question: *"Who is this user inside the voting system?"*
+The platform does **not** rely on external IAM providers such as Auth0 or Cognito.
+All authentication flows, token validation, and session issuance are handled
+internally by this service.
 
 **Responsibilities:**
 - User registration and identity verification
 - Session management and token issuance
-- Integration with Auth0 for authentication (SSO, MFA)
+- Integration with OAuth-based Social Login providers (Google, Facebook, Apple)
 - Integration with Sumsub for KYC/liveness validation
 - Device fingerprint binding to user sessions
 - Token refresh and revocation
 
 **Key Interactions:**
-- Receives authentication callbacks from Auth0
+- Receives authentication callbacks from OAuth providers
 - Receives verification results from Sumsub
 - Issues internal JWT tokens for downstream services
 
+
+
+**Authentication Trade-offs: OAuth Social Login vs Auth0**
+| Aspect | OAuth-based Social Login (Custom Java Service) | Auth0 |
+|------|-----------------------------------------------|-------|
+| Control | Full architectural and operational control over authentication flows, token lifecycle, data storage, and domain-specific rules | Control limited to vendor-supported flows, configuration options, and extension points |
+| Cost | Lower long-term cost at large scale; infrastructure and engineering costs are predictable and internally controlled | Becomes expensive at high MAU due to per-user and per-feature pricing |
+| Vendor Lock-in | Low; providers can be added or removed independently and implementation is protocol-based | High; deep dependency on vendor APIs, pricing model, and roadmap |
+| Customization | High; authentication flows can be tailored to voting-domain requirements and security policies | Medium; customization constrained by platform capabilities and policies |
+| Time to Market | Medium; requires initial engineering effort to implement and validate provider integrations | Fast; ready-to-use authentication flows and UI components |
+| Operational Effort | Higher; responsibility for monitoring, incident response, key rotation, and provider changes | Lower; IAM operations and availability handled by the vendor |
+| Compliance Scope | Reduced; no password storage and minimal IAM surface owned by the platform | Broader; platform is responsible for IAM configuration, audits, and vendor compliance |
+| Scalability | Fully controlled; scaling behavior is predictable and aligned with internal infrastructure | Vendor-dependent; scaling limits, throttling, and outages are external risks |
+| Integration Complexity | High; requires implementing, testing, and maintaining three distinct OAuth/OIDC integrations (Google, Apple, Facebook), each with different behaviors and edge cases | Low; unified abstraction over providers with consistent behavior |
+
+
+**Decision**: OAuth-based Social Login was chosen to reduce cost, avoid vendor
+lock-in, and maintain full architectural control at 300M-user scale.
+
+### OAuth-based Social Login — Java Implementation
+
+The Auth Service implements OAuth 2.0 / OpenID Connect flows using a
+custom Java-based authentication service. The platform does not rely on
+external IAM providers (Auth0, Cognito, etc.).
+
+The service integrates directly with each social identity provider and
+is responsible for token validation, identity linking, and internal
+session issuance.
+
+#### Provider Integrations
+
+**Google**
+- Protocol: OpenID Connect
+- Token Type: ID Token (JWT)
+- Validation Strategy:
+  - Signature validation
+  - Issuer, audience, and expiration checks
+- Java Libraries:
+  - `com.google.api-client:google-api-client`
+  - `GoogleIdTokenVerifier`
+
+**Apple**
+- Protocol: OAuth 2.0 + OpenID Connect
+- Token Type: ID Token (JWT)
+- Validation Strategy:
+  - JWT signature validation using Apple public keys (JWK)
+  - Issuer, audience, and expiration checks
+- Java Libraries:
+  - `com.nimbusds:nimbus-jose-jwt`
+  - Standard JWK fetching via HTTPS
+
+**Facebook**
+- Protocol: OAuth 2.0
+- Token Type: Access Token
+- Validation Strategy:
+  - Token introspection using Facebook Graph API (`debug_token`)
+- Java Libraries:
+  - No mandatory SDK required
+  - Standard Java HTTP client (e.g., `java.net.http.HttpClient` or OkHttp)
+
+#### Token Validation Without SDKs (Protocol-only Option)
+
+All providers can be integrated without official SDKs by implementing
+OAuth 2.0 / OpenID Connect directly:
+
+- Authorization Code Flow
+- HTTPS calls to token endpoints
+- JWK retrieval and caching
+- JWT signature and claim validation
+- Strict issuer and audience enforcement
+
+This approach minimizes third-party dependencies and vendor lock-in,
+at the cost of increased implementation complexity.
 ---
 
 ## 12.2 Vote Service
@@ -1971,3 +2049,6 @@ Mark a survey answer session as completed.
 - **Toxiproxy**
     - Injects latency, timeouts, and packet loss to validate resilience
     - Tests retry logic, circuit breakers, and idempotency under failure conditions
+
+
+
