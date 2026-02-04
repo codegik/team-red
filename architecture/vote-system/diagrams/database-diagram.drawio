@@ -5,13 +5,13 @@
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
                 <mxCell id="db-voting-boundary" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#1565C0;strokeWidth=2;dashed=1;dashPattern=12 12;movable=1;resizable=1;rotatable=1;deletable=1;editable=1;locked=0;connectable=1;" parent="1" vertex="1">
-                    <mxGeometry x="30" y="50" width="1000" height="490" as="geometry"/>
+                    <mxGeometry x="30" y="50" width="1000" height="550" as="geometry"/>
                 </mxCell>
                 <mxCell id="db-voting-label" value="&lt;div style=&quot;font-weight:bold;font-size:16px;color:#1565C0;&quot;&gt;Voting System Database&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="400" y="20" width="200" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="db-user-label" value="&lt;div style=&quot;font-weight:bold;font-size:16px;color:#C62828;&quot;&gt;User Service Database&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
-                    <mxGeometry x="90" y="560" width="200" height="30" as="geometry"/>
+                <mxCell id="db-user-label" value="&lt;div style=&quot;font-weight: bold; font-size: 16px; color: rgb(198, 40, 40);&quot;&gt;Auth Service Database&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="100" y="630" width="200" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="survey" value="&lt;div style=&quot;background-color:#4A90E2;color:#FFFFFF;padding:8px;font-weight:bold;font-size:14px;border-radius:5px 5px 0 0;&quot;&gt;Survey&lt;/div&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#4A90E2;strokeWidth=2;rounded=1;" parent="1" vertex="1">
                     <mxGeometry x="80" y="80" width="200" height="160" as="geometry"/>
@@ -50,7 +50,7 @@
                     <mxGeometry y="190" width="220" height="20" as="geometry"/>
                 </mxCell>
                 <mxCell id="option" value="&lt;div style=&quot;background-color:#AB47BC;color:#FFFFFF;padding:8px;font-weight:bold;font-size:14px;border-radius:5px 5px 0 0;&quot;&gt;Option&lt;/div&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#AB47BC;strokeWidth=2;rounded=1;" parent="1" vertex="1">
-                    <mxGeometry x="710" y="85" width="240" height="160" as="geometry"/>
+                    <mxGeometry x="750" y="70" width="240" height="160" as="geometry"/>
                 </mxCell>
                 <mxCell id="option-1" value="&lt;b&gt;PK id&lt;/b&gt;: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=10;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontColor=#7B1FA2;" parent="option" vertex="1">
                     <mxGeometry y="40" width="240" height="30" as="geometry"/>
@@ -65,7 +65,7 @@
                     <mxGeometry y="130" width="240" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="surveyanswer" value="&lt;div style=&quot;background-color:#FF7043;color:#FFFFFF;padding:8px;font-weight:bold;font-size:14px;border-radius:5px 5px 0 0;&quot;&gt;SurveyAnswer&lt;/div&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FBE9E7;strokeColor=#FF7043;strokeWidth=2;rounded=1;" parent="1" vertex="1">
-                    <mxGeometry x="60" y="319" width="240" height="190" as="geometry"/>
+                    <mxGeometry x="60" y="380" width="240" height="190" as="geometry"/>
                 </mxCell>
                 <mxCell id="surveyanswer-1" value="&lt;b&gt;PK id&lt;/b&gt;: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=10;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontColor=#E64A19;" parent="surveyanswer" vertex="1">
                     <mxGeometry y="40" width="240" height="30" as="geometry"/>
@@ -83,7 +83,7 @@
                     <mxGeometry y="160" width="240" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="questionanswer" value="&lt;div style=&quot;background-color:#26A69A;color:#FFFFFF;padding:8px;font-weight:bold;font-size:14px;border-radius:5px 5px 0 0;&quot;&gt;QuestionAnswer&lt;/div&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#E0F2F1;strokeColor=#26A69A;strokeWidth=2;rounded=1;" parent="1" vertex="1">
-                    <mxGeometry x="390" y="309" width="280" height="200" as="geometry"/>
+                    <mxGeometry x="390" y="370" width="280" height="200" as="geometry"/>
                 </mxCell>
                 <mxCell id="questionanswer-1" value="&lt;b&gt;PK id&lt;/b&gt;: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=10;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontColor=#00897B;" parent="questionanswer" vertex="1">
                     <mxGeometry y="40" width="280" height="30" as="geometry"/>
@@ -101,7 +101,7 @@
                     <mxGeometry y="160" width="280" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="user" value="&lt;div style=&quot;background-color:#C62828;color:#FFFFFF;padding:8px;font-weight:bold;font-size:14px;border-radius:5px 5px 0 0;&quot;&gt;User&lt;/div&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFEBEE;strokeColor=#C62828;strokeWidth=2;rounded=1;dashed=0;" parent="1" vertex="1">
-                    <mxGeometry x="60" y="610" width="260" height="190" as="geometry"/>
+                    <mxGeometry x="70" y="680" width="260" height="190" as="geometry"/>
                 </mxCell>
                 <mxCell id="user-1" value="&lt;b&gt;PK id&lt;/b&gt;: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=10;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontColor=#C62828;" parent="user" vertex="1">
                     <mxGeometry y="40" width="260" height="30" as="geometry"/>
@@ -118,8 +118,79 @@
                 <mxCell id="user-5" value="updatedAt: Date" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=10;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="user" vertex="1">
                     <mxGeometry y="160" width="260" height="30" as="geometry"/>
                 </mxCell>
+                <mxCell id="rel-survey-question" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;html=1;endArrow=ERmany;startArrow=ERone;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#F57C00;" parent="1" source="survey-2" target="question-4" edge="1">
+                    <mxGeometry width="100" height="100" relative="1" as="geometry">
+                        <mxPoint x="280" y="165" as="sourcePoint"/>
+                        <mxPoint x="400" y="195" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="rel-survey-question-label" value="has many" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontStyle=1;backgroundColor=#FFF3E0;rounded=1;" parent="rel-survey-question" vertex="1" connectable="0">
+                    <mxGeometry x="-0.1" y="2" relative="1" as="geometry">
+                        <mxPoint x="5" y="-12" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="rel-question-option" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;html=1;endArrow=ERmany;startArrow=ERone;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#F57C00;" parent="1" source="question-2" target="option-4" edge="1">
+                    <mxGeometry width="100" height="100" relative="1" as="geometry">
+                        <mxPoint x="620" y="145" as="sourcePoint"/>
+                        <mxPoint x="740" y="205" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="rel-question-option-label" value="has many" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontStyle=1;backgroundColor=#FFF3E0;rounded=1;" parent="rel-question-option" vertex="1" connectable="0">
+                    <mxGeometry x="-0.1" y="2" relative="1" as="geometry">
+                        <mxPoint x="5" y="-12" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="rel-survey-surveyanswer" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=12;html=1;endArrow=ERmany;startArrow=ERone;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#F57C00;" parent="1" source="survey" target="surveyanswer" edge="1">
+                    <mxGeometry width="100" height="100" relative="1" as="geometry">
+                        <mxPoint x="180" y="240" as="sourcePoint"/>
+                        <mxPoint x="180" y="360" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="rel-survey-surveyanswer-label" value="receives" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontStyle=1;backgroundColor=#FFF3E0;rounded=1;" parent="rel-survey-surveyanswer" vertex="1" connectable="0">
+                    <mxGeometry x="-0.1" y="2" relative="1" as="geometry">
+                        <mxPoint x="-2" y="10" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="rel-surveyanswer-questionanswer" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;html=1;endArrow=ERmany;startArrow=ERone;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#F57C00;" parent="1" source="surveyanswer-3" target="questionanswer-2" edge="1">
+                    <mxGeometry width="100" height="100" relative="1" as="geometry">
+                        <mxPoint x="320" y="475" as="sourcePoint"/>
+                        <mxPoint x="480" y="445" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="rel-surveyanswer-questionanswer-label" value="contains" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontStyle=1;backgroundColor=#FFF3E0;rounded=1;" parent="rel-surveyanswer-questionanswer" vertex="1" connectable="0">
+                    <mxGeometry x="-0.1" y="2" relative="1" as="geometry">
+                        <mxPoint x="5" y="-12" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="rel-question-questionanswer" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=12;html=1;endArrow=ERmany;startArrow=ERone;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#F57C00;" parent="1" source="question" target="questionanswer" edge="1">
+                    <mxGeometry width="100" height="100" relative="1" as="geometry">
+                        <mxPoint x="510" y="300" as="sourcePoint"/>
+                        <mxPoint x="620" y="360" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="rel-question-questionanswer-label" value="answered by" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontStyle=1;backgroundColor=#FFF3E0;rounded=1;" parent="rel-question-questionanswer" vertex="1" connectable="0">
+                    <mxGeometry x="-0.1" y="2" relative="1" as="geometry">
+                        <mxPoint x="-2" y="10" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="rel-option-questionanswer" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=12;html=1;endArrow=ERmany;startArrow=ERone;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;strokeWidth=2;strokeColor=#F57C00;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="option" target="questionanswer-3" edge="1">
+                    <mxGeometry width="100" height="100" relative="1" as="geometry">
+                        <mxPoint x="860" y="260" as="sourcePoint"/>
+                        <mxPoint x="730" y="470" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="870" y="290"/>
+                            <mxPoint x="710" y="290"/>
+                            <mxPoint x="710" y="485"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="rel-option-questionanswer-label" value="selected in" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontStyle=1;backgroundColor=#FFF3E0;rounded=1;" parent="rel-option-questionanswer" vertex="1" connectable="0">
+                    <mxGeometry x="-0.1" y="2" relative="1" as="geometry">
+                        <mxPoint x="-2" y="-11" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
                 <mxCell id="db-user-boundary" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#C62828;strokeWidth=2;dashed=1;dashPattern=12 12;" parent="1" vertex="1">
-                    <mxGeometry x="40" y="590" width="300" height="230" as="geometry"/>
+                    <mxGeometry x="50" y="660" width="300" height="230" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
