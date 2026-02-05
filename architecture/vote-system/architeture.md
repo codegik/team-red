@@ -596,18 +596,6 @@ The API Gateway enforces:
 
 # 6. 🧭 Trade-offs
 
-TODO: Please complete the trade-offs analysis for the security tools used in this architecture. It must follow the table format below:
-
-[ ] Cireneu, need to convert the Security Tools section into trade-offs table format.
-[ ] Pedro
-[ ] Vitor
-[ ] Gabriel
-[ ] Deivid
-[ ] Lima
-[ ] Felipe
-[ ] Kilpp
-
-
 ## 6.1 Architecture Tradeoffs
 
 This document captures the key architectural decisions and their tradeoffs for the Vote System.
@@ -677,12 +665,6 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Fault Isolation** | Single failure affects entire app | Failures contained to individual services | Critical for high availability requirements   |
 | **Data Management** | Shared database                   | Database per service                      | Accept eventual consistency between services  |
 
-### Key Principles Applied
-
-1. **Security over convenience**
-2. **Consistency over availability**
-3. **Managed services over custom**
-4. **Horizontal over vertical scaling**
 
 ### Auditability and tamper-proof logging
 #### S3 Object Lock vs Amazon QLDB
@@ -698,6 +680,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Cost Structure** | Storage + requests | Storage + I/O + read requests |
 
 ## DB-enforced FK vs Application-enforced
+
 
 | **Aspect**                            | **DB-enforced FK (with indexes & CASCADE)**                                                                                       | **Application-enforced (no DB constraints)**                                                              | **Analysis**                                                                                                                                                                                                               |
 |---------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -732,105 +715,19 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Complexity**   | Lower for relational data                                  |    Higher at the application level                   | **SQL**: Database handles relationships, constraints, and data integrity. Application code is simpler for relational data. Mature tooling and widespread expertise. **NoSQL**: Application must handle data relationships, consistency checks, and complex queries. Requires careful data modeling and denormalization strategies. |
 | **Performance**     | Good for transactional workloads           | Excelent for high data volume                        | **SQL**: Optimized for complex queries with JOINs, aggregations, and ACID transactions. Performance degrades with very large datasets without sharding. **NoSQL**: Excels at simple read/write operations on massive datasets. Optimized for high throughput and low latency at scale. Less efficient for complex analytical queries. |
 
-## Pros
-
-- High horizontal scalability
-- Schema flexibility
-- Better performance for large data volumes
-- High availability
-- Ideal for distributed workloads
-
-## Cons
-
-- Eventual consistency (in most cases)
-- Less support for complex transactions
-- Complex queries can be more difficult
-- Greater application responsibility for data consistency
-
-## NoSQL or SQL?
-
-All recommendations for voting systems are to use SQL databases. 
-
-Why Not NoSQL for Vote System?
-* NoSQL lacks strong ACID guarantees by default.
-* Even with configurable consistency (e.g., quorum reads/writes in Cassandra), you’re trading performance for complexity.
-* For mission-critical voting paths, use PostgreSQL with strict isolation (Serializable level) and sharding.
-
-## Use NoSQL for:
-
-* Logs (vote_cast events)
-* Audit trails
-* High-throughput analytics pipelines
 
 ## 6.1. Security Tools
 
-### OAuth-based Social Login (Custom Java Service)
-
-Pros: - Enterprise-grade authentication - Built-in MFA - Secure token
-lifecycle - SSO support - High availability
-
-Cons: - Expensive at large scale - Vendor lock-in - Limited
-flexibility for custom flows
-
-### SumSub
-
-Pros: - Strong biometric antifraud - Global KYC compliance -
-High-quality liveness detection - Advanced risk scoring
-
-Cons: - High user friction - Sensitive biometric data handling - High per-verification cost - Not always legally permitted for voting
-
-
-### Cloudflare Turnstile
-
-Pros: - Invisible challenge - Better UX than CAPTCHA - Strong privacy
-guarantees - Blocks simple automation
-
-Cons: - Not sufficient alone against advanced bots - External
-dependency - Needs backend verification
-
-
-### FingerprintJS
-
-Pros: - Passive and invisible - Emulator and device cloning
-detection - Excellent multi-account detection signal
-
-Cons: - Fingerprints can be spoofed by advanced attackers - Privacy
-and compliance concerns - Device replacement causes identity changes
-
-
-### AWS CloudFront
-
-Pros: - Global CDN - Massive traffic absorption - Native integration
-with AWS security - Edge-level DDoS protection
-
-Cons: - Pricing complexity - Cache invalidation cost - Less flexible
-than software-based proxies
-
-
-### AWS WAF
-
-Pros: - Managed OWASP rules - Tight AWS integration - Native
-CloudFront support - Bot Control included
-
-Cons: - Limited advanced behavioral fraud detection - Requires tuning
-to avoid false positives
-
-
-### AWS Global Accelerator
-
-Pros: - Very low global latency - Consistent static IPs -
-Multi-region failover
-
-Cons: - Additional cost - More complex routing model
-
-
-### API Gateway
-
-Pros: - Built-in rate limiting - Strong security posture - Native JWT
-validation
-
-Cons: - Cost at very high RPS - Harder to debug than direct ALB
-setups
+| Tool | Pros | Cons |
+|------|------|------|
+| **OAuth-based Social Login (Custom Java Service)** | Enterprise-grade authentication; Built-in MFA; Secure token lifecycle; SSO support; High availability | Expensive at large scale; Vendor lock-in; Limited flexibility for custom flows |
+| **SumSub** | Strong biometric antifraud; Global KYC compliance; High-quality liveness detection; Advanced risk scoring | High user friction; Sensitive biometric data handling; High per-verification cost; Not always legally permitted for voting |
+| **Cloudflare Turnstile** | Invisible challenge; Better UX than CAPTCHA; Strong privacy guarantees; Blocks simple automation | Not sufficient alone against advanced bots; External dependency; Needs backend verification |
+| **FingerprintJS** | Passive and invisible; Emulator and device cloning detection; Excellent multi-account detection signal | Fingerprints can be spoofed by advanced attackers; Privacy and compliance concerns; Device replacement causes identity changes |
+| **AWS CloudFront** | Global CDN; Massive traffic absorption; Native integration with AWS security; Edge-level DDoS protection | Pricing complexity; Cache invalidation cost; Less flexible than software-based proxies |
+| **AWS WAF** | Managed OWASP rules; Tight AWS integration; Native CloudFront support; Bot Control included | Limited advanced behavioral fraud detection; Requires tuning to avoid false positives |
+| **AWS Global Accelerator** | Very low global latency; Consistent static IPs; Multi-region failover | Additional cost; More complex routing model |
+| **API Gateway** | Built-in rate limiting; Strong security posture; Native JWT validation | Cost at very high RPS; Harder to debug than direct ALB setups |
 
 ---
 
