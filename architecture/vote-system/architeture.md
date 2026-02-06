@@ -48,83 +48,13 @@ and secure by design.
 
 # 2. 🎯 Goals
 
-## 2.1 Never Lose Data
-
-Voting systems are mission-critical. Any data loss leads to: 
-- Legal risks 
-- Loss of public trust 
-- Invalid election outcomes
-
-This requires: 
-- Multi-region replication 
-- Strong durability guarantees
-- Strict write acknowledgements 
-- Immutable audit logs
-
-## 2.2 Be Secure and Prevent Bots & Bad Actors (Primary Ownership Area)
-
-This is one of the hardest challenges at global scale. The system must prevent:
-
-- Automated voting (bots)
-- Credential stuffing
-- Distributed fraud attacks
-- Replay attacks
-- Session hijacking
-- API scraping
-- DDoS attacks
-
-Security must be implemented in multiple layers (defense in depth): 
-- Network
-- Identity 
-- Device 
-- Behavior 
-- Application 
-- Data
-
-## 2.3 Handle 300M Users
-
-This implies: 
-- Massive horizontal scalability 
-- Stateless architectures 
-- Global CDNs 
-- Partitioned databases 
-- Multi-region deployment
-
----
-
-## 2.4 Handle 240K RPS Peak Traffic
-
-It requires:
-- Load-based autoscaling 
-- Event-driven processing 
-- Front-door traffic absorption 
-- Backpressure handling
-
-## 2.5 One Vote per User (Strict Idempotency)
-
-This is a data + security + consistency problem: 
-
-Each identity must be: 
-- Verified 
-- Unique 
-- Non-replayable 
-
-Vote submissions must be: 
-- Idempotent 
-- Conflict-safe 
-- Race-condition proof
-
-## 2.6 Real-Time Results
-
-This creates challenges in: 
-- Data streaming 
-- Cache invalidation 
-- Broadcast consistency 
-- Fan-out architectures 
-- WebSocket / pub-sub scalability
-
----
-
+- Build a globally scalable system with strong data integrity
+- Prevent fraud and malicious actors from impacting system reliability or the voting process
+- Ensure high availability across multiple global regions
+- Support a large number of users on the platform
+- Handle many users simultaneously without performance degradation
+- Ensure consistency and guarantee only one vote per user per election
+- Provide real-time reporting and analytics for all voting activities
 
 # 3. 🎯 Non-Goals
 
