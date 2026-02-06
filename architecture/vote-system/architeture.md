@@ -520,27 +520,6 @@ The API Gateway enforces:
 
 This document captures the key architectural decisions and their tradeoffs for the Vote System.
 
-### Decision Categories
-
-| Category                  | Decision                  | Chosen                                             | Rejected                          | Rationale                                                                          |
-|---------------------------|---------------------------|----------------------------------------------------|-----------------------------------|------------------------------------------------------------------------------------|
-| **Database**              | Data store                | PostgreSQL (RDS)                                   | MongoDB, MySql                    | Guarantees required for vote integrity                                             |
-| **Database**              | Scaling strategy          | Geo-based sharding                                 | Single instance, vertical scaling | 300M users require horizontal scaling                                              |
-| **Database**              | Audit/Logs store          | OpenSearch.                                        | PostgreSQL, DynamoDB              | OpenSearch with WORM (Write-Once-Read-Many) indices                                |
-| **Database**              | Partitioning              | PostgreSQL                                         | MySQL                             | PostgreSQL natively supports: RANGE, LIST, HASH, Subpartitioning                   |
-| **Database**              | Replication               | PostgreSQL                                         | MySQL                             | Physical and Logical replication (streaming replication)                           |
-| **Database**              | Security and auditability | PostgreSQL                                         | MySQL                             | WAL is extremely reliable, Strong support for auditing, Extensions such as pgAudit |
-| **Cloud Provider**        | Infrastructure            | AWS                                                | GCP, Azure, On-premise            | Add content                                                                        |
-| **Architecture**          | Style                     | Microservices                                      | Monolith                          | Scale requirements; independent service scaling                                    |
-| **Authentication**        | Provider                  | OAuth-based Social Login (Google, Apple, Facebook) | Auth0, Cognito                    | Direct provider integration; no IAM vendor lock-in; lower cost at scale            |
-| **Identity Verification** | Provider                  | SumSub                                             | Jumio, Onfido                     | Add content                                                                        |
-| **Bot Detection**         | Human verification        | Cloudflare Turnstile                               | reCAPTCHA, hCaptcha               | Add content                                                                        |
-| **Bot Detection**         | Device fingerprinting     | FingerprintJS                                      | Custom solution                   | Add content                                                                        |
-| **Compute**               | Runtime                   | Kubernetes (EKS)                                   | ECS, Lambda                       | Add content                                                                        |
-| **Messaging**             | Event streaming           | Kafka                                              | SQS, RabbitMQ                     | High throughput for 240k RPS; Add content                                          |
-| **Caching**               | Layer                     | Redis                                              | Memcached, ElastiCache            | Real-time counters, session data, rate limiting                                    |
-| **Real-time**             | Updates                   | WebSocket + SSE                                    | Polling, Long-polling             | True real-time results; accepts connection management complexity                   |
-
 ### SumSub Vs Keycloak
 
 | **Aspect**                          | **SumSub (With Social Login)**                      | **Keycloak**                                                        | **Trade-off / Notes**                                                                                            |
@@ -549,14 +528,6 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Compliance & Risk Management**    | Higher - Automated checks against different sources | Lower - No built-in feature, need to integrate manuall              | SumSub already provides the integrations and audits                                                              |
 | **Flexibility**                     | Lower - Limited to predefined flows                 | Higher - customizable authentication flows                          | Keycloack offers more customizations                                                                             |
 | **Deployment & Management**         | Simpler – is a SAAS, no infra management            | More complex – self hosted                                          | SumSub has vendor dependency;Keycloak is a component on your infra that you should manage (update, scale, patch) |
-
-| Tool              | Pros                                    | Cons     | Risk Accepted |
-|-------------------|-----------------------------------------|----------|---------------|
-| **Social Login**  | Direct provider integration, lower cost | add cons | add risk      |
-| **SumSub**        | Strong biometric antifraud, global KYC  | add cons | add risk      |
-| **Turnstile**     | Good UX                                 | add cons | add risk      |
-| **FingerprintJS** | Passive, emulator detection             | add cons | add risk      |
-| **AWS WAF**       | Managed rules, native integration       | add cons | add risk      |
 
 ## EKS vs ECS
 
