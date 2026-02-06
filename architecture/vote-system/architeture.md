@@ -15,11 +15,11 @@ strategy for a global, real-time voting system designed to support:
 - Near real-time result visibility
 
 The system must be fully cloud-native, highly scalable, fault tolerant,
-and secure by design, while explicitly avoiding:
+and secure by design.
 
 ## 1.2 Restrictions
 
-- Serverless platforms outside AWS
+- Serverless
 - MongoDB
 - On-premise infrastructure
 - Google Cloud & Microsoft Azure
@@ -27,184 +27,34 @@ and secure by design, while explicitly avoiding:
 - Mainframes
 - Monolithic architectures
 
-AWS-based, fully distributed, microservices-first architecture is
-assumed.
-
 ## 1.3 Problem Space
 
-**What is the problem?**
-
-We need to design and build a globally distributed, mission-critical real-time voting system capable of handling 300 million registered users with peak traffic of 240,000 requests per second. The system must guarantee absolute data integrity, enforce strict one-person-one-vote constraints, provide real-time result visibility, and defend against sophisticated fraud, bot attacks, and abuse at scale—all while maintaining near-zero data loss and high availability across multiple geographic regions.
+**What is the problem?** Because voting is a sensitive matter, a voting system must be reliable, secure, auditable, guarantee data integrity, enforce strict one-person-one-vote constraints, and provide real-time transparency.
 
 **What is the context of the problem?**
 
-- **Market Context**:
-  - Democratic elections and large-scale voting events demand unprecedented levels of trust, transparency, and reliability
-  - Growing threat landscape from automated bots, state-sponsored actors, and coordinated fraud campaigns
-  - Increasing expectations for instant feedback and real-time results from 300M+ global participants
-  - Zero tolerance for data loss, system failures, or security breaches that could undermine election integrity
-  - Need for systems that can scale elastically during unpredictable traffic spikes (campaigns, debates, breaking news)
-
-- **Business Context**:
-  - Any data loss or security breach creates legal liability, regulatory penalties, and irreparable reputational damage
-  - System must support mission-critical operations with financial and legal consequences
-  - One-time deployment windows with no room for failure during live voting periods
-  - Requirement for complete auditability and tamper-proof logging for legal compliance
-  - Cost optimization critical—infrastructure must scale down after peak periods
-  - Must support strict SLAs with penalties for downtime or data inconsistency
-
-- **Technical Context**:
-  - Peak traffic of 240K RPS eliminates traditional vertical scaling and monolithic architectures
-  - 300M users require geo-distributed sharding, multi-region replication, and CDN distribution
-  - ACID guarantees required for vote integrity—NoSQL eventually consistent models insufficient for vote records
-  - Real-time requirements demand event-driven architecture (Kafka, SSE) with <2 second latency
-  - Cloud-native AWS-only restriction eliminates multi-cloud and serverless options
-  - Must handle database bottlenecks through strategic sharding (geo-based), read replicas, and caching
-  - Defense-in-depth security model required across network, identity, device, behavior, application, and data layers
-  - Need for immutable audit logs and write-once-read-many (WORM) compliance
-
-- **User Context**:
-  - 300M users spread across multiple geographic regions with varying network conditions
-  - Users expect instant confirmation of vote submission and real-time result updates
-  - Users must be authenticated securely without friction (prevent credential stuffing, session hijacking)
-  - Mobile and web clients require Server-Sent Events (SSE) for efficient real-time updates
-  - Users in different time zones create distributed load patterns with unpredictable spikes
-  - Accessibility requirements for diverse user populations (language, disability, device types)
-  - Users must vote exactly once—any duplicate vote undermines system integrity
+- **Market Context**: Voting mechanisms are applied in multiple contexts, including democratic elections, financial cooperatives, corporate decision-making, and general surveys.
+- **Business Context**: Voting has become a highly debated topic, particularly in politics, which creates an opportunity for a SaaS platform to be widely adopted across multiple contexts.
+- **Technical Context**: Such a SaaS platform could be globally adopted, experience significant traffic spikes, and must still ensure high availability, security, consistency, and result accuracy.
+- **User Context**: A broad global user base implies diverse users, so the system must be intuitive for voters and straightforward for administrators responsible for creating surveys and analyzing results.
 
 **Core Challenges:**
 
-1. **Data Integrity at Scale**
-   - Guarantee zero data loss across 240K RPS with multi-region active-active replication
-   - Implement synchronous writes with WAL (Write-Ahead Logging) and fsync guarantees
-   - Build tamper-proof immutable audit trails using OpenSearch WORM indices
-   - Handle database sharding across 300M users without creating consistency gaps
-   - Design automatic failover with RPO=0 (Recovery Point Objective) and RTO<60s (Recovery Time Objective)
-
-2. **Security & Fraud Prevention**
-   - Detect and block automated bots at 240K RPS without impacting legitimate users
-   - Prevent credential stuffing, session hijacking, replay attacks, and DDoS
-   - Implement defense-in-depth: WAF, device fingerprinting, behavioral analysis, rate limiting
-   - Validate identity uniqueness across 300M users without centralized bottlenecks
-   - Build real-time fraud detection with ML models analyzing voting patterns
-
-3. **Horizontal Scalability**
-   - Scale API layer from baseline to 240K RPS using Kubernetes HPA and KEDA
-   - Implement geo-based database sharding to distribute 300M user records
-   - Design stateless microservices that auto-scale without session affinity issues
-   - Optimize cache layers (Redis) to absorb read-heavy traffic and reduce DB load
-   - Handle cold-start delays during sudden traffic spikes with pre-warming strategies
-
-4. **Strict Idempotency & One-Vote Enforcement**
-   - Guarantee exactly-once vote processing despite retries, network failures, and race conditions
-   - Implement distributed locks or optimistic concurrency control at database level
-   - Design idempotency keys with conflict resolution for duplicate submissions
-   - Prevent race conditions when multiple requests arrive simultaneously for same user
-   - Build reconciliation mechanisms to detect and resolve any duplicate votes in audit logs
-
-5. **Real-Time Result Distribution**
-   - Stream aggregated results to 300M users with <2 second latency using SSE
-   - Design event-driven architecture (Kafka) for vote ingestion and aggregation
-   - Handle 250K concurrent SSE connections with minimal server resource overhead
-   - Implement efficient broadcast patterns using EventEmitter for SSE clients
-   - Balance real-time updates with system load—aggregate summaries vs. individual events
-
-6. **Multi-Region Complexity**
-   - Synchronize vote data across geographic regions with strong consistency
-   - Handle network partitions (split-brain scenarios) without duplicate votes
-   - Route users to nearest region while maintaining global vote count accuracy
-   - Implement cross-region disaster recovery with automated failover
-   - Manage clock skew and distributed transaction coordination across regions
-
-7. **Performance Under Load**
-   - Maintain <100ms p99 latency during 240K RPS peak traffic
-   - Prevent database saturation through write buffering, connection pooling, and read replicas
-   - Optimize Kafka throughput for event streaming without lag buildup
-   - Implement backpressure mechanisms to gracefully degrade under extreme load
-   - Cache authentication tokens and session data to reduce repeated DB lookups
-
----
-
+- **Data Integrity at Scale**: Guarantee zero data loss and ensure accuracy for millions of users
+- **Security & Fraud Prevention**: Detect and prevent bots and fraudulent users
+- **High Throughput**: Scale the system to support traffic spikes of up to 250K requests per second
+- **Strict Idempotency & One-Vote Enforcement**: Guarantee exactly one vote per user for each survey
+- **Real-Time Results**: Aggregate and count votes in real time, providing instant results
 
 # 2. 🎯 Goals
 
-## 2.1 Never Lose Data
-
-Voting systems are mission-critical. Any data loss leads to: 
-- Legal risks 
-- Loss of public trust 
-- Invalid election outcomes
-
-This requires: 
-- Multi-region replication 
-- Strong durability guarantees
-- Strict write acknowledgements 
-- Immutable audit logs
-
-## 2.2 Be Secure and Prevent Bots & Bad Actors (Primary Ownership Area)
-
-This is one of the hardest challenges at global scale. The system must prevent:
-
-- Automated voting (bots)
-- Credential stuffing
-- Distributed fraud attacks
-- Replay attacks
-- Session hijacking
-- API scraping
-- DDoS attacks
-
-Security must be implemented in multiple layers (defense in depth): 
-- Network
-- Identity 
-- Device 
-- Behavior 
-- Application 
-- Data
-
-## 2.3 Handle 300M Users
-
-This implies: 
-- Massive horizontal scalability 
-- Stateless architectures 
-- Global CDNs 
-- Partitioned databases 
-- Multi-region deployment
-
----
-
-## 2.4 Handle 240K RPS Peak Traffic
-
-It requires:
-- Load-based autoscaling 
-- Event-driven processing 
-- Front-door traffic absorption 
-- Backpressure handling
-
-## 2.5 One Vote per User (Strict Idempotency)
-
-This is a data + security + consistency problem: 
-
-Each identity must be: 
-- Verified 
-- Unique 
-- Non-replayable 
-
-Vote submissions must be: 
-- Idempotent 
-- Conflict-safe 
-- Race-condition proof
-
-## 2.6 Real-Time Results
-
-This creates challenges in: 
-- Data streaming 
-- Cache invalidation 
-- Broadcast consistency 
-- Fan-out architectures 
-- WebSocket / pub-sub scalability
-
----
-
+- Build a globally scalable system with strong data integrity
+- Prevent fraud and malicious actors from impacting system reliability or the voting process
+- Ensure high availability across multiple global regions
+- Support a large number of users on the platform
+- Handle many users simultaneously without performance degradation
+- Ensure consistency and guarantee only one vote per user per election
+- Provide real-time reporting and analytics for all voting activities
 
 # 3. 🎯 Non-Goals
 

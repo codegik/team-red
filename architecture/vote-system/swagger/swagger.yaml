@@ -15,6 +15,10 @@ tags:
     description: Survey management endpoints
   - name: Public
     description: Public endpoints for responses and answers
+  - name: Users
+    description: User management endpoints
+  - name: Auth
+    description: Authentication endpoints
 
 paths:
   /v1/internal/surveys:
@@ -282,6 +286,270 @@ paths:
               schema:
                 $ref: "#/components/schemas/SurveyAnswer"
 
+  # User Service Endpoints
+
+  /v1/auth/{provider}/callback:
+    post:
+      summary: OAuth Callback
+      description: Handle OAuth callback from social provider (Google, Apple, Facebook). Validates the provider token, links or creates internal user identity, and issues internal JWT tokens.
+      tags: [Auth]
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, apple, facebook]
+          description: OAuth provider name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OAuthCallbackRequest"
+      responses:
+        "200":
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Invalid token or provider
+        "401":
+          description: Token validation failed
+
+  /v1/auth/logout:
+    post:
+      summary: Logout
+      description: Invalidate the current access token and revoke the session
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Logout successful
+        "401":
+          description: Unauthorized
+
+  /v1/auth/refresh:
+    post:
+      summary: Refresh Token
+      description: Get a new access token using refresh token. Tokens are bound to device fingerprint.
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+      responses:
+        "200":
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid or expired refresh token
+
+  /v1/internal/users:
+    get:
+      summary: List Users
+      description: Get a paginated list of all users (admin only)
+      tags: [Users]
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+          description: Number of users per page
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name or email
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [admin, voter]
+          description: Filter by role
+        - name: verificationStatus
+          in: query
+          schema:
+            type: string
+            enum: [pending, verified, rejected]
+          description: Filter by identity verification status
+      responses:
+        "200":
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/User"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+
+  /v1/internal/users/{id}:
+    get:
+      summary: Get User
+      description: Get user details by ID (admin only)
+      tags: [Users]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID
+      responses:
+        "200":
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: User not found
+    put:
+      summary: Update User
+      description: Update user details (admin only)
+      tags: [Users]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: User not found
+    delete:
+      summary: Delete User
+      description: Delete a user account (admin only)
+      tags: [Users]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID
+      responses:
+        "204":
+          description: User deleted successfully
+        "404":
+          description: User not found
+
+  /v1/users/me:
+    get:
+      summary: Get Current User
+      description: Get the currently authenticated user's profile
+      tags: [Users]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+    put:
+      summary: Update Current User
+      description: Update the currently authenticated user's profile (name only, email comes from OAuth provider)
+      tags: [Users]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+
+  /v1/users/me/verification:
+    get:
+      summary: Get Verification Status
+      description: Get the current user's identity verification status (SumSub KYC)
+      tags: [Users]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Verification status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationStatus"
+        "401":
+          description: Unauthorized
+
+  /v1/users/me/verification/initiate:
+    post:
+      summary: Initiate Identity Verification
+      description: Start the SumSub identity verification flow. Returns a verification token for the mobile SDK.
+      tags: [Users]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Verification initiated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verificationToken:
+                    type: string
+                    description: Token for SumSub mobile SDK
+                    example: "sumsub_token_abc123"
+                  expiresAt:
+                    type: string
+                    format: date-time
+                    example: "2025-12-09T11:00:00Z"
+        "401":
+          description: Unauthorized
+        "409":
+          description: Verification already completed or in progress
+
 components:
   schemas:
     Survey:
@@ -533,3 +801,164 @@ components:
         text:
           type: string
           example: ""
+
+    # User Service Schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "1"
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        name:
+          type: string
+          example: "John Doe"
+        provider:
+          type: string
+          enum: [google, apple, facebook]
+          description: OAuth provider used for authentication
+          example: "google"
+        providerId:
+          type: string
+          description: User ID from the OAuth provider
+          example: "google_123456789"
+        role:
+          type: string
+          enum: [admin, voter]
+          example: "voter"
+        verificationStatus:
+          type: string
+          enum: [pending, verified, rejected]
+          description: SumSub identity verification status
+          example: "verified"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-15T10:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-01-15T10:30:00Z"
+
+    OAuthCallbackRequest:
+      type: object
+      required:
+        - token
+        - deviceFingerprint
+      properties:
+        token:
+          type: string
+          description: ID token (Google/Apple) or access token (Facebook) from the OAuth provider
+          example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+        deviceFingerprint:
+          type: string
+          description: Device fingerprint from FingerprintJS for session binding
+          example: "fp_abc123xyz789"
+        turnstileToken:
+          type: string
+          description: Cloudflare Turnstile token for bot detection
+          example: "turnstile_token_xyz"
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refreshToken
+        - deviceFingerprint
+      properties:
+        refreshToken:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        deviceFingerprint:
+          type: string
+          description: Device fingerprint must match the original session
+          example: "fp_abc123xyz789"
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        accessToken:
+          type: string
+          description: Short-lived JWT access token (15 minutes TTL)
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        refreshToken:
+          type: string
+          description: Refresh token for obtaining new access tokens
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        expiresIn:
+          type: integer
+          description: Access token expiration time in seconds
+          example: 900
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "John Doe"
+        role:
+          type: string
+          enum: [admin, voter]
+          example: "voter"
+        verificationStatus:
+          type: string
+          enum: [pending, verified, rejected]
+          description: Manually override verification status (admin only)
+          example: "verified"
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "John Doe"
+
+    VerificationStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [not_started, pending, verified, rejected]
+          example: "verified"
+        verifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-01-15T11:00:00Z"
+        rejectionReason:
+          type: string
+          nullable: true
+          description: Reason for rejection if status is rejected
+          example: null
+        documentType:
+          type: string
+          nullable: true
+          description: Type of document used for verification
+          example: "passport"
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 100
+        totalPages:
+          type: integer
+          example: 5
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Internal JWT access token issued by the Auth Service
