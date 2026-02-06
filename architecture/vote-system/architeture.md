@@ -40,57 +40,11 @@ and secure by design.
 
 **Core Challenges:**
 
-1. **Data Integrity at Scale**
-   - Guarantee zero data loss across 240K RPS with multi-region active-active replication
-   - Implement synchronous writes with WAL (Write-Ahead Logging) and fsync guarantees
-   - Build tamper-proof immutable audit trails using OpenSearch WORM indices
-   - Handle database sharding across 300M users without creating consistency gaps
-   - Design automatic failover with RPO=0 (Recovery Point Objective) and RTO<60s (Recovery Time Objective)
-
-2. **Security & Fraud Prevention**
-   - Detect and block automated bots at 240K RPS without impacting legitimate users
-   - Prevent credential stuffing, session hijacking, replay attacks, and DDoS
-   - Implement defense-in-depth: WAF, device fingerprinting, behavioral analysis, rate limiting
-   - Validate identity uniqueness across 300M users without centralized bottlenecks
-   - Build real-time fraud detection with ML models analyzing voting patterns
-
-3. **Horizontal Scalability**
-   - Scale API layer from baseline to 240K RPS using Kubernetes HPA and KEDA
-   - Implement geo-based database sharding to distribute 300M user records
-   - Design stateless microservices that auto-scale without session affinity issues
-   - Optimize cache layers (Redis) to absorb read-heavy traffic and reduce DB load
-   - Handle cold-start delays during sudden traffic spikes with pre-warming strategies
-
-4. **Strict Idempotency & One-Vote Enforcement**
-   - Guarantee exactly-once vote processing despite retries, network failures, and race conditions
-   - Implement distributed locks or optimistic concurrency control at database level
-   - Design idempotency keys with conflict resolution for duplicate submissions
-   - Prevent race conditions when multiple requests arrive simultaneously for same user
-   - Build reconciliation mechanisms to detect and resolve any duplicate votes in audit logs
-
-5. **Real-Time Result Distribution**
-   - Stream aggregated results to 300M users with <2 second latency using SSE
-   - Design event-driven architecture (Kafka) for vote ingestion and aggregation
-   - Handle 250K concurrent SSE connections with minimal server resource overhead
-   - Implement efficient broadcast patterns using EventEmitter for SSE clients
-   - Balance real-time updates with system load—aggregate summaries vs. individual events
-
-6. **Multi-Region Complexity**
-   - Synchronize vote data across geographic regions with strong consistency
-   - Handle network partitions (split-brain scenarios) without duplicate votes
-   - Route users to nearest region while maintaining global vote count accuracy
-   - Implement cross-region disaster recovery with automated failover
-   - Manage clock skew and distributed transaction coordination across regions
-
-7. **Performance Under Load**
-   - Maintain <100ms p99 latency during 240K RPS peak traffic
-   - Prevent database saturation through write buffering, connection pooling, and read replicas
-   - Optimize Kafka throughput for event streaming without lag buildup
-   - Implement backpressure mechanisms to gracefully degrade under extreme load
-   - Cache authentication tokens and session data to reduce repeated DB lookups
-
----
-
+- **Data Integrity at Scale**: Guarantee zero data loss and ensure accuracy for millions of users
+- **Security & Fraud Prevention**: Detect and prevent bots and fraudulent users
+- **High Throughput**: Scale the system to support traffic spikes of up to 250K requests per second
+- **Strict Idempotency & One-Vote Enforcement**: Guarantee exactly one vote per user for each survey
+- **Real-Time Results**: Aggregate and count votes in real time, providing instant results
 
 # 2. 🎯 Goals
 
