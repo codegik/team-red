@@ -331,6 +331,28 @@ The architecture is guided by seven foundational design principles that address 
 
 ![overall](diagrams/overall.architecture.png)
 
+## 5.5 Edge to API
+
+``` text
+Mobile App (React Native)
+        |
+        | HTTPS
+        v
+CloudFront + Global Edge
+        |
+        v
+AWS WAF (Bot Control + Rate Limits)
+        |
+        v
+AWS Global Accelerator Backbone
+        |
+        v
+API Gateway (Rate Limited)
+        |
+        v
+Microservices
+```
+
 ## 5.2 🗂️ Solution architecture
 
 ![solution](diagrams/micro.architecture.png)
@@ -526,27 +548,6 @@ This allows detection of:
 - One user trying to vote from multiple devices
 - One device trying to impersonate multiple users
 
-## 5.5 Edge to API
-
-``` text
-Mobile App (React Native)
-        |
-        | HTTPS
-        v
-CloudFront + Global Edge
-        |
-        v
-AWS WAF (Bot Control + Rate Limits)
-        |
-        v
-AWS Global Accelerator Backbone
-        |
-        v
-API Gateway (Rate Limited)
-        |
-        v
-Microservices (Auth, Voting, Fraud)
-```
 
 ### 5.4.1. CloudFront + AWS WAF Responsibilities
 
@@ -621,22 +622,64 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Caching**               | Layer                     | Redis                                              | Memcached, ElastiCache            | Real-time counters, session data, rate limiting                                    |
 | **Real-time**             | Updates                   | WebSocket + SSE                                    | Polling, Long-polling             | True real-time results; accepts connection management complexity                   |
 
-### SumSub Vs Keycloak
 
-| **Aspect**                          | **SumSub (With Social Login)**                      | **Keycloak**                                                        | **Trade-off / Notes**                                                                                            |
-|-------------------------------------|-----------------------------------------------------|---------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
-| **Authentication & Identification** | Social Identity via major providers                 | Username/Password, OTP, MFA, SSO and fine grained rules/permissions | SumSub centralize social login; Keycloak is a full IAM                                                           |
-| **Compliance & Risk Management**    | Higher - Automated checks against different sources | Lower - No built-in feature, need to integrate manuall              | SumSub already provides the integrations and audits                                                              |
-| **Flexibility**                     | Lower - Limited to predefined flows                 | Higher - customizable authentication flows                          | Keycloack offers more customizations                                                                             |
-| **Deployment & Management**         | Simpler – is a SAAS, no infra management            | More complex – self hosted                                          | SumSub has vendor dependency;Keycloak is a component on your infra that you should manage (update, scale, patch) |
 
-| Tool              | Pros                                    | Cons     | Risk Accepted |
-|-------------------|-----------------------------------------|----------|---------------|
-| **Social Login**  | Direct provider integration, lower cost | add cons | add risk      |
-| **SumSub**        | Strong biometric antifraud, global KYC  | add cons | add risk      |
-| **Turnstile**     | Good UX                                 | add cons | add risk      |
-| **FingerprintJS** | Passive, emulator detection             | add cons | add risk      |
-| **AWS WAF**       | Managed rules, native integration       | add cons | add risk      |
+### OAuth Social Login vs Auth0
+
+| Aspect | OAuth-based Social Login (Custom Java Service) | Auth0 |
+|------|-----------------------------------------------|-------|
+| **Control** | Full architectural and operational control over authentication flows, token lifecycle, data storage, and domain-specific rules | Control limited to vendor-supported flows, configuration options, and extension points |
+| **Cost** | Lower long-term cost at large scale; infrastructure and engineering costs are predictable and internally controlled | Becomes expensive at high MAU due to per-user and per-feature pricing |
+| **Vendor Lock-in** | Low; providers can be added or removed independently and implementation is protocol-based | High; deep dependency on vendor APIs, pricing model, and roadmap |
+| **Customization** | High; authentication flows can be tailored to voting-domain requirements and security policies | Medium; customization constrained by platform capabilities and policies |
+| **Time to Market** | Medium; requires initial engineering effort to implement and validate provider integrations | Fast; ready-to-use authentication flows and UI components |
+| **Operational Effort** | Higher; responsibility for monitoring, incident response, key rotation, and provider changes | Lower; IAM operations and availability handled by the vendor |
+| **Compliance Scope** | Reduced; no password storage and minimal IAM surface owned by the platform | Broader; platform is responsible for IAM configuration, audits, and vendor compliance |
+| **Scalability** | Fully controlled; scaling behavior is predictable and aligned with internal infrastructure | Vendor-dependent; scaling limits, throttling, and outages are external risks |
+| **Integration Complexity** | High; requires implementing, testing, and maintaining three distinct OAuth/OIDC integrations (Google, Apple, Facebook), each with different behaviors and edge cases | Low; unified abstraction over providers with consistent behavior |
+
+
+### OAuth Social Login vs Keycloak
+
+| Aspect | OAuth-based Social Login (Custom Java Service) | Keycloak |
+|------|-----------------------------------------------|----------|
+| **Control** | Full control over authentication logic, token structure, claim modeling, and domain-specific rules | Control centralized in IAM platform with configuration-driven behavior |
+| **Operational Complexity** | Lower infrastructure complexity; no dedicated IAM cluster to operate | Higher; requires operating, patching, scaling, and securing an IAM platform |
+| **Integration Model** | Direct integration with social providers (Google, Apple, Facebook) via OAuth/OIDC | Social providers integrated via federation inside Keycloak |
+| **Token Issuance** | Tokens issued by the Auth Service, tailored to domain needs | Tokens issued by Keycloak with standardized claims |
+| **Customization** | High; flows can be deeply customized in code | Medium; customization constrained to Keycloak extensions and SPI |
+| **Time to Market** | Medium; requires custom implementation | Fast; built-in login flows and admin UI |
+| **Scalability** | Fully controlled and aligned with internal autoscaling strategies | Requires careful sizing and tuning under high authentication peaks |
+| **Failure Domain** | Auth logic failures isolated to a single microservice | IAM becomes a central critical dependency |
+| **Integration Complexity** | Higher; three provider integrations maintained in code | Lower; providers abstracted by Keycloak |
+
+
+### SumSub vs Veriff
+
+| Aspect | SumSub | Veriff |
+|------|--------|--------|
+| **Primary Focus** | Comprehensive identity verification, liveness, and fraud risk scoring | Identity verification and liveness with simplified workflows |
+| **Liveness Detection** | Advanced liveness (deepfake resistance, replay protection) | Strong liveness, slightly less aggressive fraud scoring |
+| **Fraud Signals** | Rich risk scoring combining document, biometric, and behavioral data | More limited fraud signal enrichment |
+| **Global Coverage** | Broad document support across many countries | Strong coverage, but fewer document types in some regions |
+| **Compliance & Audits** | Strong KYC/AML and regulatory support | Good compliance support, simpler audit tooling |
+| **Integration Complexity** | Higher; richer APIs and more configuration options | Lower; simpler API and faster integration |
+| **User Friction** | Higher; multi-step verification flows | Lower; optimized for conversion |
+| **Cost Model** | Higher per-verification cost | More cost-efficient for high-volume verification |
+
+
+### FingerprintJS vs ThumbmarkJS
+
+| Aspect | FingerprintJS | ThumbmarkJS |
+|------|---------------|-------------|
+| **Signal Depth** | High; combines browser, OS, hardware, and behavioral entropy | Medium; relies on fewer, mostly passive signals |
+| **Emulator & Bot Detection** | Strong emulator, VM, and automation detection | Limited advanced bot detection |
+| **Stability of Fingerprint** | High stability across sessions | Less stable across browser updates and OS changes |
+| **Privacy Considerations** | Higher compliance complexity (GDPR/consent handling) | Simpler privacy posture |
+| **Evasion Resistance** | Better resistance to spoofing and fingerprint randomization | Easier to evade with modern privacy tools |
+| **Operational Maturity** | Enterprise-grade tooling, dashboards, and SLAs | Smaller ecosystem and fewer operational tools |
+| **Integration Complexity** | Medium; SDK + backend correlation required | Low; lightweight client-side integration |
+| **Cost** | Higher, especially at large scale | Lower or free depending on usage |
 
 ## EKS vs ECS
 
@@ -774,15 +817,17 @@ Overall Admin Use Cases:
 - Client-side state management tests.
 - WebSocket client implementation tests.
 
-## Mobile testing
 
-- Unit Android: ViewModel/repository with JUnit.
-- Unit iOS: XCTest with async/await; mocks per protocol.
-- UI Android: Espresso for flows (login, search, dojo).
-- UI iOS: XCUITest with LaunchArguments for mocks.
-- Network/Contract: MockWebServer (Android) / URLProtocol stub (iOS); Pact consumer tests for contracts with the backend.
-- Performance: Cold start and WS connection times measured in CI (staging).
-- Accessibility: Basic TalkBack/VoiceOver per critical screen.
+## Mobile testing (React Native)
+
+- Unit: Jest for pure business logic (utils, validators, reducers) and service wrappers.
+- Component: React Native Testing Library (RNTL) for UI components (rendering, props, conditional states, snapshots only when stable).
+- Navigation: Integration tests validating Expo Router / React Navigation flows (login → onboarding → voting → results).
+- API/Contract: MSW (Mock Service Worker) for deterministic HTTP mocking; Pact consumer tests for critical API contracts.
+- Real-time: WebSocket/SSE client tests with mocked servers and reconnection/backoff scenarios.
+- E2E: Detox for core flows (registration/login, vote submission, real-time updates, logout) on Android and iOS.
+- Accessibility: Basic a11y checks for critical screens (labels, roles, focus order), plus manual verification with VoiceOver/TalkBack.
+
 
 ## Chaos tests
 
@@ -1755,33 +1800,6 @@ internally by this service.
 - Issues internal JWT tokens for downstream services
 
 
-
-**Authentication Trade-offs: OAuth Social Login vs Auth0**
-| Aspect | OAuth-based Social Login (Custom Java Service) | Auth0 |
-|------|-----------------------------------------------|-------|
-| Control | Full architectural and operational control over authentication flows, token lifecycle, data storage, and domain-specific rules | Control limited to vendor-supported flows, configuration options, and extension points |
-| Cost | Lower long-term cost at large scale; infrastructure and engineering costs are predictable and internally controlled | Becomes expensive at high MAU due to per-user and per-feature pricing |
-| Vendor Lock-in | Low; providers can be added or removed independently and implementation is protocol-based | High; deep dependency on vendor APIs, pricing model, and roadmap |
-| Customization | High; authentication flows can be tailored to voting-domain requirements and security policies | Medium; customization constrained by platform capabilities and policies |
-| Time to Market | Medium; requires initial engineering effort to implement and validate provider integrations | Fast; ready-to-use authentication flows and UI components |
-| Operational Effort | Higher; responsibility for monitoring, incident response, key rotation, and provider changes | Lower; IAM operations and availability handled by the vendor |
-| Compliance Scope | Reduced; no password storage and minimal IAM surface owned by the platform | Broader; platform is responsible for IAM configuration, audits, and vendor compliance |
-| Scalability | Fully controlled; scaling behavior is predictable and aligned with internal infrastructure | Vendor-dependent; scaling limits, throttling, and outages are external risks |
-| Integration Complexity | High; requires implementing, testing, and maintaining three distinct OAuth/OIDC integrations (Google, Apple, Facebook), each with different behaviors and edge cases | Low; unified abstraction over providers with consistent behavior |
-
-
-**Decision**: OAuth-based Social Login was chosen to reduce cost, avoid vendor
-lock-in, and maintain full architectural control at 300M-user scale.
-
-### OAuth-based Social Login — Java Implementation
-
-The Auth Service implements OAuth 2.0 / OpenID Connect flows using a
-custom Java-based authentication service. The platform does not rely on
-external IAM providers (Auth0, Cognito, etc.).
-
-The service integrates directly with each social identity provider and
-is responsible for token validation, identity linking, and internal
-session issuance.
 
 #### Provider Integrations
 
