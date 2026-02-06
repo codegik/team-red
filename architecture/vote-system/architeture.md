@@ -532,8 +532,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Data Management** | Shared database                   | Database per service                      | Accept eventual consistency between services  |
 
 
-### Auditability and tamper-proof logging
-#### S3 Object Lock vs Amazon QLDB
+## Auditability and tamper-proof logging: S3 Object Lock vs Amazon QLDB
 
 | Aspect | S3 Object Lock | Amazon QLDB |
 |--------|----------------|-------------|
@@ -560,10 +559,10 @@ This document captures the key architectural decisions and their tradeoffs for t
 
 ### Real-Time Technology Tradeoffs
 
-| Aspect                  | SSE                                      | WebSockets                                | Tradeoff                                           |
+| **Aspect**              | **Server-Side-Events (SSE)**             | **WebSockets**                            | **Notes/Tradeoff**                                 |
 |-------------------------|------------------------------------------|-------------------------------------------|----------------------------------------------------|
 | **Communication**       | Unidirectional (server→client)           | Bidirectional (full-duplex)               | SSE sufficient for results broadcast; simpler      |
-| **Connection Overhead** | 4-8KB per connection                     | 10-20KB per connection                    | Lower memory footprint at 300M user scale          |
+| **Connection Memory**   | 4-8KB per connection                     | 10-20KB per connection                    | Lower memory footprint at 300M user scale          |
 | **Reconnection**        | Automatic browser retry + event IDs      | Manual reconnection logic required        | Reduced client complexity and failure recovery     |
 | **Firewall/Proxy**      | Standard HTTP; works everywhere          | WebSocket upgrade often blocked           | Better compatibility in enterprise/mobile networks |
 | **Scalability**         | HTTP/2 multiplexing supported            | Requires persistent TCP connections       | Easier horizontal scaling with standard HTTP       |
@@ -572,7 +571,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 
 ## Database SQL vs No-SQL
 
-| **Criteria**    | **SQL Databases**                | **No-SQL databases**            | **Notes**                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **Aspect**    | **SQL Databases**                | **No-SQL databases**            | **Notes/Tradeoffs**                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 |-----------------|----------------------------------|---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Consistency** | Strong (ACID)                    | Eventual (in most cases)        | **SQL**: Guarantees ACID properties (Atomicity, Consistency, Isolation, Durability). Changes are immediately visible to all users after commit. Critical for voting systems where vote counts must be accurate in real-time. **NoSQL**: Most NoSQL databases prioritize availability and partition tolerance (CAP theorem), using eventual consistency where changes propagate over time. Cassandra, DynamoDB offer tunable consistency but at performance cost. |
 | **Scalability** | Mainly vertical                  | Horizontal                      | **SQL**: Scales by adding more CPU, RAM, or storage to a single server (vertical scaling). Sharding is possible but complex. **NoSQL**: Designed for horizontal scaling - adding more servers to distribute load. Handles massive data volumes across distributed nodes naturally.                                                                                                                                                                               |
@@ -593,7 +592,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Auditability**   | Strong support for auditing                           | Audits exist, but they are often enterprise-paid | **PostgreSQL**: Extensions such as pgAudit.                                                                                |
 
 
-## 6.1. Security Tools
+## Security Tools
 
 | Tool                                               | Pros                                                                                                      | Cons                                                                                                                           |
 |----------------------------------------------------|-----------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
