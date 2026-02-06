@@ -450,28 +450,6 @@ The API Gateway enforces:
 
 This document captures the key architectural decisions and their tradeoffs for the Vote System.
 
-### Decision Categories
-
-| Category                  | Decision                  | Chosen                                             | Rejected                          | Rationale                                                                          |
-|---------------------------|---------------------------|----------------------------------------------------|-----------------------------------|------------------------------------------------------------------------------------|
-| **Database**              | Data store                | PostgreSQL (RDS)                                   | MongoDB, MySql                    | Guarantees required for vote integrity                                             |
-| **Database**              | Scaling strategy          | Geo-based sharding                                 | Single instance, vertical scaling | 300M users require horizontal scaling                                              |
-| **Database**              | Audit/Logs store          | OpenSearch.                                        | PostgreSQL, DynamoDB              | OpenSearch with WORM (Write-Once-Read-Many) indices                                |
-| **Database**              | Partitioning              | PostgreSQL                                         | MySQL                             | PostgreSQL natively supports: RANGE, LIST, HASH, Subpartitioning                   |
-| **Database**              | Replication               | PostgreSQL                                         | MySQL                             | Physical and Logical replication (streaming replication)                           |
-| **Database**              | Security and auditability | PostgreSQL                                         | MySQL                             | WAL is extremely reliable, Strong support for auditing, Extensions such as pgAudit |
-| **Cloud Provider**        | Infrastructure            | AWS                                                | GCP, Azure, On-premise            | Add content                                                                        |
-| **Architecture**          | Style                     | Microservices                                      | Monolith                          | Scale requirements; independent service scaling                                    |
-| **Authentication**        | Provider                  | OAuth-based Social Login (Google, Apple, Facebook) | Auth0, Cognito                    | Direct provider integration; no IAM vendor lock-in; lower cost at scale            |
-| **Identity Verification** | Provider                  | SumSub                                             | Jumio, Onfido                     | Add content                                                                        |
-| **Bot Detection**         | Human verification        | Cloudflare Turnstile                               | reCAPTCHA, hCaptcha               | Add content                                                                        |
-| **Bot Detection**         | Device fingerprinting     | FingerprintJS                                      | Custom solution                   | Add content                                                                        |
-| **Compute**               | Runtime                   | Kubernetes (EKS)                                   | ECS, Lambda                       | Add content                                                                        |
-| **Messaging**             | Event streaming           | Kafka                                              | SQS, RabbitMQ                     | High throughput for 240k RPS; Add content                                          |
-| **Caching**               | Layer                     | Redis                                              | Memcached, ElastiCache            | Real-time counters, session data, rate limiting                                    |
-| **Real-time**             | Updates                   | WebSocket + SSE                                    | Polling, Long-polling             | True real-time results; accepts connection management complexity                   |
-
-
 
 ### OAuth Social Login vs Auth0
 
