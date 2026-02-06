@@ -15,11 +15,11 @@ strategy for a global, real-time voting system designed to support:
 - Near real-time result visibility
 
 The system must be fully cloud-native, highly scalable, fault tolerant,
-and secure by design, while explicitly avoiding:
+and secure by design.
 
 ## 1.2 Restrictions
 
-- Serverless platforms outside AWS
+- Serverless
 - MongoDB
 - On-premise infrastructure
 - Google Cloud & Microsoft Azure
@@ -27,50 +27,16 @@ and secure by design, while explicitly avoiding:
 - Mainframes
 - Monolithic architectures
 
-AWS-based, fully distributed, microservices-first architecture is
-assumed.
-
 ## 1.3 Problem Space
 
-**What is the problem?**
-
-We need to design and build a globally distributed, mission-critical real-time voting system capable of handling 300 million registered users with peak traffic of 240,000 requests per second. The system must guarantee absolute data integrity, enforce strict one-person-one-vote constraints, provide real-time result visibility, and defend against sophisticated fraud, bot attacks, and abuse at scale—all while maintaining near-zero data loss and high availability across multiple geographic regions.
+**What is the problem?** Because voting is a sensitive matter, a voting system must be reliable, secure, auditable, guarantee data integrity, enforce strict one-person-one-vote constraints, and provide real-time transparency.
 
 **What is the context of the problem?**
 
-- **Market Context**:
-  - Democratic elections and large-scale voting events demand unprecedented levels of trust, transparency, and reliability
-  - Growing threat landscape from automated bots, state-sponsored actors, and coordinated fraud campaigns
-  - Increasing expectations for instant feedback and real-time results from 300M+ global participants
-  - Zero tolerance for data loss, system failures, or security breaches that could undermine election integrity
-  - Need for systems that can scale elastically during unpredictable traffic spikes (campaigns, debates, breaking news)
-
-- **Business Context**:
-  - Any data loss or security breach creates legal liability, regulatory penalties, and irreparable reputational damage
-  - System must support mission-critical operations with financial and legal consequences
-  - One-time deployment windows with no room for failure during live voting periods
-  - Requirement for complete auditability and tamper-proof logging for legal compliance
-  - Cost optimization critical—infrastructure must scale down after peak periods
-  - Must support strict SLAs with penalties for downtime or data inconsistency
-
-- **Technical Context**:
-  - Peak traffic of 240K RPS eliminates traditional vertical scaling and monolithic architectures
-  - 300M users require geo-distributed sharding, multi-region replication, and CDN distribution
-  - ACID guarantees required for vote integrity—NoSQL eventually consistent models insufficient for vote records
-  - Real-time requirements demand event-driven architecture (Kafka, SSE) with <2 second latency
-  - Cloud-native AWS-only restriction eliminates multi-cloud and serverless options
-  - Must handle database bottlenecks through strategic sharding (geo-based), read replicas, and caching
-  - Defense-in-depth security model required across network, identity, device, behavior, application, and data layers
-  - Need for immutable audit logs and write-once-read-many (WORM) compliance
-
-- **User Context**:
-  - 300M users spread across multiple geographic regions with varying network conditions
-  - Users expect instant confirmation of vote submission and real-time result updates
-  - Users must be authenticated securely without friction (prevent credential stuffing, session hijacking)
-  - Mobile and web clients require Server-Sent Events (SSE) for efficient real-time updates
-  - Users in different time zones create distributed load patterns with unpredictable spikes
-  - Accessibility requirements for diverse user populations (language, disability, device types)
-  - Users must vote exactly once—any duplicate vote undermines system integrity
+- **Market Context**: Voting mechanisms are applied in multiple contexts, including democratic elections, financial cooperatives, corporate decision-making, and general surveys.
+- **Business Context**: Voting has become a highly debated topic, particularly in politics, which creates an opportunity for a SaaS platform to be widely adopted across multiple contexts.
+- **Technical Context**: Such a SaaS platform could be globally adopted, experience significant traffic spikes, and must still ensure high availability, security, consistency, and result accuracy.
+- **User Context**: A broad global user base implies diverse users, so the system must be intuitive for voters and straightforward for administrators responsible for creating surveys and analyzing results.
 
 **Core Challenges:**
 
