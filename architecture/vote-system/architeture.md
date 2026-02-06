@@ -532,11 +532,10 @@ FingerprintJS is used to:
 
 How it is used:
 
-1. FingerprintJS runs in the app runtime.
+1. FingerprintJS runs in the webview login page.
 2. A device ID is generated.
 3. The device ID is attached to:
     - Login requests
-    - Voting requests
 4. The backend correlates:
     - User Account
     - Document Hash
@@ -772,7 +771,8 @@ This document captures the key architectural decisions and their tradeoffs for t
 
 | Tool                                               | Pros                                                                                                      | Cons                                                                                                                           |
 |----------------------------------------------------|-----------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
-| **OAuth-based Social Login (Custom Java Service)** | Enterprise-grade authentication; Built-in MFA; Secure token lifecycle; SSO support; High availability     | Expensive at large scale; Vendor lock-in; Limited flexibility for custom flows                                                 |
+| **OAuth-based Social Login (Custom Java Service)** | Full control over authentication logic and token claims; Direct integration with social identity providers; Lower cost at high MAU;
+Protocol-level transparency (OAuth/OIDC);   | Higher engineering effort, Maintenance of provider integrations, Operational responsibility   |
 | **SumSub**                                         | Strong biometric antifraud; Global KYC compliance; High-quality liveness detection; Advanced risk scoring | High user friction; Sensitive biometric data handling; High per-verification cost; Not always legally permitted for voting     |
 | **Cloudflare Turnstile**                           | Invisible challenge; Better UX than CAPTCHA; Strong privacy guarantees; Blocks simple automation          | Not sufficient alone against advanced bots; External dependency; Needs backend verification                                    |
 | **FingerprintJS**                                  | Passive and invisible; Emulator and device cloning detection; Excellent multi-account detection signal    | Fingerprints can be spoofed by advanced attackers; Privacy and compliance concerns; Device replacement causes identity changes |
