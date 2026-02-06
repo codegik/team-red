@@ -4,8 +4,7 @@
 
 ## 1.1 🎯 Problem Statement and Context
 
-This document describes the high-level architecture and security
-strategy for a global, real-time voting system designed to support:
+Design architecture for a global, secure real-time voting system designed to support:
 
 - Up to 300 million registered users
 - Traffic peaks of 240,000 requests per second (RPS)
@@ -14,8 +13,7 @@ strategy for a global, real-time voting system designed to support:
 - One-person-one-vote enforcement
 - Near real-time result visibility
 
-The system must be fully cloud-native, highly scalable, fault tolerant,
-and secure by design.
+The system must be fully cloud-native, highly scalable, fault tolerant, and secure by design.
 
 ## 1.2 Restrictions
 
