@@ -1,0 +1,101 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.3.0 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.3.0">
+  <diagram id="postgresql-s3-hybrid" name="PostgreSQL + S3 Hybrid Architecture">
+    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0" background="#FFFFFF">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Vote Service (Microservice) Container -->
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;align=center;fontSize=14;fontStyle=1;spacingTop=5;container=1;collapsible=0;fontColor=#000000;" value="Vote Service (Microservice)" vertex="1">
+          <mxGeometry x="200" y="40" width="700" height="260" as="geometry" />
+        </mxCell>
+
+        <!-- Vote Processing Logic Box -->
+        <mxCell id="3" parent="2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=top;align=center;fontSize=13;fontStyle=1;spacingTop=5;fontColor=#000000;" value="Vote Processing Logic" vertex="1">
+          <mxGeometry x="80" y="50" width="540" height="180" as="geometry" />
+        </mxCell>
+
+        <!-- Step 1 -->
+        <mxCell id="4" parent="2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;fontColor=#000000;" value="1. Validate vote" vertex="1">
+          <mxGeometry x="110" y="100" width="220" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Step 2 -->
+        <mxCell id="5" parent="2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;fontColor=#000000;" value="2. Calculate hash chain" vertex="1">
+          <mxGeometry x="370" y="100" width="220" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Step 3 -->
+        <mxCell id="6" parent="2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;fontColor=#000000;" value="3. Write to PostgreSQL (transactional)" vertex="1">
+          <mxGeometry x="110" y="170" width="220" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Step 4 -->
+        <mxCell id="7" parent="2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;fontColor=#000000;" value="4. Async write to S3 (audit trail)" vertex="1">
+          <mxGeometry x="370" y="170" width="220" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- PostgreSQL (Sharded) -->
+        <mxCell id="8" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;align=center;fontSize=13;fontStyle=1;spacingTop=10;fontColor=#000000;" value="PostgreSQL&lt;br&gt;(Sharded)" vertex="1">
+          <mxGeometry x="200" y="380" width="260" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- PostgreSQL details -->
+        <mxCell id="9" parent="1" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;align=left;verticalAlign=top;fontColor=#333333;" value="• Operational queries&lt;br&gt;• Fast reads&lt;br&gt;• Sharded by region/voter" vertex="1">
+          <mxGeometry x="240" y="460" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Message Queue -->
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;fontColor=#000000;" value="Message Queue&lt;br&gt;(Kafka / RabbitMQ / SQS)" vertex="1">
+          <mxGeometry x="620" y="380" width="260" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Audit Writer Service -->
+        <mxCell id="11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=top;align=center;fontSize=13;fontStyle=1;spacingTop=5;fontColor=#000000;" value="Audit Writer Service" vertex="1">
+          <mxGeometry x="620" y="530" width="260" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Audit Writer details -->
+        <mxCell id="12" parent="1" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;align=left;verticalAlign=top;fontColor=#333333;" value="• Consume from queue&lt;br&gt;• Batch writes to S3&lt;br&gt;• Checkpoint hashes" vertex="1">
+          <mxGeometry x="660" y="580" width="180" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- S3 Object Lock (WORM) -->
+        <mxCell id="13" parent="1" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;rounded=0;whiteSpace=wrap;html=1;fillColor=#E25444;strokeColor=#E25444;fontColor=#000000;fontSize=13;fontStyle=1;verticalAlign=bottom;spacingBottom=5;labelPosition=center;verticalLabelPosition=top;align=center;" value="" vertex="1">
+          <mxGeometry x="700" y="760" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- S3 Container Box -->
+        <mxCell id="14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;verticalAlign=top;align=center;fontSize=13;fontStyle=1;spacingTop=5;fontColor=#000000;" value="S3 Object Lock (WORM)" vertex="1">
+          <mxGeometry x="540" y="740" width="420" height="220" as="geometry" />
+        </mxCell>
+
+        <!-- S3 Bucket Structure -->
+        <mxCell id="15" parent="1" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;align=left;verticalAlign=top;fontFamily=Courier New;fontColor=#333333;" value="Bucket Structure:&lt;br&gt;/votes/&lt;br&gt;  checkpoint_0001/&lt;br&gt;    vote_0000001.json&lt;br&gt;    vote_0000002.json&lt;br&gt;    ...&lt;br&gt;  checkpoint_0002/&lt;br&gt;    checkpoint.json&lt;br&gt;    vote_0010001.json" vertex="1">
+          <mxGeometry x="580" y="790" width="340" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow: Vote Service → PostgreSQL -->
+        <mxCell id="20" edge="1" parent="1" source="2" target="8" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#545B64;exitX=0.3;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow: Vote Service → Message Queue -->
+        <mxCell id="21" edge="1" parent="1" source="2" target="10" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#545B64;exitX=0.7;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow: Message Queue → Audit Writer Service -->
+        <mxCell id="22" edge="1" parent="1" source="10" target="11" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#545B64;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow: Audit Writer Service → S3 -->
+        <mxCell id="23" edge="1" parent="1" source="11" target="14" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#545B64;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

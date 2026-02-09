@@ -823,35 +823,7 @@ For a microservices architecture at this scale, distributed tracing is essential
 
 **Tracing Architecture:**
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         Tracing Flow                                 │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐            │
-│  │ Mobile  │───▶│   API   │───▶│  Auth   │───▶│  Vote   │            │
-│  │   App   │    │ Gateway │    │ Service │    │ Service │            │
-│  └─────────┘    └────┬────┘    └────┬────┘    └────┬────┘            │
-│                      │              │              │                 │
-│         ┌────────────┴──────────────┴──────────────┘                 │
-│         │  trace-id: abc123                                          │
-│         │  span-id propagated via headers                            │
-│         ▼                                                            │
-│  ┌─────────────────────────────────────────────────────────┐         │
-│  │              OpenTelemetry Collector                    │         │
-│  │  (sampling, batching, export to Jaeger)                 │         │
-│  └────────────────────────┬────────────────────────────────┘         │
-│                           │                                          │
-│                           ▼                                          │
-│  ┌─────────────────────────────────────────────────────────┐         │
-│  │                    Jaeger Backend                       │         │
-│  │  ┌──────────┐    ┌─────────────┐    ┌──────────────┐    │         │
-│  │  │Collector │───▶│    Kafka    │───▶│ Elasticsearch│    │         │
-│  │  └──────────┘    └─────────────┘    └──────────────┘    │         │
-│  └─────────────────────────────────────────────────────────┘         │
-│                                                                      │
-└──────────────────────────────────────────────────────────────────────┘
-```
+![Tracing Architecture](diagrams/tracing-architecture.png)
 
 **Instrumentation Strategy:**
 
@@ -899,26 +871,7 @@ Loki provides log aggregation that integrates natively with Grafana and uses the
 
 **Log Architecture:**
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                      Log Pipeline                            │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────────┐                                            │
-│  │ Microservice │──┐                                         │
-│  └──────────────┘  │                                         │
-│  ┌──────────────┐  │    ┌──────────┐    ┌──────────────┐     │
-│  │ Microservice │──┼───▶│ Promtail │───▶│     Loki     │     │
-│  └──────────────┘  │    │ (Agent)  │    │   (Storage)  │     │
-│  ┌──────────────┐  │    └──────────┘    └──────┬───────┘     │
-│  │ Microservice │──┘                           │             │
-│  └──────────────┘                              ▼             │
-│                                          ┌──────────┐        │
-│                                          │ Grafana  │        │
-│                                          │  (Query) │        │
-│                                          └──────────┘        │
-└──────────────────────────────────────────────────────────────┘
-```
+![Loki Log Aggregation](diagrams/loki-log-aggregation.png)
 
 **Structured Logging Standard:**
 
@@ -1027,24 +980,7 @@ OpenTelemetry (OTel) provides a vendor-neutral instrumentation standard across a
 
 **OpenTelemetry Collector Configuration:**
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                 OpenTelemetry Collector                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Receivers          Processors           Exporters              │
-│  ┌─────────┐       ┌───────────┐       ┌────────────┐           │
-│  │  OTLP   │──────▶│  Batch    │──────▶│ Prometheus │           │
-│  │  gRPC   │       │  Sampling │       │   (metrics)│           │
-│  └─────────┘       │  Filter   │       ├────────────┤           │
-│  ┌─────────┐       └───────────┘       │   Jaeger   │           │
-│  │  OTLP   │────────────────────────▶  │  (traces)  │           │
-│  │  HTTP   │                           ├────────────┤           │
-│  └─────────┘                           │    Loki    │           │
-│                                        │   (logs)   │           │
-│                                        └────────────┘           │
-└─────────────────────────────────────────────────────────────────┘
-```
+![OpenTelemetry Collector Configuration](diagrams/otel-collector-config.png)
 
 **SDK Integration per Language:**
 
@@ -1290,51 +1226,7 @@ WORM Philosophy:
 
 ### 12.3.1 Architecture Overview
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                    Vote Service (Microservice)                │
-│                                                               │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │              Vote Processing Logic                      │  │
-│  │                                                         │  │
-│  │  1. Validate vote                                      │  │
-│  │  2. Calculate hash chain                               │  │
-│  │  3. Write to PostgreSQL (transactional)                │  │
-│  │  4. Async write to S3 (audit trail)                    │  │
-│  └────────────────────────────────────────────────────────┘  │
-└───────────────────┬──────────────────┬───────────────────────┘
-                    │                  │
-         ┌──────────▼────────┐    ┌───▼──────────────────────┐
-         │   PostgreSQL      │    │   Message Queue          │
-         │   (Sharded)       │    │   (Kafka/RabbitMQ/SQS)   │
-         │                   │    │                          │
-         │  - Operational    │    └───┬──────────────────────┘
-         │    queries        │        │
-         │  - Fast reads     │        │
-         │  - Sharded by     │        ▼
-         │    region/voter   │    ┌──────────────────────────┐
-         └───────────────────┘    │  Audit Writer Service    │
-                                  │                          │
-                                  │  - Consume from queue    │
-                                  │  - Batch writes to S3    │
-                                  │  - Checkpoint hashes     │
-                                  └───┬──────────────────────┘
-                                      │
-                                      ▼
-                              ┌────────────────────────────┐
-                              │   S3 Object Lock (WORM)    │
-                              │                            │
-                              │   Bucket Structure:        │
-                              │   /votes/                  │
-                              │     checkpoint_0001/       │
-                              │       vote_0000001.json    │
-                              │       vote_0000002.json    │
-                              │       ...                  │
-                              │     checkpoint_0002/       │
-                              │       checkpoint.json      │
-                              │       vote_0010001.json    │
-                              └────────────────────────────┘
-```
+![PostgreSQL + S3 Hybrid Architecture](diagrams/postgresql-s3-hybrid-architecture.png)
 
 ### 12.3.2 Detailed Component Design
 

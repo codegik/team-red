@@ -1,0 +1,88 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.3.0 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.3.0">
+  <diagram id="loki-log-aggregation" name="Log Aggregation - Loki">
+    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0" background="#FFFFFF">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Log Pipeline Group -->
+        <mxCell id="pipeline" parent="1" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;strokeColor=#232F3E;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#232F3E;dashed=0;" value="Log Pipeline" vertex="1">
+          <mxGeometry x="80" y="40" width="1040" height="800" as="geometry" />
+        </mxCell>
+
+        <!-- Amazon EKS Cluster Group -->
+        <mxCell id="eks" parent="pipeline" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_eks_cloud;strokeColor=#E7157B;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#E7157B;dashed=0;" value="Amazon EKS Cluster" vertex="1">
+          <mxGeometry x="30" y="50" width="380" height="350" as="geometry" />
+        </mxCell>
+
+        <!-- Microservice 1 -->
+        <mxCell id="ms1" parent="eks" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ecs_service;" value="Microservice 1" vertex="1">
+          <mxGeometry x="40" y="50" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Microservice 2 -->
+        <mxCell id="ms2" parent="eks" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ecs_service;" value="Microservice 2" vertex="1">
+          <mxGeometry x="40" y="145" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Microservice 3 -->
+        <mxCell id="ms3" parent="eks" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ecs_service;" value="Microservice 3" vertex="1">
+          <mxGeometry x="40" y="240" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Promtail Agent (inside EKS) -->
+        <mxCell id="promtail" parent="eks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#232F3E;fontSize=12;fontStyle=1;arcSize=20;" value="Promtail&lt;br&gt;&lt;font style=&quot;font-size: 10px; font-weight: normal;&quot;&gt;(Log Agent)&lt;/font&gt;" vertex="1">
+          <mxGeometry x="200" y="120" width="140" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- Loki (outside EKS, inside pipeline) -->
+        <mxCell id="loki" parent="pipeline" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#232F3E;fontSize=13;fontStyle=1;arcSize=20;" value="Loki&lt;br&gt;&lt;font style=&quot;font-size: 10px; font-weight: normal;&quot;&gt;(Log Storage)&lt;/font&gt;" vertex="1">
+          <mxGeometry x="540" y="170" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Amazon S3 (backing storage) -->
+        <mxCell id="s3" parent="pipeline" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#3F8624;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;" value="Amazon S3&lt;br&gt;(Log Storage)" vertex="1">
+          <mxGeometry x="600" y="370" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Grafana (Query & Dashboard) -->
+        <mxCell id="grafana" parent="pipeline" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#232F3E;fontSize=13;fontStyle=1;arcSize=20;" value="Grafana&lt;br&gt;&lt;font style=&quot;font-size: 10px; font-weight: normal;&quot;&gt;(Query &amp; Dashboard)&lt;/font&gt;" vertex="1">
+          <mxGeometry x="790" y="170" width="190" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- EDGES -->
+
+        <!-- Microservice 1 → Promtail -->
+        <mxCell id="e1" edge="1" parent="1" source="ms1" target="promtail" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#545B64;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Microservice 2 → Promtail -->
+        <mxCell id="e2" edge="1" parent="1" source="ms2" target="promtail" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#545B64;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Microservice 3 → Promtail -->
+        <mxCell id="e3" edge="1" parent="1" source="ms3" target="promtail" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#545B64;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Promtail → Loki -->
+        <mxCell id="e4" edge="1" parent="1" source="promtail" target="loki" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#d6b656;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Loki → S3 -->
+        <mxCell id="e5" edge="1" parent="1" source="loki" target="s3" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#545B64;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Loki → Grafana -->
+        <mxCell id="e6" edge="1" parent="1" source="loki" target="grafana" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#82b366;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
