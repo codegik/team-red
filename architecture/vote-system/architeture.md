@@ -757,7 +757,7 @@ Prometheus is the core metrics engine, chosen for its Open Source nature and Kub
 
 **Prometheus Architecture for Scale:**
 
-![Prometheus Architecture](diagrams/prometheus-architecture.drawio)
+![Prometheus Architecture](diagrams/prometheus-architecture.png)
 
 For 300M users and high cardinality, consider **Thanos** or **Cortex** for:
 
