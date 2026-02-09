@@ -757,31 +757,7 @@ Prometheus is the core metrics engine, chosen for its Open Source nature and Kub
 
 **Prometheus Architecture for Scale:**
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                     Prometheus Federation                        │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐               │
-│  │ Prometheus  │  │ Prometheus  │  │ Prometheus  │               │
-│  │  Region A   │  │  Region B   │  │  Region C   │               │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘               │
-│         │                │                │                      │
-│         └────────────────┼────────────────┘                      │
-│                          │                                       │
-│                          ▼                                       │
-│                 ┌─────────────────┐                              │
-│                 │ Global Prometheus│                             │
-│                 │   (Federation)   │                             │
-│                 └────────┬────────┘                              │
-│                          │                                       │
-│                          ▼                                       │
-│                 ┌─────────────────┐                              │
-│                 │    Thanos /     │ ← Long-term storage          │
-│                 │   Cortex (opt)  │                              │
-│                 └─────────────────┘                              │
-└──────────────────────────────────────────────────────────────────┘
-```
+![Prometheus Architecture](diagrams/prometheus-architecture.drawio)
 
 For 300M users and high cardinality, consider **Thanos** or **Cortex** for:
 
