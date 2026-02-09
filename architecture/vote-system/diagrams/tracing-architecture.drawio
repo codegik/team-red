@@ -1,0 +1,117 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.3.0 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.3.0">
+  <diagram id="tracing-architecture" name="Tracing Architecture">
+    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0" background="#FFFFFF">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Mobile App (outside AWS Cloud) -->
+        <mxCell id="mobile" parent="1" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3E;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.mobile_client;" value="Mobile App" vertex="1">
+          <mxGeometry x="20" y="155" width="41" height="78" as="geometry" />
+        </mxCell>
+
+        <!-- AWS Cloud Group -->
+        <mxCell id="aws-cloud" parent="1" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;strokeColor=#232F3E;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#232F3E;dashed=0;" value="AWS Cloud" vertex="1">
+          <mxGeometry x="150" y="10" width="1030" height="870" as="geometry" />
+        </mxCell>
+
+        <!-- Amazon EKS Cluster Group -->
+        <mxCell id="eks" parent="aws-cloud" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_eks_cloud;strokeColor=#E7157B;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#E7157B;dashed=0;" value="Amazon EKS Cluster" vertex="1">
+          <mxGeometry x="30" y="50" width="680" height="490" as="geometry" />
+        </mxCell>
+
+        <!-- API Gateway (inside EKS) -->
+        <mxCell id="apigw" parent="eks" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;" value="API Gateway" vertex="1">
+          <mxGeometry x="70" y="55" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Auth Service (inside EKS) -->
+        <mxCell id="auth" parent="eks" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ecs_service;" value="Auth Service" vertex="1">
+          <mxGeometry x="270" y="55" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Vote Service (inside EKS) -->
+        <mxCell id="vote" parent="eks" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ecs_service;" value="Vote Service" vertex="1">
+          <mxGeometry x="470" y="55" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Trace Context Propagation Label -->
+        <mxCell id="trace-label" parent="eks" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontColor=#545B64;fontSize=11;fontStyle=2;" value="trace-id propagated via headers (W3C Trace Context)" vertex="1">
+          <mxGeometry x="110" y="165" width="400" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- OpenTelemetry Collector (inside EKS) -->
+        <mxCell id="otel" parent="eks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#232F3E;fontSize=12;fontStyle=1;arcSize=20;" value="OpenTelemetry Collector&lt;br&gt;&lt;font style=&quot;font-size: 10px; font-weight: normal;&quot;&gt;(sampling, batching, export to Jaeger)&lt;/font&gt;" vertex="1">
+          <mxGeometry x="70" y="210" width="500" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- Jaeger Collector (inside EKS) -->
+        <mxCell id="jaeger" parent="eks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#232F3E;fontSize=12;fontStyle=1;arcSize=20;" value="Jaeger Collector" vertex="1">
+          <mxGeometry x="180" y="370" width="280" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Amazon MSK (Kafka) - outside EKS, inside AWS Cloud -->
+        <mxCell id="msk" parent="aws-cloud" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.managed_streaming_for_kafka;" value="Amazon MSK&lt;br&gt;(Kafka)" vertex="1">
+          <mxGeometry x="220" y="660" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Amazon OpenSearch - outside EKS, inside AWS Cloud -->
+        <mxCell id="opensearch" parent="aws-cloud" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.opensearch_service;" value="Amazon OpenSearch&lt;br&gt;(Elasticsearch)" vertex="1">
+          <mxGeometry x="520" y="660" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- EDGES: Request Flow (solid, dark) -->
+
+        <!-- Mobile App → API Gateway -->
+        <mxCell id="e1" edge="1" parent="1" source="mobile" target="apigw" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#232F3E;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- API Gateway → Auth Service -->
+        <mxCell id="e2" edge="1" parent="1" source="apigw" target="auth" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#232F3E;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Auth Service → Vote Service -->
+        <mxCell id="e3" edge="1" parent="1" source="auth" target="vote" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#232F3E;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- EDGES: Trace Export (dashed, blue) -->
+
+        <!-- API Gateway → OTel Collector -->
+        <mxCell id="e4" edge="1" parent="1" source="apigw" target="otel" style="endArrow=block;endFill=1;strokeWidth=1;strokeColor=#6c8ebf;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Auth Service → OTel Collector -->
+        <mxCell id="e5" edge="1" parent="1" source="auth" target="otel" style="endArrow=block;endFill=1;strokeWidth=1;strokeColor=#6c8ebf;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Vote Service → OTel Collector -->
+        <mxCell id="e6" edge="1" parent="1" source="vote" target="otel" style="endArrow=block;endFill=1;strokeWidth=1;strokeColor=#6c8ebf;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- EDGES: Backend Pipeline (solid) -->
+
+        <!-- OTel Collector → Jaeger Collector -->
+        <mxCell id="e7" edge="1" parent="1" source="otel" target="jaeger" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#d6b656;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Jaeger Collector → Amazon MSK -->
+        <mxCell id="e8" edge="1" parent="1" source="jaeger" target="msk" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#545B64;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Amazon MSK → Amazon OpenSearch -->
+        <mxCell id="e9" edge="1" parent="1" source="msk" target="opensearch" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#545B64;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
