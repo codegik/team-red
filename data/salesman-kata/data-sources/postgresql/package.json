@@ -1,10 +1,12 @@
 {
-  "name": "electrored-csv-generator",
+  "name": "electrored-postgres-generator",
   "version": "1.0.0",
-  "description": "Generates mock CSV sales files for electrored (simulates acquired company legacy system)",
+  "description": "Generates mock sales data in PostgreSQL for electrored",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js"
   },
-  "dependencies": {}
+  "dependencies": {
+    "pg": "^8.12.0"
+  }
 }

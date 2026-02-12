@@ -1,6 +1,28 @@
 const fs = require('fs');
+const http = require('http');
 const path = require('path');
 const mockData = require('./data');
+
+const SOAP_HOST = process.env.SOAP_HOST || 'soap-service';
+const SOAP_PORT = process.env.SOAP_PORT || 8080;
+
+function notifySoapService(saleId, amount) {
+  const payload = JSON.stringify({ saleId: String(saleId), amount: parseFloat(amount) });
+  const req = http.request({
+    hostname: SOAP_HOST,
+    port: SOAP_PORT,
+    path: '/notify-payment',
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+  }, (res) => {
+    res.resume();
+  });
+  req.on('error', (err) => {
+    console.error(`SOAP notification failed for sale ${saleId}: ${err.message}`);
+  });
+  req.write(payload);
+  req.end();
+}
 
 const OUTPUT_DIR = process.env.OUTPUT_DIR || '/data/inbox';
 const GENERATION_INTERVAL = parseInt(process.env.GENERATION_INTERVAL) || 10000;
@@ -84,6 +106,8 @@ function generateAndSaveFile() {
   const filePath = path.join(OUTPUT_DIR, fileName);
 
   fs.writeFileSync(filePath, csvContent);
+
+  records.forEach(r => notifySoapService(r.sale_id, r.amount));
 
   return { fileName, recordCount, filePath };
 }

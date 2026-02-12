@@ -2,10 +2,10 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY data-sources/postgresql/package*.json ./
+COPY package*.json ./
 
 RUN npm install
 
-COPY data-sources/postgresql/src/ ./src/
+COPY src/ ./src/
 
 CMD ["node", "src/index.js"]
