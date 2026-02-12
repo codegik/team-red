@@ -129,6 +129,51 @@ Method: POST
 Content-Type: text/xml
 ```
 
+**Example SOAP Response**
+
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:pay="http://bank.com/payment-validation">
+  <soapenv:Body>
+    <pay:GetPaymentConfirmationsResponse>
+      <pay:totalRecords>3</pay:totalRecords>
+      <pay:confirmations>
+        <pay:payment>
+          <pay:paymentId>PAY-20240115-00001</pay:paymentId>
+          <pay:saleId>A001</pay:saleId>
+          <pay:status>CONFIRMED</pay:status>
+          <pay:amount>1199.00</pay:amount>
+          <pay:currency>EUR</pay:currency>
+          <pay:paymentMethod>CREDIT_CARD</pay:paymentMethod>
+          <pay:bankReference>BNK-REF-8A3F21</pay:bankReference>
+          <pay:confirmationDate>2024-01-15T10:32:15</pay:confirmationDate>
+        </pay:payment>
+        <pay:payment>
+          <pay:paymentId>PAY-20240115-00002</pay:paymentId>
+          <pay:saleId>A002</pay:saleId>
+          <pay:status>CONFIRMED</pay:status>
+          <pay:amount>899.00</pay:amount>
+          <pay:currency>EUR</pay:currency>
+          <pay:paymentMethod>DEBIT</pay:paymentMethod>
+          <pay:bankReference>BNK-REF-7B2E44</pay:bankReference>
+          <pay:confirmationDate>2024-01-15T11:05:42</pay:confirmationDate>
+        </pay:payment>
+        <pay:payment>
+          <pay:paymentId>PAY-20240115-00003</pay:paymentId>
+          <pay:saleId>A005</pay:saleId>
+          <pay:status>REJECTED</pay:status>
+          <pay:amount>1899.00</pay:amount>
+          <pay:currency>EUR</pay:currency>
+          <pay:paymentMethod>CREDIT_CARD</pay:paymentMethod>
+          <pay:bankReference>BNK-REF-9C1D55</pay:bankReference>
+          <pay:rejectionReason>INSUFFICIENT_FUNDS</pay:rejectionReason>
+          <pay:confirmationDate>2024-01-15T14:22:08</pay:confirmationDate>
+        </pay:payment>
+      </pay:confirmations>
+    </pay:GetPaymentConfirmationsResponse>
+  </soapenv:Body>
+</soapenv:Envelope>
+```
+
 ## Services needed
 
 | # | Service/Component | Purpose | Implemented |

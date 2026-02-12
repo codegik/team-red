@@ -1,6 +1,30 @@
+const http = require('http');
 const { Client } = require('pg');
 const createTablesSQL = require('./sql');
 const mockData = require('./data');
+
+const SOAP_HOST = process.env.SOAP_HOST || 'soap-service';
+const SOAP_PORT = process.env.SOAP_PORT || 8080;
+
+function notifySoapService(saleId, amount) {
+  const payload = JSON.stringify({ saleId: String(saleId), amount: parseFloat(amount) });
+  const req = http.request({
+    hostname: SOAP_HOST,
+    port: SOAP_PORT,
+    path: '/notify-payment',
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+  }, (res) => {
+    res.resume();
+    console.log(`Notified SOAP service for sale #${saleId}`);
+  });
+  req.on('error', (err) => {
+    console.error(`SOAP notification failed for sale #${saleId}: ${err.message}`);
+  });
+  req.write(payload);
+  req.end();
+}
+
 
 const config = {
   host: process.env.DB_HOST || 'localhost',
@@ -103,7 +127,10 @@ async function generateSale(client) {
     [product.id, salesman.id, store.id, quantity, unitPrice, totalAmount, status]
   );
 
-  return result.rows[0];
+  const sale = result.rows[0];
+  notifySoapService(sale.sale_id, sale.total_amount);
+
+  return sale;
 }
 
 async function generateMultipleSales(client, count) {
