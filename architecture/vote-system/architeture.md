@@ -240,8 +240,7 @@ Chosen for:
 - High antifraud robustness
 - Strong global compliance (KYC/AML)
 - Support for multiple countries
-- High-quality liveness detection against deepfake, photos, and
-  replays
+- High-quality liveness detection against deepfake, photos, and replays
 
 SumSub React Native SDK integration:
 
