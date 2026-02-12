@@ -43,4 +43,4 @@ node_modules
 !ocaml/oop/bin
 .metals
 metals.sbt
-
+glossary.md
