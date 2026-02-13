@@ -378,19 +378,16 @@ The API Gateway enforces:
 
 This document captures the key architectural decisions and their tradeoffs for the Vote System.
 
-#### Choose S3 Object Lock when:
-✅ Cost is a primary concern  
-✅ You need unlimited scale  
-✅ Simple append-only audit log is sufficient  
-✅ You can implement hash chains in application  
-✅ You don't need to query the audit logs directly  
+## S3 Object Lock vs Amazon QLDB
 
-#### Choose QLDB when:
-✅ You need built-in cryptographic verification  
-✅ You want to query audit history with SQL-like syntax  
-✅ You need automatic hash chain management  
-✅ Budget allows for higher costs  
-✅ Throughput requirements are < 10K req/sec 
+| **Aspect**                     | **S3 Object Lock**                                                     | **Amazon QLDB**                                                        | **Trade-off / Notes**                                                                                                  |
+|--------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| **Cost**                       | Lower – pay only for storage and requests                              | Higher – storage + I/O + read request charges                          | S3 Object Lock is 3-5x cheaper at high volume; choose based on budget constraints                                      |
+| **Scalability**                | Unlimited – native S3 scale                                            | Limited to 10,000 req/sec per ledger                                   | S3 wins for high-throughput audit logging; QLDB sufficient for lower volumes                                           |
+| **Hash Chains**                | Must implement in application                                          | Built-in (Merkle tree structure)                                       | QLDB reduces development effort but adds operational cost                                                              |
+| **Cryptographic Verification** | Must implement custom solution                                         | Built-in digest verification                                           | QLDB provides out-of-box tamper evidence; S3 requires application-level implementation                                 |
+| **Query Capability**           | None – object storage only                                             | PartiQL (SQL-like) queries                                             | QLDB enables direct audit log queries; S3 requires external processing for analysis                                    |
+| **Complexity**                 | Higher – requires application-level implementation for verification    | Lower – managed service handles verification automatically             | Trade development effort for operational cost depending on team expertise
 
 ## OAuth Social Login vs Auth0
 
