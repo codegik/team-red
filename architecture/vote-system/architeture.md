@@ -602,10 +602,12 @@ Overall Admin Use Cases:
 - Inject latency between services to identify performance bottlenecks
 - Execute in isolated production environment during low-traffic periods
 
+
 ## Contract tests
 
 - Test API contracts between decomposed microservices.
 - Verify WebSocket message formats and protocols.
+
 
 ## Performance tests
 
@@ -616,14 +618,16 @@ Overall Admin Use Cases:
 - Track CDN cache hit/miss ratios
 - Execute in staging environment with production-like conditions
 
+
 ## Integration tests
 
 - Junit provides the APIs needed to run integrations tests.
 - Using test containers to emulate database and or other infra dependency.
 - Test WebSocket real-time communication flows.
 - Run in isolated environments before production deployment.
-- Create test induction APIs on service that will be used during the integration tests to induce certain states, and achive coverage on multiple possible scenarios.
+- Create test induction APIs on service that will be used during the integration tests to induce certain states, and achieve coverage on multiple possible scenarios.
 - Focused on happy and unhappy paths
+
 
 ## Unit tests
 
@@ -634,7 +638,7 @@ Overall Admin Use Cases:
 ---
 
 
-# 10. 💿 Data store settings
+# 10. 💿 Data store
 
 ![Database Diagram](diagrams/database-diagram.png)
 
@@ -1405,9 +1409,8 @@ The verification process ensures no tampering has occurred by validating the ent
 
 This document describes the core domain services of the secure voting platform.
 
----
 
-## 12.1 Auth Service
+## 13.1 Auth Service
 
 **Scope:**
 The Auth Service is the **internal identity authority** of the voting platform.
@@ -1434,54 +1437,7 @@ internally by this service.
 - Issues internal JWT tokens for downstream services
 
 
-
-#### Provider Integrations
-
-**Google**
-- Protocol: OpenID Connect
-- Token Type: ID Token (JWT)
-- Validation Strategy:
-  - Signature validation
-  - Issuer, audience, and expiration checks
-- Java Libraries:
-  - `com.google.api-client:google-api-client`
-  - `GoogleIdTokenVerifier`
-
-**Apple**
-- Protocol: OAuth 2.0 + OpenID Connect
-- Token Type: ID Token (JWT)
-- Validation Strategy:
-  - JWT signature validation using Apple public keys (JWK)
-  - Issuer, audience, and expiration checks
-- Java Libraries:
-  - `com.nimbusds:nimbus-jose-jwt`
-  - Standard JWK fetching via HTTPS
-
-**Facebook**
-- Protocol: OAuth 2.0
-- Token Type: Access Token
-- Validation Strategy:
-  - Token introspection using Facebook Graph API (`debug_token`)
-- Java Libraries:
-  - No mandatory SDK required
-  - Standard Java HTTP client (e.g., `java.net.http.HttpClient` or OkHttp)
-
-#### Token Validation Without SDKs (Protocol-only Option)
-
-All providers can be integrated without official SDKs by implementing
-OAuth 2.0 / OpenID Connect directly:
-
-- Authorization Code Flow
-- HTTPS calls to token endpoints
-- JWK retrieval and caching
-- JWT signature and claim validation
-- Strict issuer and audience enforcement
-
-This approach minimizes third-party dependencies and vendor lock-in,
-at the cost of increased implementation complexity.
----
-
-## 12.2 Vote Service
+## 13.2 Vote Service
 
 **Scope:**
 The Vote Service is the **core voting engine** of the platform. It operates as both **Kafka producer and consumer**, handling the full vote lifecycle from submission to persistence.
@@ -1510,9 +1466,8 @@ The Vote Service is the **core voting engine** of the platform. It operates as b
 - Exactly-once vote processing via idempotency keys
 - One vote per user per survey enforced at DB level
 
----
 
-## 12.3 Notification Service
+## 13.3 Notification Service
 
 **Scope:**
 The Notification Service handles **real-time result broadcasting** to connected clients via Server-Sent Events (SSE).
@@ -1527,9 +1482,8 @@ The Notification Service handles **real-time result broadcasting** to connected 
 - Survey status changes (published, finished)
 - System announcements
 
----
 
-## 12.4 Auditability Service
+## 13.4 Auditability Service
 
 **Scope:**
 The Auditability Service maintains the **immutable audit trail** for all voting activity, ensuring legal compliance and forensic readiness.
@@ -1548,9 +1502,8 @@ The Auditability Service maintains the **immutable audit trail** for all voting 
 **Retention Policy:**
 - Cold storage (S3 Glacier): 7 years (legal compliance)
 
----
 
-## 12.5 Backoffice Service
+## 13.5 Backoffice Service
 
 **Scope:**
 The Backoffice Service provides **administrative controls and operational tools** for system operators, auditors, and fraud investigators.
