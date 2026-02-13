@@ -565,13 +565,6 @@ We don't have migration for this architecture since its a new system.
 
 # 8. 🗂️ Use Cases
 
-1. Users send requests through a global CDN + security edge
-2. Traffic is validated, filtered, rate-limited, and inspected
-3. Authenticated users submit votes via secure API
-4. Votes are processed asynchronously
-5. Data is stored redundantly and immutably
-6. Real-time updates are published via streaming
-
 Overall User Use Cases: 
 ![img_6.png](imgs/img_6.png)
 
