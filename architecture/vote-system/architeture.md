@@ -378,7 +378,6 @@ The API Gateway enforces:
 
 This document captures the key architectural decisions and their tradeoffs for the Vote System.
 
-
 ## OAuth Social Login vs Auth0
 
 | Aspect | OAuth-based Social Login (Custom Java Service) | Auth0 |
@@ -435,6 +434,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Operational Maturity** | Enterprise-grade tooling, dashboards, and SLAs | Smaller ecosystem and fewer operational tools |
 | **Integration Complexity** | Medium; SDK + backend correlation required | Low; lightweight client-side integration |
 | **Cost** | Higher, especially at large scale | Lower or free depending on usage |
+
 
 ## EKS vs ECS
 
@@ -532,6 +532,27 @@ This document captures the key architectural decisions and their tradeoffs for t
 |------|------|------|------|------|------|------|------|------|
 | **Pros** | Enterprise-grade authentication; Built-in MFA; Secure token lifecycle; SSO support; High availability | Strong biometric antifraud; Global KYC compliance; High-quality liveness detection; Advanced risk scoring | Invisible challenge; Better UX than CAPTCHA; Strong privacy guarantees; Blocks simple automation | Passive and invisible; Emulator and device cloning detection; Excellent multi-account detection signal | Global CDN; Massive traffic absorption; Native integration with AWS security; Edge-level DDoS protection | Managed OWASP rules; Tight AWS integration; Native CloudFront support; Bot Control included | Very low global latency; Consistent static IPs; Multi-region failover | Built-in rate limiting; Strong security posture; Native JWT validation |
 | **Cons** | Expensive at large scale; Vendor lock-in; Limited flexibility for custom flows | High user friction; Sensitive biometric data handling; High per-verification cost; Not always legally permitted for voting | Not sufficient alone against advanced bots; External dependency; Needs backend verification | Fingerprints can be spoofed by advanced attackers; Privacy and compliance concerns; Device replacement causes identity changes | Pricing complexity; Cache invalidation cost; Less flexible than software-based proxies | Limited advanced behavioral fraud detection; Requires tuning to avoid false positives | Additional cost; More complex routing model | Cost at very high RPS; Harder to debug than direct ALB setups |
+
+
+## 6.1 Major Decisions
+
+This section documents the key technology and architectural choices made for the voting system, with explicit rationale tied to the tradeoffs analyzed below.
+
+| Decision | Chosen Solution | Rejected Alternative(s) | Key Reason |
+|----------|----------------|------------------------|------------|
+| Authentication | OAuth Social Login (Custom) | Auth0, Keycloak | Cost control at 300M users plus domain-specific customization for voting eligibility and fraud signals. |
+| Identity Verification | SumSub | Veriff | Stronger fraud detection with superior deepfake/liveness detection critical for voting integrity. |
+| Device Fingerprinting | FingerprintJS | ThumbmarkJS | Better bot and emulator detection with higher fingerprint stability across sessions. |
+| Orchestration | EKS (Kubernetes) | ECS | Advanced autoscaling (HPA/KEDA) with custom metrics like Kafka lag required for 240K RPS peaks. |
+| Architecture | Microservices | Monolith | Independent scaling and fault isolation essential for services with different load patterns. |
+| Audit Storage | S3 Object Lock | Amazon QLDB | 3-5x cost reduction ($100/year vs $365/year) with unlimited throughput for vote records. |
+| Database | PostgreSQL | DynamoDB, MongoDB | ACID guarantees prevent double-voting and complex queries support vote aggregation across tables. |
+| Foreign Keys | Application-enforced | DB-enforced | Microservice autonomy requires cross-service relationships managed via APIs and events. |
+| Real-Time | SSE | WebSockets | Lower memory footprint (4-8KB vs 10-20KB per connection) and automatic reconnection for 300M users. |
+| Observability | Prometheus/Grafana/Jaeger/Loki | Datadog, New Relic | Eliminate per-host licensing costs and maintain full data ownership at scale. |
+| Message Queue | Kafka | SQS, RabbitMQ | Exactly-once semantics prevent vote duplication and event replay enables audit investigations. |
+| Language | Scala + ZIO | Java/Spring, Go | Type safety and functional effect system reduce runtime errors in critical voting logic. |
+
 
 ---
 
