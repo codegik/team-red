@@ -1466,384 +1466,13 @@ The Vote Service is the **core voting engine** of the platform. It operates as b
 - Exactly-once vote processing via idempotency keys
 - One vote per user per survey enforced at DB level
 
-
-## 13.3 Notification Service
-
-**Scope:**
-The Notification Service handles **real-time result broadcasting** to connected clients via Server-Sent Events (SSE).
-
-**Responsibilities:**
-- Consumes `vote.counted` events from Kafka
-- Aggregates vote counts per survey/option
-- Broadcasts real-time updates to SSE clients
-
-**Notification Types:**
-- Vote count updates (real-time totals)
-- Survey status changes (published, finished)
-- System announcements
-
-
-## 13.4 Auditability Service
-
-**Scope:**
-The Auditability Service maintains the **immutable audit trail** for all voting activity, ensuring legal compliance and forensic readiness.
-
-**Responsibilities:**
-- Consumes all domain events from Kafka (votes, fraud, auth)
-- Archives events to S3 for long-term retention
-- Provides query API for audit investigations
-
-**Events Captured:**
-- `vote.submitted`, `vote.counted`, `vote.rejected`
-- `fraud.detected`, `fraud.blocked`
-- `user.registered`, `user.verified`, `user.blocked`
-- `survey.created`, `survey.published`, `survey.finished`
-
-**Retention Policy:**
-- Cold storage (S3 Glacier): 7 years (legal compliance)
-
-
-## 13.5 Backoffice Service
-
-**Scope:**
-The Backoffice Service provides **administrative controls and operational tools** for system operators, auditors, and fraud investigators.
-
-**Responsibilities:**
-- Admin panel with Role-Based Access Control (RBAC)
-- Real-time monitoring dashboard (voting activity, system health)
-- Survey management interface (create, publish, finish surveys)
-
-**User Roles:**
-| Role | Permissions |
-|------|-------------|
-| **System Admin** | Full system configuration, user management, service health |
-| **Election Manager** | Survey CRUD, publish/finish surveys, view results |
-| **Fraud Investigator** | View flagged votes, analyze patterns, block suspicious users |
-
-**Key Features:**
-- MFA required for all admin access
-
-**Security Controls:**
-- Separate network segment (internal only, no public access)
-
-
-### Management Endpoints
-
-| Method   | Endpoint                           | Description         |
-|----------|------------------------------------|---------------------|
-| `POST`   | `/v1/internal/surveys`             | Create a new survey |
-| `PUT`    | `/v1/internal/surveys/:id`         | Update survey       |
-| `PUT`    | `/v1/internal/surveys/:id/publish` | Publish survey      |
-| `PUT`    | `/v1/internal/surveys/:id/finish`  | Close survey        |
-| `DELETE` | `/v1/internal/surveys/:id`         | Delete survey       |
-| `GET`    | `/v1/internal/surveys/:id/results` | Get survey results  |
-
-### Public Endpoints
+### Endpoints
 
 | Method | Endpoint                                   | Description             |
 |--------|--------------------------------------------|-------------------------|
 | `GET`  | `/v1/surveys/:id`                          | Get survey details      |
 | `POST` | `/v1/surveys/:id/answers`                  | Submit an answer        |
 | `PUT`  | `/v1/surveys/:id/answers/:answerId/finish` | Complete survey session |
-
-
-### Key Endpoints
-
-#### Create Survey
-
-`POST` `/v1/internal/surveys`
-
-**Payload**
-
-```json
-{
-  "title": "Elections Survey",
-  "questions": [
-    {
-      "title": "Who would you vote for president?",
-      "min": 1,
-      "max": 2,
-      "order": 0,
-      "options": [
-        {
-          "text": "Homer Simpsom",
-          "image": "https://example.com/homer.jpg",
-          "order": 0
-        },
-        {
-          "text": "Ned Flanders",
-          "image": "https://example.com/ned.jpg",
-          "order": 1
-        }
-      ]
-    }
-  ]
-}
-```
-
-**Response**
-
-```json
-{
-  "id": "1",
-  "title": "Elections Survey",
-  "startDate": null,
-  "finishDate": null,
-  "questions": [
-      {
-        "id": "1",
-        "title": "Who would you vote for president?",
-        "min": 1,
-        "max": 2,
-        "order": 0,
-        "options": [
-          {
-            "id": "1",
-            "text": "Homer Simpsom",
-            "image": "https://example.com/homer.jpg",
-            "order": 0
-          },
-          {
-            "id": "2",
-            "text": "Ned Flanders",
-            "image": "https://example.com/ned.jpg",
-            "order": 1
-          }
-        ]
-      }
-    ]
-}
-```
-
-#### Update Survey
-
-`PUT` `/v1/internal/surveys/:id`
-
-**Payload**
-
-You can update the survey title, add/update/remove questions and their options all in one request.
-
-- To update existing questions/options, include their `id`
-- To create new questions/options, omit the `id` field
-- To delete questions/options, omit them from the payload
-
-**Example:** This request updates the survey title, updates question 1 (keeps options 1 and 2, adds a new option "Marge Simpson"), and creates a new question 2 with two new options.
-
-```json
-{
-  "title": "Elections Survey For President",
-  "questions": [
-    {
-      "id": "1",
-      "title": "Who would you vote for president?",
-      "min": 1,
-      "max": 2,
-      "order": 0,
-      "options": [
-        {
-          "id": "1",
-          "text": "Homer Simpson",
-          "image": "https://example.com/homer.jpg",
-          "order": 0
-        },
-        {
-          "id": "2",
-          "text": "Ned Flanders",
-          "image": "https://example.com/ned.jpg",
-          "order": 1
-        },
-        {
-          "text": "Marge Simpson",
-          "image": "https://example.com/marge.jpg",
-          "order": 2
-        }
-      ]
-    },
-    {
-      "title": "Who would you vote for minister?",
-      "min": 1,
-      "max": 1,
-      "order": 1,
-      "options": [
-        {
-          "text": "Montgomery Burns",
-          "image": "https://example.com/burns.jpg",
-          "order": 0
-        },
-        {
-          "text": "Sideshow Bob",
-          "image": "https://example.com/bob.jpg",
-          "order": 1
-        }
-      ]
-    }
-  ]
-}
-```
-
-**Response**
-
-```json
-{
-  "id": "1",
-  "title": "Elections Survey For President",
-  "startDate": null,
-  "finishDate": null,
-  "questions": [
-    {
-      "id": "1",
-      "title": "Who would you vote for president?",
-      "min": 1,
-      "max": 2,
-      "order": 0,
-      "options": [
-        {
-          "id": "1",
-          "text": "Homer Simpson",
-          "image": "https://example.com/homer.jpg",
-          "order": 0
-        },
-        {
-          "id": "2",
-          "text": "Ned Flanders",
-          "image": "https://example.com/ned.jpg",
-          "order": 1
-        },
-        {
-          "id": "5",
-          "text": "Marge Simpson",
-          "image": "https://example.com/marge.jpg",
-          "order": 2
-        }
-      ]
-    },
-    {
-      "id": "2",
-      "title": "Who would you vote for minister?",
-      "min": 1,
-      "max": 1,
-      "order": 1,
-      "options": [
-        {
-          "id": "3",
-          "text": "Montgomery Burns",
-          "image": "https://example.com/burns.jpg",
-          "order": 0
-        },
-        {
-          "id": "4",
-          "text": "Sideshow Bob",
-          "image": "https://example.com/bob.jpg",
-          "order": 1
-        }
-      ]
-    }
-  ]
-}
-```
-
-#### Publish Survey
-
-`PUT` `/v1/internal/surveys/:id/publish`
-
-Publish a survey making it available for public responses. Sets the startDate to current timestamp.
-
-**Response**
-
-```json
-{
-  "id": "1",
-  "title": "Elections Survey For President",
-  "startDate": "2025-12-09T10:00:00Z",
-  "finishDate": null
-}
-```
-
-#### Finish Survey
-
-`PUT` `/v1/internal/surveys/:id/finish`
-
-Close a survey, preventing new responses. Sets the finishDate to current timestamp.
-
-**Response**
-
-```json
-{
-  "id": "1",
-  "title": "Elections Survey For President",
-  "startDate": "2025-12-09T10:00:00Z",
-  "finishDate": "2025-12-09T18:00:00Z"
-}
-```
-
-#### Delete Survey
-
-`DELETE` `/v1/internal/surveys/:id`
-
-**Response**
-
-`204 No Content`
-
-
-#### Get Survey Results
-
-`GET` `/v1/internal/surveys/:id/results`
-
-**Response**
-
-```json
-{
-"survey": {
-"id": "1",
-"title": "Elections Survey"
-},
-"totalResponses": 150,
-"questions": [
-  {
-    "id": "1",
-    "title": "Who would you vote for president?",
-    "order": 0,
-    "options": [
-      {
-        "id": "1",
-        "text": "Homer Simpson",
-        "image": "https://example.com/homer.jpg",
-        "order": 0,
-        "votes": 85
-      },
-      {
-        "id": "2",
-        "text": "Ned Flanders",
-        "image": "https://example.com/ned.jpg",
-        "order": 1,
-        "votes": 65
-      }
-    ]
-  },
-  {
-    "id": "2",
-    "title": "Who would you vote for minister?",
-    "order": 1,
-    "options": [
-      {
-        "id": "3",
-        "text": "Montgomery Burns",
-        "image": "https://example.com/burns.jpg",
-        "order": 0,
-        "votes": 70
-      },
-      {
-        "id": "4",
-        "text": "Sideshow Bob",
-        "image": "https://example.com/bob.jpg",
-        "order": 1,
-        "votes": 80
-      }
-    ]
-  }
-]
-}
-```
 
 #### Get Survey Details
 
@@ -1961,8 +1590,80 @@ Mark a survey answer session as completed.
 }
 ```
 
----
+### Wireframes
 
+**Login**
+
+<img src="./wireframes/login.png" alt="login"/>
+
+**Answer Survey**
+
+<img src="./wireframes/survey.png" alt="survey"/>
+
+**Finish Survery**
+
+<img src="./wireframes/finish.png" alt="finish"/>
+
+## 13.3 Notification Service
+
+**Scope:**
+The Notification Service handles **real-time result broadcasting** to connected clients via Server-Sent Events (SSE).
+
+**Responsibilities:**
+- Consumes `vote.counted` events from Kafka
+- Aggregates vote counts per survey/option
+- Broadcasts real-time updates to SSE clients
+
+**Notification Types:**
+- Vote count updates (real-time totals)
+- Survey status changes (published, finished)
+- System announcements
+
+
+## 13.4 Auditability Service
+
+**Scope:**
+The Auditability Service maintains the **immutable audit trail** for all voting activity, ensuring legal compliance and forensic readiness.
+
+**Responsibilities:**
+- Consumes all domain events from Kafka (votes, fraud, auth)
+- Archives events to S3 for long-term retention
+- Provides query API for audit investigations
+
+**Events Captured:**
+- `vote.submitted`, `vote.counted`, `vote.rejected`
+- `fraud.detected`, `fraud.blocked`
+- `user.registered`, `user.verified`, `user.blocked`
+- `survey.created`, `survey.published`, `survey.finished`
+
+**Retention Policy:**
+- Cold storage (S3 Glacier): 7 years (legal compliance)
+
+
+## 13.5 Backoffice Service
+
+**Scope:**
+The Backoffice Service provides **administrative controls and operational tools** for system operators, auditors, and fraud investigators.
+
+**Responsibilities:**
+- Admin panel with Role-Based Access Control (RBAC)
+- Real-time monitoring dashboard (voting activity, system health)
+- Survey management interface (create, publish, finish surveys)
+
+**User Roles:**
+| Role | Permissions |
+|------|-------------|
+| **System Admin** | Full system configuration, user management, service health |
+| **Election Manager** | Survey CRUD, publish/finish surveys, view results |
+| **Fraud Investigator** | View flagged votes, analyze patterns, block suspicious users |
+
+**Key Features:**
+- MFA required for all admin access
+
+**Security Controls:**
+- Separate network segment (internal only, no public access)
+
+---
 
 # 14. 🥞 Technology Stack
 
