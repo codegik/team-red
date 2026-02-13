@@ -378,6 +378,20 @@ The API Gateway enforces:
 
 This document captures the key architectural decisions and their tradeoffs for the Vote System.
 
+#### Choose S3 Object Lock when:
+✅ Cost is a primary concern  
+✅ You need unlimited scale  
+✅ Simple append-only audit log is sufficient  
+✅ You can implement hash chains in application  
+✅ You don't need to query the audit logs directly  
+
+#### Choose QLDB when:
+✅ You need built-in cryptographic verification  
+✅ You want to query audit history with SQL-like syntax  
+✅ You need automatic hash chain management  
+✅ Budget allows for higher costs  
+✅ Throughput requirements are < 10K req/sec 
+
 ## OAuth Social Login vs Auth0
 
 | Aspect | OAuth-based Social Login (Custom Java Service) | Auth0 |
@@ -1017,393 +1031,6 @@ For effective debugging, all telemetry must be correlated:
 - Regional failover procedure
 
 ---
-# 12. Auditablitity
-
-# Immutable Audit Storage Architecture for Voting System
-## Supporting 300M Users with PostgreSQL Sharding
-
----
-
-
-### 12.1.1 Cost Analysis (Estimates for 300M users)
-
-**Assumptions:**
-- 300M votes over 24 hours
-- Average vote record: 1KB (JSON with hash chains)
-- Retention: 10 years
-- Total storage: ~300GB
-
-#### S3 Object Lock Costs
-
-```
-Storage (S3 Standard):
-- 300GB × $0.023/GB/month = $6.90/month
-- Annual: $82.80
-
-PUT Requests:
-- 300M votes × $0.005/1000 = $1,500 (one-time)
-
-GET Requests (auditing):
-- Assuming 1% verification rate
-- 3M reads × $0.0004/1000 = $1.20/month
-
-Total First Year: ~$1,600
-Total Annual (after year 1): ~$100
-```
-
-#### Amazon QLDB Costs
-
-```
-Storage:
-- 300GB × $0.10/GB/month = $30/month
-- Annual: $360
-
-I/O Requests (Writes):
-- 300M × $0.40/1M = $120
-
-Read Requests (auditing):
-- 3M reads × $0.15/1M = $0.45/month
-
-Total First Year: ~$485
-Total Annual (after year 1): ~$365
-```
-
-**Cost Verdict:** S3 is **~3-5x cheaper** than QLDB for this use case.
-
-### 12.1.2 Tradeoffs Summary
-
-#### Choose S3 Object Lock when:
-✅ Cost is a primary concern  
-✅ You need unlimited scale  
-✅ Simple append-only audit log is sufficient  
-✅ You can implement hash chains in application  
-✅ You don't need to query the audit logs directly  
-
-#### Choose QLDB when:
-✅ You need built-in cryptographic verification  
-✅ You want to query audit history with SQL-like syntax  
-✅ You need automatic hash chain management  
-✅ Budget allows for higher costs  
-✅ Throughput requirements are < 10K req/sec  
-
----
-
-## 12.2. Why NOT to Use PostgreSQL for WORM
-
-### 12.2.1 PostgreSQL Limitations
-
-PostgreSQL is a **transactional database**, not an immutable ledger. Key issues:
-
-**Unrestricted Modifications:**
-- Database administrators can UPDATE any record
-- DELETE operations can remove audit evidence
-- Entire tables can be dropped, including audit tables
-- Triggers can be disabled to bypass audit mechanisms
-
-**No Built-in WORM:**
-- PostgreSQL is designed for CRUD operations (Create, Read, Update, Delete)
-- The "UD" (Update, Delete) directly conflicts with WORM requirements
-- No native immutability features
-
-### 12.2.2 Attempted Solutions and Why They Fail
-
-#### Attempt 1: Audit Tables with Triggers
-
-**Approach:** Create a separate audit table that logs all changes via database triggers.
-
-**Problems:**
-- ❌ DBA can disable triggers
-- ❌ DBA can delete audit table
-- ❌ No cryptographic proof of integrity
-- ❌ No WORM guarantee
-
-#### Attempt 2: Revoke DELETE/UPDATE Permissions
-
-**Approach:** Remove modification permissions from all users, including application users.
-
-**Problems:**
-- ❌ Superuser/owner can still modify
-- ❌ Can drop and recreate table
-- ❌ Physical file access on server
-- ❌ Backup restoration can rollback state
-
-#### Attempt 3: Use Write-Ahead Log (WAL)
-
-**Approach:** Rely on PostgreSQL's write-ahead log for audit trail.
-
-**Problems:**
-- ❌ WAL is for crash recovery, not auditing
-- ❌ WAL files are rotated/deleted
-- ❌ Not designed for long-term retention
-- ❌ Can be manipulated with physical access
-
-### 12.2.3 Fundamental Issue
-
-PostgreSQL's purpose is **mutable transactional data**, not immutability:
-
-```
-PostgreSQL Philosophy:
-┌─────────────────────────────────────┐
-│ ACID Transactions                   │
-│ - Atomicity                         │
-│ - Consistency                       │
-│ - Isolation                         │
-│ - Durability                        │
-│                                     │
-│ BUT: Allows modification by design  │
-└─────────────────────────────────────┘
-
-WORM Philosophy:
-┌─────────────────────────────────────┐
-│ Append-Only                         │
-│ - Write once                        │
-│ - Never modify                      │
-│ - Never delete                      │
-│ - Cryptographic proof               │
-└─────────────────────────────────────┘
-```
-
-**Conclusion:** Use PostgreSQL for operational data, use dedicated WORM storage (S3/QLDB) for audit trail.
-
----
-
-## 12.3. Recommended Architecture: PostgreSQL + S3 Hybrid
-
-### 12.3.1 Architecture Overview
-
-![PostgreSQL + S3 Hybrid Architecture](diagrams/postgresql-s3-hybrid-architecture.png)
-
-### 12.3.2 Detailed Component Design
-
-#### 12.3.2.1 PostgreSQL Sharding Strategy
-
-**Sharding Key Options:**
-
-**Option 1: Shard by Region** (if voting is geographically distributed)
-- Create separate tables for each geographic region (US_EAST, US_WEST, EU, etc.)
-- Simple routing based on voter location
-- Good for compliance requirements with data locality
-
-**Option 2: Shard by voter_id hash** (uniform distribution)
-- Hash the voter_id and use modulo operation to determine shard
-- Creates uniform distribution across shards
-- Example: shard_id = hash(voter_id) % 16
-- Better load balancing across all shards
-
-**Recommended:** 16 shards initially, can increase as needed based on load patterns.
-
-#### 12.3.2.2 Vote Service Implementation
-
-**Core Responsibilities:**
-1. **Vote validation** - Ensure voter hasn't already voted
-2. **Shard determination** - Calculate which PostgreSQL shard to use based on voter_id hash
-3. **Transactional write** - Insert vote into appropriate PostgreSQL shard
-4. **Hash chain calculation** - Retrieve previous hash and calculate current hash
-5. **Async audit publishing** - Send audit log to message queue for S3 persistence
-
-**Hash Chain Logic:**
-- Retrieve the hash of the previous vote (from cache or S3)
-- Calculate current hash: SHA256(prev_hash + vote_id + voter_id + candidate_id + timestamp)
-- This creates a tamper-evident chain where any modification breaks the sequence
-
-**Error Handling:**
-- PostgreSQL write failure → Vote is rejected, return error to client
-- Message queue publish failure → Log error but don't fail the vote (will be retried)
-- This ensures votes are never lost due to audit system issues
-
-#### 12.3.2.3 Audit Writer Service (S3 Consumer)
-
-**Core Responsibilities:**
-1. **Consume from message queue** - Read audit log messages from Kafka/RabbitMQ/SQS
-2. **Write to S3 with Object Lock** - Persist audit logs as immutable objects
-3. **Create checkpoints** - Every 10,000 votes, create a checkpoint file with cumulative hash
-4. **Retry logic** - Handle failures and retry S3 writes to ensure no audit logs are lost
-
-**S3 Organization Structure:**
-```
-s3://voting-audit-bucket/
-  votes/
-    checkpoint_0000000001/
-      vote_0000000001.json
-      vote_0000000002.json
-      ...
-      vote_0000010000.json
-      checkpoint.json         ← Summary with final hash
-    checkpoint_0000000002/
-      vote_0000010001.json
-      ...
-```
-
-**Object Lock Configuration:**
-- Mode: COMPLIANCE (cannot be deleted even by root account)
-- Retention: 10 years from creation date
-- Ensures true WORM behavior
-
-**Checkpoint Files:**
-- Created every 10,000 votes
-- Contains: checkpoint_id, last_vote_id, last_hash, timestamp
-- Enables fast verification without reading all individual vote files
-- Can be digitally signed for additional security
-
-#### 12.3.2.4 S3 Bucket Configuration
-
-**Required Settings:**
-
-**1. Object Lock Enabled**
-- Must be enabled at bucket creation (cannot be added later)
-- Provides WORM capability
-
-**2. Versioning Enabled**
-- Required for Object Lock to work
-- Maintains all versions of objects
-
-**3. Object Lock Configuration**
-- Mode: COMPLIANCE (strongest protection - even root cannot delete)
-- Default Retention: 10 years
-- Alternative: GOVERNANCE mode (allows privileged users to override)
-
-**4. Lifecycle Policies**
-- Transition to Glacier after 90 days to reduce costs
-- S3 Standard: $0.023/GB/month
-- Glacier: $0.004/GB/month (saves ~83%)
-- Objects remain accessible but with longer retrieval time
-
-**Cost Optimization:**
-- First 90 days: S3 Standard (fast access for recent audits)
-- After 90 days: Glacier (cold storage for compliance)
-- Deep Archive option: $0.00099/GB/month for long-term archival
-
-### 12.3.3 Data Flow
-
-#### Write Path (Synchronous)
-
-```
-1. Client → Vote Service
-   └─ POST /api/v1/votes
-      {
-        "voter_id": "voter_abc123",
-        "candidate_id": "candidate_xyz"
-      }
-
-2. Vote Service:
-   ├─ Validate voter (not duplicate)
-   ├─ Determine shard: hash(voter_id) % 16 = shard_7
-   ├─ PostgreSQL INSERT into votes_shard_7
-   │  └─ Returns vote.id = 12345678
-   ├─ Get prev_hash from Redis/S3
-   ├─ Calculate current_hash
-   └─ Publish to Kafka topic "audit-logs"
-
-3. Response to Client:
-   └─ 201 Created
-      {
-        "vote_id": 12345678,
-        "status": "recorded"
-      }
-   
-   Duration: ~50-100ms
-```
-
-#### Audit Path (Asynchronous)
-
-```
-1. Kafka Consumer (Audit Writer Service):
-   ├─ Consume message from "audit-logs"
-   ├─ Prepare JSON with hash chain
-   └─ S3 PUT with Object Lock
-      └─ Key: votes/checkpoint_0001234/vote_0012345678.json
-
-2. Every 10,000 votes:
-   └─ Create checkpoint file
-      └─ Key: votes/checkpoint_0001234/checkpoint.json
-
-Duration: ~500ms-2s (async, doesn't block vote)
-```
-
-### 12.3.4 Verification Process
-
-**Hash Chain Integrity Verification:**
-
-The verification process ensures no tampering has occurred by validating the entire hash chain:
-
-1. **Retrieve all votes in a checkpoint** - List all vote files from S3 for a given checkpoint
-2. **Sort chronologically** - Order votes by their ID to follow the chain sequence
-3. **Verify each link** - For each vote, confirm:
-   - The prev_hash matches the previous vote's current_hash
-   - Recalculating the current_hash produces the same result
-4. **Detect tampering** - Any modification to vote data or hash values will break the chain
-
-**Types of Verification:**
-
-**Real-time Verification:**
-- Performed during vote submission
-- Validates the last N votes in the chain
-- Catches issues immediately
-
-**Batch Verification:**
-- Run periodically (e.g., end of each checkpoint)
-- Validates entire checkpoint from first to last vote
-- Confirms no retroactive tampering
-
-**Full Audit:**
-- Validates the complete voting history
-- Can be performed by independent auditors
-- Checkpoint files enable faster validation by verifying checkpoint summaries first
-
-**Public Verifiability:**
-- Checkpoint digests can be published publicly
-- Third parties can verify without accessing individual votes
-- Enables transparent auditing while protecting voter privacy
-
-### 12.3.5 Why This Architecture?
-
-✅ **Separation of Concerns:**
-- PostgreSQL: Fast operational queries, sharded for scale
-- S3: Immutable audit trail, cryptographic proof
-- Kafka: Decouples write paths, enables retries
-
-✅ **Scalability:**
-- PostgreSQL sharding: 16 shards × 10K writes/sec = 160K votes/sec
-- S3: Unlimited storage, high throughput
-- Kafka: Buffer for traffic spikes
-
-✅ **Cost-Effective:**
-- PostgreSQL: Standard RDS pricing
-- S3: ~$100/year for 300M votes
-- Kafka: Managed service (MSK) or self-hosted
-
-✅ **Reliability:**
-- Async S3 writes don't block votes
-- Kafka provides durability and retries
-- Object Lock prevents tampering
-
-✅ **No Lambda Required:**
-- Dedicated microservices for control
-- Easier debugging and monitoring
-- Can deploy in Kubernetes/ECS
-
----
-
-## 12.4. Summary and Recommendations
-
-### For a 300M User Voting System:
-
-**✅ Recommended: PostgreSQL (sharded) + S3 Object Lock**
-
-- **PostgreSQL:** Operational data, fast queries, proven scalability
-- **S3 Object Lock:** Immutable audit trail, lowest cost, unlimited scale
-- **Message Queue:** Decouple write paths, enable async processing
-- **Microservices:** Full control, no Lambda cold starts
-
-**Cost:** ~$100-500/year for audit storage (vs. $60K+ for Datomic)
-
-**Why NOT QLDB:** 3-5x more expensive, throughput limits
-
-**Why NOT Datomic:** 500-1800x more expensive, write bottleneck, overkill
-
-**Why NOT PostgreSQL alone:** No true WORM, admin can tamper
-
----
 
 # 13. ⚙️ Core Services
 
@@ -1466,13 +1093,387 @@ The Vote Service is the **core voting engine** of the platform. It operates as b
 - Exactly-once vote processing via idempotency keys
 - One vote per user per survey enforced at DB level
 
-### Endpoints
+
+## 13.3 Notification Service
+
+**Scope:**
+The Notification Service handles **real-time result broadcasting** to connected clients via Server-Sent Events (SSE).
+
+**Responsibilities:**
+- Consumes `vote.counted` events from Kafka
+- Aggregates vote counts per survey/option
+- Broadcasts real-time updates to SSE clients
+
+**Notification Types:**
+- Vote count updates (real-time totals)
+- Survey status changes (published, finished)
+- System announcements
+
+
+## 13.4 Auditability Service
+
+
+![PostgreSQL + S3 Hybrid Architecture](diagrams/postgresql-s3-hybrid-architecture.png)
+
+**Scope:**
+The Auditability Service maintains the **immutable audit trail** for all voting activity, ensuring legal compliance and forensic readiness.
+
+**Responsibilities:**
+- Consumes all domain events from Kafka (votes, fraud, auth)
+- Archives events to S3 for long-term retention
+- Provides query API for audit investigations
+
+**Events Captured:**
+- `vote.submitted`, `vote.counted`, `vote.rejected`
+- `fraud.detected`, `fraud.blocked`
+- `user.registered`, `user.verified`, `user.blocked`
+- `survey.created`, `survey.published`, `survey.finished`
+
+**Retention Policy:**
+- Cold storage (S3 Glacier): 7 years (legal compliance)
+
+
+## 13.5 Backoffice Service
+
+**Scope:**
+The Backoffice Service provides **administrative controls and operational tools** for system operators, auditors, and fraud investigators.
+
+**Responsibilities:**
+- Admin panel with Role-Based Access Control (RBAC)
+- Real-time monitoring dashboard (voting activity, system health)
+- Survey management interface (create, publish, finish surveys)
+
+**User Roles:**
+| Role | Permissions |
+|------|-------------|
+| **System Admin** | Full system configuration, user management, service health |
+| **Election Manager** | Survey CRUD, publish/finish surveys, view results |
+| **Fraud Investigator** | View flagged votes, analyze patterns, block suspicious users |
+
+**Key Features:**
+- MFA required for all admin access
+
+**Security Controls:**
+- Separate network segment (internal only, no public access)
+
+
+### Management Endpoints
+
+| Method   | Endpoint                           | Description         |
+|----------|------------------------------------|---------------------|
+| `POST`   | `/v1/internal/surveys`             | Create a new survey |
+| `PUT`    | `/v1/internal/surveys/:id`         | Update survey       |
+| `PUT`    | `/v1/internal/surveys/:id/publish` | Publish survey      |
+| `PUT`    | `/v1/internal/surveys/:id/finish`  | Close survey        |
+| `DELETE` | `/v1/internal/surveys/:id`         | Delete survey       |
+| `GET`    | `/v1/internal/surveys/:id/results` | Get survey results  |
+
+### Public Endpoints
 
 | Method | Endpoint                                   | Description             |
 |--------|--------------------------------------------|-------------------------|
 | `GET`  | `/v1/surveys/:id`                          | Get survey details      |
 | `POST` | `/v1/surveys/:id/answers`                  | Submit an answer        |
 | `PUT`  | `/v1/surveys/:id/answers/:answerId/finish` | Complete survey session |
+
+
+### Key Endpoints
+
+#### Create Survey
+
+`POST` `/v1/internal/surveys`
+
+**Payload**
+
+```json
+{
+  "title": "Elections Survey",
+  "questions": [
+    {
+      "title": "Who would you vote for president?",
+      "min": 1,
+      "max": 2,
+      "order": 0,
+      "options": [
+        {
+          "text": "Homer Simpsom",
+          "image": "https://example.com/homer.jpg",
+          "order": 0
+        },
+        {
+          "text": "Ned Flanders",
+          "image": "https://example.com/ned.jpg",
+          "order": 1
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Response**
+
+```json
+{
+  "id": "1",
+  "title": "Elections Survey",
+  "startDate": null,
+  "finishDate": null,
+  "questions": [
+      {
+        "id": "1",
+        "title": "Who would you vote for president?",
+        "min": 1,
+        "max": 2,
+        "order": 0,
+        "options": [
+          {
+            "id": "1",
+            "text": "Homer Simpsom",
+            "image": "https://example.com/homer.jpg",
+            "order": 0
+          },
+          {
+            "id": "2",
+            "text": "Ned Flanders",
+            "image": "https://example.com/ned.jpg",
+            "order": 1
+          }
+        ]
+      }
+    ]
+}
+```
+
+#### Update Survey
+
+`PUT` `/v1/internal/surveys/:id`
+
+**Payload**
+
+You can update the survey title, add/update/remove questions and their options all in one request.
+
+- To update existing questions/options, include their `id`
+- To create new questions/options, omit the `id` field
+- To delete questions/options, omit them from the payload
+
+**Example:** This request updates the survey title, updates question 1 (keeps options 1 and 2, adds a new option "Marge Simpson"), and creates a new question 2 with two new options.
+
+```json
+{
+  "title": "Elections Survey For President",
+  "questions": [
+    {
+      "id": "1",
+      "title": "Who would you vote for president?",
+      "min": 1,
+      "max": 2,
+      "order": 0,
+      "options": [
+        {
+          "id": "1",
+          "text": "Homer Simpson",
+          "image": "https://example.com/homer.jpg",
+          "order": 0
+        },
+        {
+          "id": "2",
+          "text": "Ned Flanders",
+          "image": "https://example.com/ned.jpg",
+          "order": 1
+        },
+        {
+          "text": "Marge Simpson",
+          "image": "https://example.com/marge.jpg",
+          "order": 2
+        }
+      ]
+    },
+    {
+      "title": "Who would you vote for minister?",
+      "min": 1,
+      "max": 1,
+      "order": 1,
+      "options": [
+        {
+          "text": "Montgomery Burns",
+          "image": "https://example.com/burns.jpg",
+          "order": 0
+        },
+        {
+          "text": "Sideshow Bob",
+          "image": "https://example.com/bob.jpg",
+          "order": 1
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Response**
+
+```json
+{
+  "id": "1",
+  "title": "Elections Survey For President",
+  "startDate": null,
+  "finishDate": null,
+  "questions": [
+    {
+      "id": "1",
+      "title": "Who would you vote for president?",
+      "min": 1,
+      "max": 2,
+      "order": 0,
+      "options": [
+        {
+          "id": "1",
+          "text": "Homer Simpson",
+          "image": "https://example.com/homer.jpg",
+          "order": 0
+        },
+        {
+          "id": "2",
+          "text": "Ned Flanders",
+          "image": "https://example.com/ned.jpg",
+          "order": 1
+        },
+        {
+          "id": "5",
+          "text": "Marge Simpson",
+          "image": "https://example.com/marge.jpg",
+          "order": 2
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "title": "Who would you vote for minister?",
+      "min": 1,
+      "max": 1,
+      "order": 1,
+      "options": [
+        {
+          "id": "3",
+          "text": "Montgomery Burns",
+          "image": "https://example.com/burns.jpg",
+          "order": 0
+        },
+        {
+          "id": "4",
+          "text": "Sideshow Bob",
+          "image": "https://example.com/bob.jpg",
+          "order": 1
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Publish Survey
+
+`PUT` `/v1/internal/surveys/:id/publish`
+
+Publish a survey making it available for public responses. Sets the startDate to current timestamp.
+
+**Response**
+
+```json
+{
+  "id": "1",
+  "title": "Elections Survey For President",
+  "startDate": "2025-12-09T10:00:00Z",
+  "finishDate": null
+}
+```
+
+#### Finish Survey
+
+`PUT` `/v1/internal/surveys/:id/finish`
+
+Close a survey, preventing new responses. Sets the finishDate to current timestamp.
+
+**Response**
+
+```json
+{
+  "id": "1",
+  "title": "Elections Survey For President",
+  "startDate": "2025-12-09T10:00:00Z",
+  "finishDate": "2025-12-09T18:00:00Z"
+}
+```
+
+#### Delete Survey
+
+`DELETE` `/v1/internal/surveys/:id`
+
+**Response**
+
+`204 No Content`
+
+
+#### Get Survey Results
+
+`GET` `/v1/internal/surveys/:id/results`
+
+**Response**
+
+```json
+{
+"survey": {
+"id": "1",
+"title": "Elections Survey"
+},
+"totalResponses": 150,
+"questions": [
+  {
+    "id": "1",
+    "title": "Who would you vote for president?",
+    "order": 0,
+    "options": [
+      {
+        "id": "1",
+        "text": "Homer Simpson",
+        "image": "https://example.com/homer.jpg",
+        "order": 0,
+        "votes": 85
+      },
+      {
+        "id": "2",
+        "text": "Ned Flanders",
+        "image": "https://example.com/ned.jpg",
+        "order": 1,
+        "votes": 65
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "title": "Who would you vote for minister?",
+    "order": 1,
+    "options": [
+      {
+        "id": "3",
+        "text": "Montgomery Burns",
+        "image": "https://example.com/burns.jpg",
+        "order": 0,
+        "votes": 70
+      },
+      {
+        "id": "4",
+        "text": "Sideshow Bob",
+        "image": "https://example.com/bob.jpg",
+        "order": 1,
+        "votes": 80
+      }
+    ]
+  }
+]
+}
+```
 
 #### Get Survey Details
 
@@ -1590,80 +1591,8 @@ Mark a survey answer session as completed.
 }
 ```
 
-### Wireframes
-
-**Login**
-
-<img src="./wireframes/login.png" alt="login"/>
-
-**Answer Survey**
-
-<img src="./wireframes/survey.png" alt="survey"/>
-
-**Finish Survery**
-
-<img src="./wireframes/finish.png" alt="finish"/>
-
-## 13.3 Notification Service
-
-**Scope:**
-The Notification Service handles **real-time result broadcasting** to connected clients via Server-Sent Events (SSE).
-
-**Responsibilities:**
-- Consumes `vote.counted` events from Kafka
-- Aggregates vote counts per survey/option
-- Broadcasts real-time updates to SSE clients
-
-**Notification Types:**
-- Vote count updates (real-time totals)
-- Survey status changes (published, finished)
-- System announcements
-
-
-## 13.4 Auditability Service
-
-**Scope:**
-The Auditability Service maintains the **immutable audit trail** for all voting activity, ensuring legal compliance and forensic readiness.
-
-**Responsibilities:**
-- Consumes all domain events from Kafka (votes, fraud, auth)
-- Archives events to S3 for long-term retention
-- Provides query API for audit investigations
-
-**Events Captured:**
-- `vote.submitted`, `vote.counted`, `vote.rejected`
-- `fraud.detected`, `fraud.blocked`
-- `user.registered`, `user.verified`, `user.blocked`
-- `survey.created`, `survey.published`, `survey.finished`
-
-**Retention Policy:**
-- Cold storage (S3 Glacier): 7 years (legal compliance)
-
-
-## 13.5 Backoffice Service
-
-**Scope:**
-The Backoffice Service provides **administrative controls and operational tools** for system operators, auditors, and fraud investigators.
-
-**Responsibilities:**
-- Admin panel with Role-Based Access Control (RBAC)
-- Real-time monitoring dashboard (voting activity, system health)
-- Survey management interface (create, publish, finish surveys)
-
-**User Roles:**
-| Role | Permissions |
-|------|-------------|
-| **System Admin** | Full system configuration, user management, service health |
-| **Election Manager** | Survey CRUD, publish/finish surveys, view results |
-| **Fraud Investigator** | View flagged votes, analyze patterns, block suspicious users |
-
-**Key Features:**
-- MFA required for all admin access
-
-**Security Controls:**
-- Separate network segment (internal only, no public access)
-
 ---
+
 
 # 14. 🥞 Technology Stack
 
