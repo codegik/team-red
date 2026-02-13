@@ -71,7 +71,7 @@ The system must be fully cloud-native, highly scalable, fault tolerant, and secu
 
 The architecture is guided by seven foundational design principles that address the unique challenges of building a mission-critical, globally distributed voting system. These principles inform every architectural decision, from technology selection to deployment strategies.
 
-## 4.1 Security First (Defense in Depth)
+## 4.1 Security First
 
 **Principle**: Security is not a feature—it's the foundation. Every layer of the system must assume breach and implement independent security controls.
 
@@ -81,7 +81,7 @@ The architecture is guided by seven foundational design principles that address 
 - A single security failure can compromise election integrity and destroy public trust
 - Attack vectors evolve constantly—security must be layered and adaptive
 
-## 4.2 Scalability by Default (Horizontal, Stateless, Elastic)
+## 4.2 Scalability by Default
 
 **Principle**: The system must scale horizontally without architectural changes. Every component is designed for elastic scaling from day one.
 
@@ -91,7 +91,7 @@ The architecture is guided by seven foundational design principles that address 
 - Voting events create unpredictable traffic spikes (debates, breaking news, election day)
 - Cost optimization requires scaling down after peak periods
 
-## 4.3 Event-Driven Architecture (Asynchronous, Decoupled, Resilient)
+## 4.3 Event-Driven Architecture
 
 **Principle**: Decouple producers and consumers through event streams. All critical operations are asynchronous to prevent cascading failures.
 
@@ -101,7 +101,7 @@ The architecture is guided by seven foundational design principles that address 
 - Database writes at 240K RPS would saturate any relational database
 - Real-time result aggregation requires parallel event processing
 
-## 4.4 Stateless Compute (Immutable, Ephemeral, Replaceable)
+## 4.4 Stateless Compute
 
 **Principle**: Application servers hold no persistent state. Every instance is interchangeable and can be destroyed/recreated without data loss.
 
@@ -111,7 +111,7 @@ The architecture is guided by seven foundational design principles that address 
 - Server failures with in-memory state cause data loss
 - Rolling updates and auto-scaling require killing instances without warning
 
-## 4.5 Multi-Layer Anti-Abuse Protection (Adaptive, ML-Driven, Zero Trust)
+## 4.5 Multi-Layer Anti-Abuse Protection
 
 **Principle**: Assume every request is malicious until proven otherwise. Defense mechanisms adapt in real-time to emerging threats.
 
@@ -121,7 +121,7 @@ The architecture is guided by seven foundational design principles that address 
 - Credential stuffing attacks leverage millions of stolen username/password pairs
 - Distributed attacks from 100K+ IP addresses bypass simple rate limiting
 
-## 4.6 Auditable Data (Immutable, Tamper-Proof, Forensic-Ready)
+## 4.6 Auditable Data
 
 **Principle**: Every vote and system action is recorded in an append-only, cryptographically verifiable audit log.
 
@@ -133,7 +133,7 @@ The architecture is guided by seven foundational design principles that address 
 
 ---
 
-## 4.7 Failure as a Normal Condition (Chaos Engineering, Graceful Degradation)
+## 4.7 Failure as a Normal Condition
 
 **Principle**: Expect failures at every level. Design systems that degrade gracefully and self-heal automatically.
 
@@ -182,7 +182,7 @@ Microservices
 
 ![deployment](diagrams/deployment.app.png)
 
-## 5.4 Security & Anti-Bot Strategy (Primary Focus)
+## 5.4 Security & Anti-Bot Strategy
 
 ### Layer 1: Network & Edge Security
 
@@ -246,26 +246,6 @@ SumSub React Native SDK integration:
 
 Documentation: <https://docs.sumsub.com/docs/react-native-module>
 
-**Mobile Flow with SumSub**
-
-1. User installs and opens the React Native app.
-2. During first access or registration:
-    - User is asked to capture:
-        - A selfie video (liveness)
-        - A government-issued document
-3. The app sends media directly to SumSub SDK.
-4. SumSub performs:
-    - Face matching
-    - Liveness challenge
-    - Document authenticity validation
-5. The backend receives:
-    - Verification status
-    - Risk score
-    - Unique document hash
-6. Only verified users are allowed to vote.
-
-No raw biometric data is stored directly in the voting backend.
-
 ### Secure Authentication with OAuth-based Social Login
 
 OAuth-based Social Login is used for:
@@ -275,25 +255,6 @@ OAuth-based Social Login is used for:
 - Passwordless login
 - Multi-Factor Authentication (MFA)
 - Token lifecycle management
-
-
-**Authentication Flow**
-
-1. User taps "Login".
-2. React Native app redirects the user to the selected OAuth social provider
-   (Google, Apple, or Facebook).
-3. The provider performs:
-    - User authentication
-    - Consent validation
-    - Provider-native MFA (if enabled by the user)
-4. On success, the provider returns an authorization code or identity token.
-5. The Auth Service:
-    - Validates token signature and claims
-    - Verifies issuer, audience, and expiration
-    - Links or creates the internal user identity
-6. The app receives:
-    - Internal Access Token (short-lived)
-    - Internal ID Token
 
 ### Bot Detection with OAuth-based Login + Turnstile
 
@@ -305,8 +266,7 @@ To prevent credential stuffing, brute-force, and automated accounts:
     - CAPTCHA replacement
     - Bot traffic filter for mobile and web
 
-The Turnstile token is attached to authentication requests and validated
-by the backend before granting access.
+The Turnstile token is attached to authentication requests and validated by the backend before granting access.
 
 ### Secure API Requests with Tokens
 
@@ -368,7 +328,7 @@ This allows detection of:
 - One device trying to impersonate multiple users
 
 
-### 5.4.1. CloudFront + AWS WAF Responsibilities
+### CloudFront + AWS WAF Responsibilities
 
 **CloudFront**
 
@@ -390,7 +350,7 @@ This allows detection of:
 - Integrated Bot Control
 
 
-### 5.4.2. Global Accelerator & Backbone Routing
+### Global Accelerator & Backbone Routing
 
 All traffic between edge and API uses:
 
@@ -400,7 +360,7 @@ All traffic between edge and API uses:
 - Automatic regional failover
 
 
-### 5.4.3. API Gateway Security Model
+### API Gateway Security Model
 
 The API Gateway enforces:
 
@@ -416,12 +376,10 @@ The API Gateway enforces:
 
 # 6. 🧭 Trade-offs
 
-## 6.1 Architecture Tradeoffs
-
 This document captures the key architectural decisions and their tradeoffs for the Vote System.
 
 
-### OAuth Social Login vs Auth0
+## OAuth Social Login vs Auth0
 
 | Aspect | OAuth-based Social Login (Custom Java Service) | Auth0 |
 |------|-----------------------------------------------|-------|
@@ -436,7 +394,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Integration Complexity** | High; requires implementing, testing, and maintaining three distinct OAuth/OIDC integrations (Google, Apple, Facebook), each with different behaviors and edge cases | Low; unified abstraction over providers with consistent behavior |
 
 
-### OAuth Social Login vs Keycloak
+## OAuth Social Login vs Keycloak
 
 | Aspect | OAuth-based Social Login (Custom Java Service) | Keycloak |
 |------|-----------------------------------------------|----------|
@@ -451,7 +409,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Integration Complexity** | Higher; three provider integrations maintained in code | Lower; providers abstracted by Keycloak |
 
 
-### SumSub vs Veriff
+## SumSub vs Veriff
 
 | Aspect | SumSub | Veriff |
 |------|--------|--------|
@@ -465,7 +423,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Cost Model** | Higher per-verification cost | More cost-efficient for high-volume verification |
 
 
-### FingerprintJS vs ThumbmarkJS
+## FingerprintJS vs ThumbmarkJS
 
 | Aspect | FingerprintJS | ThumbmarkJS |
 |------|---------------|-------------|
@@ -492,7 +450,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Operational Overhead**       | Low – managed service, minimal Kubernetes knowledge required           | Higher – need Kubernetes expertise, more components to maintain        | ECS is “easier to run”; EKS offers powerful orchestration but requires DevOps maturity                                 |
 
 
-### Infrastructure Tradeoffs: Microservices vs Monolith
+## Microservices vs Monolith
 
 | Aspect              | Monolith                          | Microservices                             | Tradeoff                                      |
 |---------------------|-----------------------------------|-------------------------------------------|-----------------------------------------------|
@@ -516,6 +474,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Performance** | High throughput for writes | Lower throughput, optimized for consistency |
 | **Cost Structure** | Storage + requests | Storage + I/O + read requests |
 
+
 ## DB-enforced FK vs Application-enforced
 
 
@@ -529,7 +488,8 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Debugging & Observability**         | **Explicit errors** – FK violations fail fast with clear messages. Root cause immediate. Impossible states prevented.             | **Silent failures** – Issues found late in reports/audits. Needs data quality metrics and reconciliation. | DB FKs = immediate feedback. App-enforced issues manifest as "data doesn't add up". Needs orphaned record detection and dashboards. Long-term cleanup costs can exceed performance gains.                                  |
 | **Best For**                          | Monolithic apps, transactional systems, regulated domains (finance/healthcare), small teams, data quality > performance           | Microservices, high-scale writes, eventual consistency OK, mature DevOps teams, flexibility > safety      | **Use DB FKs for**: orders, payments, user accounts. **Use app-enforced for**: cross-service relationships, analytics, >10k writes/sec. Hybrid common. Re-evaluate when scaling. Migration later is painful.               |
 
-### Real-Time Technology Tradeoffs
+
+## Real-Time Technology Tradeoffs
 
 | **Aspect**              | **Server-Side-Events (SSE)**             | **WebSockets**                            | **Notes/Tradeoff**                                 |
 |-------------------------|------------------------------------------|-------------------------------------------|----------------------------------------------------|
@@ -541,6 +501,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Browser Support**     | Native EventSource API                   | Native WebSocket API                      | Both well-supported; SSE simpler for broadcast     |
 | **Latency**             | ~100ms for broadcasts                    | ~50ms for bidirectional messages          | Accept minor latency increase for simplicity       |
 
+
 ## Database SQL vs No-SQL
 
 | **Aspect**    | **SQL Databases**                | **No-SQL databases**            | **Notes/Tradeoffs**                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -551,6 +512,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Transaction** | Complex and fully supported      | Limited                         | **SQL**: Full ACID transaction support across multiple tables with JOIN operations, foreign keys, and complex queries. Can handle multi-step operations atomically. **NoSQL**: Most support single-document/row transactions only. Some (MongoDB, DynamoDB) added multi-document transactions but with performance penalties. Complex transactions require application-level coordination.                                                                       |
 | **Complexity**  | Lower for relational data        | Higher at the application level | **SQL**: Database handles relationships, constraints, and data integrity. Application code is simpler for relational data. Mature tooling and widespread expertise. **NoSQL**: Application must handle data relationships, consistency checks, and complex queries. Requires careful data modeling and denormalization strategies.                                                                                                                               |
 | **Performance** | Good for transactional workloads | Excelent for high data volume   | **SQL**: Optimized for complex queries with JOINs, aggregations, and ACID transactions. Performance degrades with very large datasets without sharding. **NoSQL**: Excels at simple read/write operations on massive datasets. Optimized for high throughput and low latency at scale. Less efficient for complex analytical queries.                                                                                                                            |
+
 
 ## Database PostgreSQL vs MySQL
 
@@ -564,7 +526,7 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Auditability**   | Strong support for auditing                           | Audits exist, but they are often enterprise-paid | **PostgreSQL**: Extensions such as pgAudit.                                                                                |
 
 
-## 6.1. Security Tools
+## Security Tools
 
 | | **OAuth-based Social Login (Custom Java Service)** | **SumSub** | **Cloudflare Turnstile** | **FingerprintJS** | **AWS CloudFront** | **AWS WAF** | **AWS Global Accelerator** | **API Gateway** |
 |------|------|------|------|------|------|------|------|------|
