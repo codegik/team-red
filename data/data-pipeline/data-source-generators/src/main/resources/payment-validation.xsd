@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:tns="http://electrored.com/payment-validation"
+           targetNamespace="http://electrored.com/payment-validation"
+           elementFormDefault="qualified">
+
+    <xs:element name="GetPaymentConfirmationsRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="cursor" type="xs:string" minOccurs="0"/>
+                <xs:element name="pageSize" type="xs:int" minOccurs="0"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="GetPaymentConfirmationsResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="totalRecords" type="xs:int"/>
+                <xs:element name="confirmations">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="payment" type="tns:Payment" minOccurs="0" maxOccurs="unbounded"/>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:complexType name="Payment">
+        <xs:sequence>
+            <xs:element name="paymentId" type="xs:string"/>
+            <xs:element name="saleId" type="xs:string"/>
+            <xs:element name="status" type="xs:string"/>
+            <xs:element name="amount" type="xs:double"/>
+            <xs:element name="currency" type="xs:string"/>
+            <xs:element name="paymentMethod" type="xs:string"/>
+            <xs:element name="bankReference" type="xs:string"/>
+            <xs:element name="confirmationDate" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+</xs:schema>
+
