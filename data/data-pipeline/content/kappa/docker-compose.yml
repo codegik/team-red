@@ -1,0 +1,297 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.8.0
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - kappa-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.8.0
+    hostname: kafka
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9101:9101"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    networks:
+      - kappa-network
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.8.0
+    hostname: schema-registry
+    container_name: schema-registry
+    depends_on:
+      - kafka
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka:29092'
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    networks:
+      - kappa-network
+
+  postgres-source:
+    image: postgres:17
+    hostname: postgres-source
+    container_name: postgres-source
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: sourceuser
+      POSTGRES_PASSWORD: sourcepass
+      POSTGRES_DB: sourcedb
+      POSTGRES_INITDB_ARGS: "-c wal_level=logical"
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+      - "-c"
+      - "max_wal_senders=10"
+      - "-c"
+      - "max_replication_slots=10"
+    volumes:
+      - postgres-source-data:/var/lib/postgresql/data
+      - ./init-scripts/init-source-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - kappa-network
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg17
+    hostname: timescaledb
+    container_name: timescaledb
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: analyticsuser
+      POSTGRES_PASSWORD: analyticspass
+      POSTGRES_DB: analyticsdb
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+      - ./init-scripts/init-timescale.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - kappa-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    hostname: prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - kappa-network
+
+  grafana:
+    image: grafana/grafana:latest
+    hostname: grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - kappa-network
+
+  loki:
+    image: grafana/loki:latest
+    hostname: loki
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./observability/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    networks:
+      - kappa-network
+
+  soap-mock-service:
+    build:
+      context: ./mock-services/soap-service
+      dockerfile: Dockerfile
+    hostname: soap-mock-service
+    container_name: soap-mock-service
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_PORT: 8080
+    networks:
+      - kappa-network
+
+  db-connector-service:
+    build:
+      context: .
+      dockerfile: services/db-connector/Dockerfile
+    hostname: db-connector-service
+    container_name: db-connector-service
+    depends_on:
+      - kafka
+      - postgres-source
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      DATABASE_HOSTNAME: postgres-source
+      DATABASE_PORT: 5432
+      DATABASE_USER: sourceuser
+      DATABASE_PASSWORD: sourcepass
+      DATABASE_DBNAME: sourcedb
+    networks:
+      - kappa-network
+
+  file-ingestion-service:
+    build:
+      context: .
+      dockerfile: services/file-ingestion/Dockerfile
+    hostname: file-ingestion-service
+    container_name: file-ingestion-service
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      WATCH_DIRECTORY: /data/input
+      ARCHIVE_DIRECTORY: /data/archive
+    volumes:
+      - ./data/input:/data/input
+      - ./data/archive:/data/archive
+    networks:
+      - kappa-network
+
+  soap-connector-service:
+    build:
+      context: .
+      dockerfile: services/soap-connector/Dockerfile
+    hostname: soap-connector-service
+    container_name: soap-connector-service
+    depends_on:
+      - kafka
+      - soap-mock-service
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SOAP_ENDPOINT_URL: http://soap-mock-service:8080/ws/sales
+      POLL_INTERVAL_SECONDS: 30
+    networks:
+      - kappa-network
+
+  stream-processor-city:
+    build:
+      context: .
+      dockerfile: services/stream-processor/Dockerfile
+    hostname: stream-processor-city
+    container_name: stream-processor-city
+    depends_on:
+      - kafka
+      - timescaledb
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      APPLICATION_ID: city-sales-aggregator
+      TOPOLOGY_TYPE: city
+      TIMESCALE_HOST: timescaledb
+      TIMESCALE_PORT: 5432
+      TIMESCALE_DATABASE: analyticsdb
+      TIMESCALE_USER: analyticsuser
+      TIMESCALE_PASSWORD: analyticspass
+    networks:
+      - kappa-network
+
+  stream-processor-salesman:
+    build:
+      context: .
+      dockerfile: services/stream-processor/Dockerfile
+    hostname: stream-processor-salesman
+    container_name: stream-processor-salesman
+    depends_on:
+      - kafka
+      - timescaledb
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      APPLICATION_ID: salesman-aggregator
+      TOPOLOGY_TYPE: salesman
+      TIMESCALE_HOST: timescaledb
+      TIMESCALE_PORT: 5432
+      TIMESCALE_DATABASE: analyticsdb
+      TIMESCALE_USER: analyticsuser
+      TIMESCALE_PASSWORD: analyticspass
+    networks:
+      - kappa-network
+
+  lineage-tracker:
+    build:
+      context: .
+      dockerfile: services/lineage-tracker/Dockerfile
+    hostname: lineage-tracker
+    container_name: lineage-tracker
+    depends_on:
+      - kafka
+      - timescaledb
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      TIMESCALE_HOST: timescaledb
+      TIMESCALE_PORT: 5432
+      TIMESCALE_DATABASE: analyticsdb
+      TIMESCALE_USER: analyticsuser
+      TIMESCALE_PASSWORD: analyticspass
+    networks:
+      - kappa-network
+
+  query-api:
+    build:
+      context: .
+      dockerfile: services/query-api/Dockerfile
+    hostname: query-api
+    container_name: query-api
+    depends_on:
+      - timescaledb
+    ports:
+      - "8090:8090"
+    environment:
+      SERVER_PORT: 8090
+      SPRING_DATASOURCE_URL: jdbc:postgresql://timescaledb:5432/analyticsdb
+      SPRING_DATASOURCE_USERNAME: analyticsuser
+      SPRING_DATASOURCE_PASSWORD: analyticspass
+    networks:
+      - kappa-network
+
+networks:
+  kappa-network:
+    driver: bridge
+
+volumes:
+  postgres-source-data:
+  timescale-data:
+  prometheus-data:
+  grafana-data:
+  loki-data:
