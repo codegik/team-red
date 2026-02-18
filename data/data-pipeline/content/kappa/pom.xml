@@ -185,6 +185,7 @@
                         <source>25</source>
                         <target>25</target>
                         <release>25</release>
+                        <parameters>true</parameters>
                     </configuration>
                 </plugin>
 
