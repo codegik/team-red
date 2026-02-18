@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:tns="http://teamred.com/datapipeline/sales"
+           targetNamespace="http://teamred.com/datapipeline/sales"
+           elementFormDefault="qualified">
+
+    <xs:element name="GetSalesRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="since" type="xs:long" minOccurs="0"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="GetSalesResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="sale" type="tns:Sale" maxOccurs="unbounded"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:complexType name="Sale">
+        <xs:sequence>
+            <xs:element name="saleId" type="xs:string"/>
+            <xs:element name="timestamp" type="xs:long"/>
+            <xs:element name="salesmanId" type="xs:string"/>
+            <xs:element name="salesmanName" type="xs:string"/>
+            <xs:element name="customerId" type="xs:string"/>
+            <xs:element name="productId" type="xs:string"/>
+            <xs:element name="productName" type="xs:string"/>
+            <xs:element name="quantity" type="xs:int"/>
+            <xs:element name="unitPrice" type="xs:double"/>
+            <xs:element name="totalAmount" type="xs:double"/>
+            <xs:element name="city" type="xs:string"/>
+            <xs:element name="country" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+</xs:schema>
