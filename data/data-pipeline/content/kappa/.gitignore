@@ -1,0 +1,17 @@
+target/
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+*.class
+*.log
+*.jar
+*.war
+*.ear
+.DS_Store
+/data/input/*
+!/data/input/.gitkeep
+/data/archive/*
+!/data/archive/.gitkeep
+offsets.dat

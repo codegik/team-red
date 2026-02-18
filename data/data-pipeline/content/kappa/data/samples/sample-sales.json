@@ -1,0 +1,30 @@
+[
+  {
+    "sale_id": "json-001",
+    "timestamp": 1708300800000,
+    "salesman_id": "sm-john-doe",
+    "salesman_name": "John Doe",
+    "customer_id": "cust-201",
+    "product_id": "prod-monitor",
+    "product_name": "Monitor",
+    "quantity": 1,
+    "unit_price": 300.00,
+    "total_amount": 300.00,
+    "city": "Chicago",
+    "country": "USA"
+  },
+  {
+    "sale_id": "json-002",
+    "timestamp": 1708300801000,
+    "salesman_id": "sm-jane-smith",
+    "salesman_name": "Jane Smith",
+    "customer_id": "cust-202",
+    "product_id": "prod-webcam",
+    "product_name": "Webcam",
+    "quantity": 2,
+    "unit_price": 80.00,
+    "total_amount": 160.00,
+    "city": "Boston",
+    "country": "USA"
+  }
+]
