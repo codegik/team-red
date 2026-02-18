@@ -4,35 +4,32 @@ set -e
 
 COUNT=${1:-100}
 
-echo "Generating $COUNT sales records in PostgreSQL..."
+CITIES=("New York" "San Francisco" "Los Angeles" "Chicago" "Boston" "Seattle" "Austin" "Miami" "Denver" "Atlanta")
+PRODUCTS=("Laptop" "Mouse" "Keyboard" "Monitor" "Headphones" "Webcam" "Desk" "Chair" "USB Cable" "Hard Drive")
+SALESMEN=("John Doe" "Jane Smith" "Bob Johnson" "Alice Williams" "Charlie Brown" "Diana Davis" "Eve Miller" "Frank Wilson" "Grace Lee" "Henry Taylor")
 
-CITIES=("New York" "San Francisco" "Los Angeles" "Chicago" "Boston" "Seattle" "Miami" "Austin" "Denver" "Portland")
-PRODUCTS=("Laptop" "Mouse" "Keyboard" "Monitor" "Webcam" "Headset" "Tablet" "Printer" "Scanner" "Router")
-SALESMEN=("John Doe" "Jane Smith" "Bob Johnson" "Alice Williams" "Charlie Brown")
+PGPASSWORD=sourcepass
 
 for i in $(seq 1 $COUNT); do
-    SALE_ID="db-sale-$(date +%s)-$i"
-    TIMESTAMP=$(date +%s)000
-    SALESMAN_IDX=$((RANDOM % ${#SALESMEN[@]}))
-    SALESMAN_NAME="${SALESMEN[$SALESMAN_IDX]}"
-    SALESMAN_ID="sm-$(echo $SALESMAN_NAME | tr ' ' '-' | tr '[:upper:]' '[:lower:]')"
-    CUSTOMER_ID="cust-$((RANDOM % 1000))"
-    PRODUCT_IDX=$((RANDOM % ${#PRODUCTS[@]}))
-    PRODUCT_NAME="${PRODUCTS[$PRODUCT_IDX]}"
-    PRODUCT_ID="prod-$(echo $PRODUCT_NAME | tr '[:upper:]' '[:lower:]')"
+    SALE_ID="sale-$(uuidgen)"
+    TIMESTAMP=$(date +%s%3N)
+    SALESMAN_ID="sm-$(printf '%03d' $((RANDOM % 10 + 1)))"
+    SALESMAN_NAME="${SALESMEN[$((RANDOM % 10))]}"
+    CUSTOMER_ID="cust-$(printf '%05d' $((RANDOM % 10000)))"
+    PRODUCT_ID="prod-$(printf '%03d' $((RANDOM % 10 + 1)))"
+    PRODUCT_NAME="${PRODUCTS[$((RANDOM % 10))]}"
     QUANTITY=$((RANDOM % 10 + 1))
-    UNIT_PRICE=$(awk -v min=50 -v max=1500 'BEGIN{srand(); print min+rand()*(max-min)}')
-    TOTAL_AMOUNT=$(awk "BEGIN {print $QUANTITY * $UNIT_PRICE}")
-    CITY_IDX=$((RANDOM % ${#CITIES[@]}))
-    CITY="${CITIES[$CITY_IDX]}"
+    UNIT_PRICE=$(awk -v min=10 -v max=2000 'BEGIN{srand(); print min+rand()*(max-min)}')
+    TOTAL_AMOUNT=$(awk -v q=$QUANTITY -v p=$UNIT_PRICE 'BEGIN{print q*p}')
+    CITY="${CITIES[$((RANDOM % 10))]}"
+    COUNTRY="USA"
 
-    podman exec postgres-source psql -U sourceuser -d sourcedb -c \
-        "INSERT INTO sales (sale_id, timestamp, salesman_id, salesman_name, customer_id, product_id, product_name, quantity, unit_price, total_amount, city, country) \
-        VALUES ('$SALE_ID', $TIMESTAMP, '$SALESMAN_ID', '$SALESMAN_NAME', '$CUSTOMER_ID', '$PRODUCT_ID', '$PRODUCT_NAME', $QUANTITY, $UNIT_PRICE, $TOTAL_AMOUNT, '$CITY', 'USA');"
+    docker exec postgres-source psql -U sourceuser -d sourcedb -c \
+        "INSERT INTO sales (sale_id, timestamp, salesman_id, salesman_name, customer_id, product_id, product_name, quantity, unit_price, total_amount, city, country) VALUES ('$SALE_ID', $TIMESTAMP, '$SALESMAN_ID', '$SALESMAN_NAME', '$CUSTOMER_ID', '$PRODUCT_ID', '$PRODUCT_NAME', $QUANTITY, $UNIT_PRICE, $TOTAL_AMOUNT, '$CITY', '$COUNTRY');"
 
-    if [ $((i % 10)) -eq 0 ]; then
-        echo "Generated $i records..."
+    if [ $((i % 100)) -eq 0 ]; then
+        echo "Inserted $i records"
     fi
 done
 
-echo "Successfully generated $COUNT sales records!"
+echo "Successfully inserted $COUNT sales records into PostgreSQL"
