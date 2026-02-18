@@ -13,7 +13,7 @@ mkdir -p $DATA_DIR
 
 for i in $(seq 1 $COUNT); do
     SALE_ID="sale-file-$(uuidgen)"
-    TIMESTAMP=$(date +%s%3N)
+    TIMESTAMP=$(($(date +%s) * 1000 + RANDOM % 1000))
     SALESMAN_ID="sm-$(printf '%03d' $((RANDOM % 10 + 1)))"
     SALESMAN_NAME="${SALESMEN[$((RANDOM % 10))]}"
     CUSTOMER_ID="cust-$(printf '%05d' $((RANDOM % 10000)))"
