@@ -1,0 +1,50 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'kappa-pipeline'
+    environment: 'development'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka:9101']
+
+  - job_name: 'query-api'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['query-api:8090']
+
+  - job_name: 'stream-processor-city'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['stream-processor-city:8080']
+
+  - job_name: 'stream-processor-salesman'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['stream-processor-salesman:8080']
+
+  - job_name: 'lineage-tracker'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['lineage-tracker:8080']
+
+  - job_name: 'db-connector'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['db-connector-service:8080']
+
+  - job_name: 'file-ingestion'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['file-ingestion-service:8080']
+
+  - job_name: 'soap-connector'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['soap-connector-service:8080']
