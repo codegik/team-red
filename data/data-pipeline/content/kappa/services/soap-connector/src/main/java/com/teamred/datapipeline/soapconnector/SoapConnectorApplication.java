@@ -16,9 +16,13 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-import jakarta.xml.soap.*;
+import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.ByteArrayInputStream;
+import java.io.StringReader;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
@@ -32,6 +36,7 @@ public class SoapConnectorApplication {
     private static final String TOPIC = "sales.raw.soap";
     private static Counter recordsProcessed;
     private static final Set<String> processedIds = new HashSet<>();
+    private static final HttpClient httpClient = HttpClient.newHttpClient();
 
     public static void main(String[] args) {
         recordsProcessed = MetricsRegistry.counter("soap_connector_records_processed");
@@ -69,43 +74,58 @@ public class SoapConnectorApplication {
     }
 
     private static void pollSoapService(String endpointUrl, KafkaProducer<String, SalesEventDto> producer) throws Exception {
-        SOAPConnectionFactory soapConnectionFactory = SOAPConnectionFactory.newInstance();
-        SOAPConnection soapConnection = soapConnectionFactory.createConnection();
+        String soapRequest = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+                               xmlns:sal="http://teamred.com/datapipeline/sales">
+                    <soap:Body>
+                        <sal:GetSalesRequest>
+                            <sal:since>0</sal:since>
+                        </sal:GetSalesRequest>
+                    </soap:Body>
+                </soap:Envelope>
+                """;
 
-        MessageFactory messageFactory = MessageFactory.newInstance();
-        SOAPMessage soapMessage = messageFactory.createMessage();
-        SOAPPart soapPart = soapMessage.getSOAPPart();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(endpointUrl))
+                .header("Content-Type", "text/xml; charset=utf-8")
+                .header("SOAPAction", "")
+                .POST(HttpRequest.BodyPublishers.ofString(soapRequest))
+                .build();
 
-        String serverURI = "http://teamred.com/datapipeline/sales";
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-        SOAPEnvelope envelope = soapPart.getEnvelope();
-        envelope.addNamespaceDeclaration("sal", serverURI);
-
-        SOAPBody soapBody = envelope.getBody();
-        SOAPElement getSalesRequest = soapBody.addChildElement("GetSalesRequest", "sal");
-        SOAPElement since = getSalesRequest.addChildElement("since", "sal");
-        since.addTextNode("0");
-
-        soapMessage.saveChanges();
-
-        SOAPMessage soapResponse = soapConnection.call(soapMessage, endpointUrl);
-
-        Document doc = soapResponse.getSOAPBody().extractContentAsDocument();
-        NodeList sales = doc.getElementsByTagName("sale");
-
-        logger.info("Received {} sales from SOAP service", sales.getLength());
-
-        for (int i = 0; i < sales.getLength(); i++) {
-            Element sale = (Element) sales.item(i);
-            SalesEventDto event = parseSoapSale(sale);
-
-            if (!processedIds.contains(event.getSaleId())) {
-                sendEvent(event, producer);
-                processedIds.add(event.getSaleId());
-            }
+        if (response.statusCode() == 200) {
+            parseAndProcessSales(response.body(), producer);
+        } else {
+            logger.warn("SOAP service returned status: {}", response.statusCode());
         }
+    }
 
-        soapConnection.close();
+    private static void parseAndProcessSales(String xmlResponse, KafkaProducer<String, SalesEventDto> producer) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setNamespaceAware(true);
+            DocumentBuilder builder = factory.newDocumentBuilder();
+
+            Document doc = builder.parse(new org.xml.sax.InputSource(new StringReader(xmlResponse)));
+
+            NodeList sales = doc.getElementsByTagName("sale");
+
+            logger.info("Received {} sales from SOAP service", sales.getLength());
+
+            for (int i = 0; i < sales.getLength(); i++) {
+                Element sale = (Element) sales.item(i);
+                SalesEventDto event = parseSoapSale(sale);
+
+                if (!processedIds.contains(event.getSaleId())) {
+                    sendEvent(event, producer);
+                    processedIds.add(event.getSaleId());
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error parsing SOAP response", e);
+        }
     }
 
     private static SalesEventDto parseSoapSale(Element sale) {
