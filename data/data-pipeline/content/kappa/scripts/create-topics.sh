@@ -9,7 +9,7 @@ create_topic() {
     local partitions=${2:-3}
     local replication=${3:-1}
 
-    docker exec kafka kafka-topics --bootstrap-server localhost:9092 \
+    podman exec kafka kafka-topics --bootstrap-server localhost:9092 \
         --create \
         --if-not-exists \
         --topic "$topic" \

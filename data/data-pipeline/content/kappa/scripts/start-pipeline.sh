@@ -6,7 +6,7 @@ echo "Starting Kappa Pipeline..."
 
 cd "$(dirname "$0")/.."
 
-docker-compose up -d
+podman compose up -d
 
 echo "Waiting for services to be ready..."
 ./scripts/wait-for-services.sh

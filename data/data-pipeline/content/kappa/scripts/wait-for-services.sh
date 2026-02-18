@@ -29,7 +29,7 @@ check_kafka() {
     local attempt=1
 
     while [ $attempt -le $max_attempts ]; do
-        if docker exec kafka kafka-topics --bootstrap-server localhost:9092 --list > /dev/null 2>&1; then
+        if podman exec kafka kafka-topics --bootstrap-server localhost:9092 --list > /dev/null 2>&1; then
             echo "Kafka is ready"
             return 0
         fi
@@ -50,7 +50,7 @@ check_postgres() {
     local attempt=1
 
     while [ $attempt -le $max_attempts ]; do
-        if docker exec $container psql -U $user -d $db -c "SELECT 1" > /dev/null 2>&1; then
+        if podman exec $container psql -U $user -d $db -c "SELECT 1" > /dev/null 2>&1; then
             echo "$container is ready"
             return 0
         fi

@@ -6,6 +6,6 @@ echo "Stopping Kappa Pipeline..."
 
 cd "$(dirname "$0")/.."
 
-docker-compose down
+podman compose down
 
 echo "Pipeline stopped successfully!"
