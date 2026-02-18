@@ -39,7 +39,7 @@ CREATE INDEX idx_salesman_window ON top_salesman_country(window_start DESC);
 CREATE INDEX idx_salesman_rank ON top_salesman_country(window_start DESC, rank);
 
 CREATE TABLE IF NOT EXISTS data_lineage (
-    lineage_id VARCHAR(100) PRIMARY KEY,
+    lineage_id VARCHAR(100) NOT NULL,
     sale_id VARCHAR(100) NOT NULL,
     source_system VARCHAR(20) NOT NULL,
     source_timestamp TIMESTAMPTZ NOT NULL,
@@ -48,14 +48,15 @@ CREATE TABLE IF NOT EXISTS data_lineage (
     kafka_partition INTEGER,
     kafka_offset BIGINT,
     transformation_steps JSONB,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (lineage_id, source_timestamp)
 );
 
-CREATE INDEX idx_lineage_sale_id ON data_lineage(sale_id);
-CREATE INDEX idx_lineage_source ON data_lineage(source_system);
-CREATE INDEX idx_lineage_timestamp ON data_lineage(source_timestamp DESC);
-
 SELECT create_hypertable('data_lineage', 'source_timestamp', if_not_exists => TRUE);
+
+CREATE INDEX idx_lineage_sale_id ON data_lineage(sale_id, source_timestamp DESC);
+CREATE INDEX idx_lineage_source ON data_lineage(source_system, source_timestamp DESC);
+CREATE INDEX idx_lineage_id ON data_lineage(lineage_id);
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS hourly_city_sales_summary
 WITH (timescaledb.continuous) AS
