@@ -4,8 +4,6 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.micrometer.prometheus.PrometheusConfig;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
 
 public class MetricsRegistry {
 
@@ -13,7 +11,7 @@ public class MetricsRegistry {
 
     public static MeterRegistry getRegistry() {
         if (registry == null) {
-            registry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+            registry = new SimpleMeterRegistry();
         }
         return registry;
     }
