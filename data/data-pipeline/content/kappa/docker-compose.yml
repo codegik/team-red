@@ -142,8 +142,8 @@ services:
 
   soap-mock-service:
     build:
-      context: ./mock-services/soap-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: mock-services/soap-service/Dockerfile
     hostname: soap-mock-service
     container_name: soap-mock-service
     ports:
