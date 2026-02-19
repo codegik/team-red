@@ -74,6 +74,7 @@ public class SalesmanAggregate {
         this.citiesCovered = citiesCovered;
     }
 
+    @JsonIgnore
     public int getCitiesCount() {
         return citiesCovered.size();
     }
