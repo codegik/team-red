@@ -21,8 +21,41 @@ public class TimescaleSink {
         config.setPassword(password);
         config.setMaximumPoolSize(10);
         config.setMinimumIdle(2);
-        config.setConnectionTimeout(30000);
-        this.dataSource = new HikariDataSource(config);
+        config.setConnectionTimeout(10000);
+        config.setInitializationFailTimeout(-1);
+
+        HikariDataSource ds = null;
+        int maxRetries = 60;
+        int attempt = 0;
+
+        while (attempt < maxRetries) {
+            try {
+                ds = new HikariDataSource(config);
+                try (Connection conn = ds.getConnection()) {
+                    logger.info("Successfully connected to TimescaleDB at {}:{}", host, port);
+                }
+                break;
+            } catch (Exception e) {
+                attempt++;
+                if (ds != null) {
+                    ds.close();
+                    ds = null;
+                }
+                if (attempt >= maxRetries) {
+                    logger.error("Failed to connect to TimescaleDB after {} attempts", maxRetries);
+                    throw new RuntimeException("Cannot connect to TimescaleDB", e);
+                }
+                logger.warn("Attempt {}/{}: Waiting for TimescaleDB at {}:{}", attempt, maxRetries, host, port);
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted while waiting for TimescaleDB", ie);
+                }
+            }
+        }
+
+        this.dataSource = ds;
     }
 
     public void insertCitySales(String city, long windowStart, long windowEnd, double totalSales,
