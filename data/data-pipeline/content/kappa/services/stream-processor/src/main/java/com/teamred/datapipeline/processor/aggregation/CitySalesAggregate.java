@@ -1,5 +1,7 @@
 package com.teamred.datapipeline.processor.aggregation;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -63,6 +65,7 @@ public class CitySalesAggregate {
         this.productSales = productSales;
     }
 
+    @JsonIgnore
     public String getTopProduct() {
         return productSales.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
@@ -70,6 +73,7 @@ public class CitySalesAggregate {
                 .orElse(null);
     }
 
+    @JsonIgnore
     public Double getTopProductSales() {
         return productSales.values().stream()
                 .max(Double::compareTo)
