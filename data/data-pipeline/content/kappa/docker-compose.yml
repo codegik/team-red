@@ -36,7 +36,7 @@ services:
       - kappa-network
 
   schema-registry:
-    image: confluentinc/cp-schema-registry:7.8.0
+    image: confluentinc/cp-schema-registry:7.7.0
     hostname: schema-registry
     container_name: schema-registry
     depends_on:
