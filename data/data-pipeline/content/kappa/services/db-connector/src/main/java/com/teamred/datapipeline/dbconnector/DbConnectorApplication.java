@@ -117,8 +117,10 @@ public class DbConnectorApplication {
                 event.setProductId(after.getString("product_id"));
                 event.setProductName(after.getString("product_name"));
                 event.setQuantity(after.getInt32("quantity"));
-                event.setUnitPrice(after.getFloat64("unit_price"));
-                event.setTotalAmount(after.getFloat64("total_amount"));
+                Object unitPrice = after.get("unit_price");
+                event.setUnitPrice(unitPrice instanceof Number ? ((Number) unitPrice).doubleValue() : 0.0);
+                Object totalAmount = after.get("total_amount");
+                event.setTotalAmount(totalAmount instanceof Number ? ((Number) totalAmount).doubleValue() : 0.0);
                 event.setCity(after.getString("city"));
                 event.setCountry(after.getString("country"));
                 event.setSourceSystem("DB");
