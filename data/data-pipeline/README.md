@@ -1,18 +1,25 @@
-# Modern Data Pipeline
+# Kappa Data Processing Architecture
 
-- 23.MAR.2026 - Data Kata
-Must Create a Modern Data Pipeline with:
-	1. Ingestion for 3 different data sources (Relational DB, File system and Traditional WS-*)
-	2. Modern Processing with Spark, Flink or Kafka Streams
-	3. Data Lineage
-	4. Observability
-	5. Pipelines must have at least 2 pipelines:
-		a. Top Sales per City 
-		b. Top Salesman in the whole country
-	6. The final Aggregated results mut be in a dedicated DB and API
-	7. Restrictions:
-		a. Python
-		b. Red-Shift
-		c. Hadoop
+Is a streamlined approach to system design focused on real-time data processing. Kappa eliminates the need for a batch layer (like is done on the lambda)
 
+Components:
 
+### Data Source
+
+Data is ingested from real-time sources such as IoT devices, application logs, or user interactions. 
+
+### Stream Processing Engine
+
+Engines like Apache Kafka, Apache Flink, or Apache Samza process the incoming data streams in real-time. They perform tasks like filtering, transformation, aggregation, and enrichment on the fly.
+
+### Data Storage
+
+Stream processing results are written to a durable, scalable storage system such as NoSQL databases (e.g., Cassandra, HBase) or distributed file systems (e.g., HDFS or S3). This storage is often designed to handle historical data and event replay if needed.
+
+### Serving Layer
+
+This layer serves the processed data to users or downstream systems. It provides access to real-time analytics, dashboards, and applications that rely on fresh data.
+
+### Reprocessing/Replay Mechanism
+
+Since there is no batch processing, Kappa Architecture relies on event reprocessing capabilities. If data needs to be reprocessed (e.g., due to code changes or bugs), the system can replay past events from the original data stream without a separate batch layer.

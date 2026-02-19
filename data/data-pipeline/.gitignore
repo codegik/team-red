@@ -47,3 +47,12 @@ data-source-generators/csv-data/
 # Test coverage
 .jacoco/
 
+# Data directories
+/data/input/*
+!/data/input/.gitkeep
+/data/archive/*
+!/data/archive/.gitkeep
+
+# Debezium offsets
+offsets.dat
+
