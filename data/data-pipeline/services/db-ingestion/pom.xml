@@ -11,11 +11,11 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>db-connector</artifactId>
+    <artifactId>db-ingestion</artifactId>
     <packaging>jar</packaging>
 
-    <name>Database Connector</name>
-    <description>Debezium CDC connector for PostgreSQL</description>
+    <name>Database Ingestion</name>
+    <description>Debezium CDC ingestion for PostgreSQL</description>
 
     <dependencies>
         <dependency>
@@ -89,7 +89,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.teamred.datapipeline.dbconnector.DbConnectorApplication</mainClass>
+                            <mainClass>com.teamred.datapipeline.dbingestion.DbIngestionApplication</mainClass>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>lib/</classpathPrefix>
                         </manifest>

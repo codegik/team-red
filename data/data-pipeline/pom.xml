@@ -14,7 +14,7 @@
 
     <modules>
         <module>common</module>
-        <module>services/db-connector</module>
+        <module>services/db-ingestion</module>
         <module>services/file-ingestion</module>
         <module>services/soap-connector</module>
         <module>services/stream-processor</module>
