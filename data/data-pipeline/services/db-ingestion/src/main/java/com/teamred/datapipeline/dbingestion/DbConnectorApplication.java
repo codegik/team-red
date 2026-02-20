@@ -1,4 +1,4 @@
-package com.teamred.datapipeline.dbconnector;
+package com.teamred.datapipeline.dbingestion;
 
 import com.teamred.datapipeline.lineage.LineageContext;
 import com.teamred.datapipeline.model.SalesEventDto;
@@ -24,9 +24,9 @@ import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class DbConnectorApplication {
+public class DbIngestionApplication {
 
-    private static final Logger logger = LoggerFactory.getLogger(DbConnectorApplication.class);
+    private static final Logger logger = LoggerFactory.getLogger(DbIngestionApplication.class);
     private static final String TOPIC = "sales.raw.db";
     private static Counter recordsProcessed;
 
