@@ -1,0 +1,19 @@
+{
+  "name": "sales-source-connector",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+    "connection.url": "jdbc:postgresql://postgres:5432/electrored",
+    "connection.user": "electrored",
+    "connection.password": "electrored123",
+
+    "query": "SELECT s.sale_id, s.created_at AS sale_created_at, s.salesman_id, s.store_id, s.total_amount, sm.name AS salesman_name, st.name AS store_name, st.city AS store_city FROM sales s JOIN salesmen sm ON s.salesman_id = sm.id JOIN stores st ON s.store_id = st.id",
+
+    "mode": "timestamp+incrementing",
+    "incrementing.column.name": "sale_id",
+    "timestamp.column.name": "sale_created_at",
+
+    "topic.prefix": "sales-enriched",
+    "poll.interval.ms": "1000",
+    "numeric.mapping": "best_fit"
+  }
+}
