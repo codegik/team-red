@@ -104,7 +104,7 @@ The Kappa Architecture is a streamlined approach to system design focused on **r
 
 ```
 PostgreSQL Source DB
-    └─► Debezium CDC (db-connector service)
+    └─► Debezium CDC (db-ingestion service)
         └─► Captures INSERT/UPDATE/DELETE events
             └─► Publishes to Kafka topic: sales.raw.db
 

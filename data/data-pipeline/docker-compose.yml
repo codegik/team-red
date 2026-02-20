@@ -153,12 +153,12 @@ services:
     networks:
       - kappa-network
 
-  db-connector-service:
+  db-ingestion-service:
     build:
       context: .
-      dockerfile: services/db-connector/Dockerfile
-    hostname: db-connector-service
-    container_name: db-connector-service
+      dockerfile: services/db-ingestion/Dockerfile
+    hostname: db-ingestion-service
+    container_name: db-ingestion-service
     depends_on:
       - kafka
       - postgres-source
