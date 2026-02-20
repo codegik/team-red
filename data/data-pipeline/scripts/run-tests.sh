@@ -38,7 +38,7 @@ check_container() {
 check_container "kafka"
 check_container "postgres-source"
 check_container "timescaledb"
-check_container "db-connector-service"
+check_container "db-ingestion-service"
 check_container "stream-processor-city"
 check_container "stream-processor-salesman"
 check_container "query-api"
@@ -80,7 +80,7 @@ echo "-------------------------------------------"
 echo "Waiting 15 seconds for data to flow through pipeline..."
 sleep 15
 
-CDC_LOGS=$(podman logs --tail 100 db-connector-service 2>&1 | grep -c "Sent sale event" || echo "0")
+CDC_LOGS=$(podman logs --tail 100 db-ingestion-service 2>&1 | grep -c "Sent sale event" || echo "0")
 if [ "$CDC_LOGS" -gt 0 ]; then
     pass "CDC captured events ($CDC_LOGS events logged)"
 else

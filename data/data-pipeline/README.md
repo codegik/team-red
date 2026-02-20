@@ -217,7 +217,7 @@ GET /api/v1/sales/top-salesman?limit={limit}
 
 | Service | Technology | Port | Purpose |
 |---------|-----------|------|---------|
-| **db-connector** | Java 25 + Debezium 2.7.3 | - | CDC from PostgreSQL to Kafka |
+| **db-ingestion** | Java 25 + Debezium 2.7.3 | - | CDC from PostgreSQL to Kafka |
 | **file-ingestion** | Java 25 | - | File monitoring and ingestion |
 | **soap-connector** | Java 25 | - | SOAP service polling |
 | **stream-processor-city** | Java 25 + Kafka Streams 3.8.1 | - | City sales aggregation |
@@ -307,7 +307,7 @@ For detailed instructions, see [QUICKSTART.md](QUICKSTART.md).
 .
 ├── common/                    # Shared models, utilities, and Avro schemas
 ├── services/
-│   ├── db-connector/         # Debezium CDC service
+│   ├── db-ingestion/         # Debezium CDC service
 │   ├── file-ingestion/       # File monitoring service
 │   ├── soap-connector/       # SOAP polling service
 │   ├── stream-processor/     # Kafka Streams aggregators

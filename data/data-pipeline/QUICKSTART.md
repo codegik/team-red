@@ -258,7 +258,7 @@ podman compose logs -f
 
 **Specific service:**
 ```bash
-podman logs -f db-connector-service
+podman logs -f db-ingestion-service
 podman logs -f stream-processor-city
 podman logs -f query-api
 ```
@@ -300,7 +300,7 @@ podman logs stream-processor-salesman
 
 **Verify CDC is working:**
 ```bash
-podman logs db-connector-service | grep "Sent sale event"
+podman logs db-ingestion-service | grep "Sent sale event"
 ```
 
 **Check Kafka topics have data:**
