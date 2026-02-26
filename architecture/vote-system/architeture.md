@@ -367,7 +367,7 @@ This section documents the key technology and architectural choices made for the
 | Audit Storage | S3 Object Lock | Amazon QLDB | 3-5x cost reduction ($100/year vs $365/year) with unlimited throughput for vote records. |
 | Database | PostgreSQL | DynamoDB, MongoDB | ACID guarantees prevent double-voting and complex queries support vote aggregation across tables. |
 | Foreign Keys | Application-enforced | DB-enforced | Microservice autonomy requires cross-service relationships managed via APIs and events. |
-| Real-Time | SSE | WebSockets | Lower memory footprint (4-8KB vs 10-20KB per connection) and automatic reconnection for 300M users. |
+| Real-Time | WebSockets | SSE | Websockets has persistent connection and lower latency. |
 | Observability | Prometheus/Grafana/Jaeger/Loki | Datadog, New Relic | Eliminate per-host licensing costs and maintain full data ownership at scale. |
 | Message Queue | Kafka | SQS, RabbitMQ | Exactly-once semantics prevent vote duplication and event replay enables audit investigations. |
 | Language | Scala + ZIO | Java/Spring, Go | Type safety and functional effect system reduce runtime errors in critical voting logic. |
@@ -1064,22 +1064,13 @@ The Notification Service handles **real-time result broadcasting** to connected 
 
 ## 13.4 Auditability Service
 
-
-![PostgreSQL + S3 Hybrid Architecture](diagrams/postgresql-s3-hybrid-architecture.png)
-
 **Scope:**
 The Auditability Service maintains the **immutable audit trail** for all voting activity, ensuring legal compliance and forensic readiness.
 
 **Responsibilities:**
-- Consumes all domain events from Kafka (votes, fraud, auth)
+- Consumes votes events from Kafka
 - Archives events to S3 for long-term retention
 - Provides query API for audit investigations
-
-**Events Captured:**
-- `vote.submitted`, `vote.counted`, `vote.rejected`
-- `fraud.detected`, `fraud.blocked`
-- `user.registered`, `user.verified`, `user.blocked`
-- `survey.created`, `survey.published`, `survey.finished`
 
 **Retention Policy:**
 - Cold storage (S3 Glacier): 7 years (legal compliance)
