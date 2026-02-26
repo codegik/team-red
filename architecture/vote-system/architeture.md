@@ -420,13 +420,12 @@ Overall Admin Use Cases:
 - Test WebSocket reconnection strategies during network disruptions
 - Inject latency between services to identify performance bottlenecks
 - Execute in isolated production environment during low-traffic periods
-
+- Toxiproxy, to injects latency, timeouts, and packet loss
 
 ## Contract tests
 
 - Test API contracts between decomposed microservices.
 - Verify WebSocket message formats and protocols.
-
 
 ## Performance tests
 
@@ -446,6 +445,7 @@ Overall Admin Use Cases:
 - Run in isolated environments before production deployment.
 - Create test induction APIs on service that will be used during the integration tests to induce certain states, and achieve coverage on multiple possible scenarios.
 - Focused on happy and unhappy paths
+- If necessary could use MockServer to mock some external dependency (other API)
 
 
 ## Unit tests
@@ -1243,30 +1243,3 @@ Mark a survey answer session as completed.
     - Accelerates development with context-aware code suggestions
     - Helps generate boilerplate and supports learning new libraries
     - Use as a developer aid; do not rely on it as the sole validator for security-sensitive code
-
-
-## Tests
-
-### Performance Testing
-- **K6**
-    - Easy scenario scripting and built-in metrics
-    - Integrates with CI/CD and Grafana for results visualization
-
-### Unit / Integration Testing
-- **ZIO Test**
-    - Type-safe assertions with compile-time checks
-    - Scoped resource management and concurrency-friendly test execution
-    - Native integration with ZIO effects (no blocking awaits)
-
-### API Mocking & Contract Simulation
-- **MockServer**
-    - Simulates external APIs for faster, deterministic tests
-    - Useful for contract validation, debugging, and WAF egress security testing
-
-### Network Failure Simulation
-- **Toxiproxy**
-    - Injects latency, timeouts, and packet loss to validate resilience
-    - Tests retry logic, circuit breakers, and idempotency under failure conditions
-
-
-
