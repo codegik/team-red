@@ -182,198 +182,6 @@ Microservices
 
 ![deployment](diagrams/deployment.app.png)
 
-## 5.4 Security & Anti-Bot Strategy
-
-### Layer 1: Network & Edge Security
-
-- **AWS WAF**: Block common attack patterns (SQL injection, XSS, CSRF)
-- **DDoS Protection**: AWS Shield Advanced for volumetric attack mitigation
-- **Geographic Filtering**: Route53 + CloudFront geo-restrictions to block suspicious regions
-- **Rate Limiting**: Token bucket algorithm at edge to prevent request flooding
-
-### Layer 2: Identity & Authentication
-
-- **OAuth-based Social Login (Google, Facebook, Apple)**: Multi-factor authentication (SMS, authenticator apps, push notifications)
-- **Liveness Detection**: SumSub facial biometrics to prevent fake accounts and deepfakes
-- **Document Verification**: Government ID validation with fraud risk scoring
-- **Session Binding**: Tokens tied to device fingerprint and IP address
-
-### Layer 3: Device Intelligence
-
-- **FingerprintJS**: Device fingerprinting to detect emulators, VMs, and bot farms
-- **Jailbreak/Root Detection**: Block compromised devices
-- **Behavioral Biometrics**: Analyze touch patterns, typing speed, mouse movements
-- **Challenge-Response**: Cloudflare Turnstile for invisible human verification
-
-### Layer 4: Application Security
-
-- **OAuth-based Social Login Tokens**: Short-lived provider identity tokens validated by the Java Auth Service
-- **API Gateway**: AWS API Gateway with request validation and transformation
-- **Input Sanitization**: Strict schema validation on all API requests
-- **HTTPS Everywhere**: TLS 1.3 with certificate pinning on mobile clients
-
-### Layer 5: Data Protection
-
-- **Encryption at Rest**: AES-256 for database, S3, and backups
-- **Encryption in Transit**: TLS 1.3 for all service-to-service communication
-- **Field-Level Encryption**: Sensitive PII encrypted at application layer
-- **Key Rotation**: Automated rotation via AWS KMS with audit trails
-
-### Layer 6: Audit & Monitoring
-
-- **Immutable Logs**: OpenSearch with WORM (Write-Once-Read-Many) indices
-- **Real-Time Anomaly Detection**: Machine learning models flagging suspicious voting patterns
-- **SIEM Integration**: AWS Security Hub aggregating security events
-- **Forensic Readiness**: Complete audit trail for post-incident investigation
-
-### Liveness Detection & Identity Verification with SumSub
-
-SumSub is used for:
-
-- Facial biometrics
-- Liveness detection
-- Government document verification
-- Global fraud risk scoring
-
-Chosen for:
-
-- High antifraud robustness
-- Strong global compliance (KYC/AML)
-- Support for multiple countries
-- High-quality liveness detection against deepfake, photos, and replays
-
-SumSub React Native SDK integration:
-
-Documentation: <https://docs.sumsub.com/docs/react-native-module>
-
-### Secure Authentication with OAuth-based Social Login
-
-OAuth-based Social Login is used for:
-
-- Secure login
-- Social SSO
-- Passwordless login
-- Multi-Factor Authentication (MFA)
-- Token lifecycle management
-
-### Bot Detection with OAuth-based Login + Turnstile
-
-To prevent credential stuffing, brute-force, and automated accounts:
-
-
-- Cloudflare Turnstile is used as:
-    - Invisible human challenge
-    - CAPTCHA replacement
-    - Bot traffic filter for mobile and web
-
-The Turnstile token is attached to authentication requests and validated by the backend before granting access.
-
-### Secure API Requests with Tokens
-
-All API requests use:
-
-- OAuth2 access tokens (Bearer)
-- Short TTL (e.g., 15 minutes)
-- Secure refresh flow
-- Token binding to:
-    - Device fingerprint
-    - Session
-    - Risk score
-
-Example:
-
-``` http
-POST /vote
-Authorization: Bearer <access_token>
-```
-
-All backend services:
-
-- Validate the token signature
-- Validate expiration and issuer
-- Check device consistency
-- Enforce authorization scope
-
-### Device Fingerprinting with FingerprintJS
-
-FingerprintJS is used to:
-
-- Collect passive device signals:
-    - OS
-    - Browser/Runtime
-    - Hardware entropy
-    - Emulator detection
-- Generate a stable device ID
-- Detect:
-    - Multi-account abuse
-    - Bot emulators
-    - Device cloning
-    - Session hijacking
-
-How it is used:
-
-1. FingerprintJS runs in the webview login page.
-2. A device ID is generated.
-3. The device ID is attached to:
-    - Login requests
-4. The backend correlates:
-    - User Account
-    - Document Hash
-    - Face Template
-    - Device ID
-
-This allows detection of:
-
-- One user trying to vote from multiple devices
-- One device trying to impersonate multiple users
-
-
-### CloudFront + AWS WAF Responsibilities
-
-**CloudFront**
-
-- Global Anycast Edge
-- TLS Termination
-- Static caching
-- Initial traffic absorption for 300M users
-
-**AWS WAF**
-
-- IP-based rate limits
-- Token-based rate limits
-- Header-based rate limits
-- Protection against:
-    - SQL Injection
-    - XSS
-    - CSRF
-    - API Abuse
-- Integrated Bot Control
-
-
-### Global Accelerator & Backbone Routing
-
-All traffic between edge and API uses:
-
-- AWS Global Accelerator
-- Optimized global routing
-- Low-latency backbone
-- Automatic regional failover
-
-
-### API Gateway Security Model
-
-The API Gateway enforces:
-
-- Rate limits per:
-    - API Key
-    - User Token
-    - Device ID
-- Burst protection
-- Token verification
-- Request signing enforcement
-- Request schema validation
-
-
 # 6. 🧭 Trade-offs
 
 This document captures the key architectural decisions and their tradeoffs for the Vote System.
@@ -1026,6 +834,153 @@ For effective debugging, all telemetry must be correlated:
 - Fraud spike response
 - DDoS attack response
 - Regional failover procedure
+
+---
+
+# 12. Security & Anti-Bot Strategy
+
+### Layer 1: Network & Edge Security
+
+- **AWS WAF**: Block common attack patterns (SQL injection, XSS, CSRF)
+- **DDoS Protection**: AWS Shield Advanced for volumetric attack mitigation
+- **Geographic Filtering**: Route53 + CloudFront geo-restrictions to block suspicious regions
+- **Rate Limiting**: Token bucket algorithm at edge to prevent request flooding
+
+### Layer 2: Identity & Authentication
+
+- **OAuth-based Social Login (Google, Facebook, Apple)**: Multi-factor authentication (SMS, authenticator apps, push notifications)
+- **Liveness Detection**: SumSub facial biometrics to prevent fake accounts and deepfakes
+- **Document Verification**: Government ID validation with fraud risk scoring
+- **Session Binding**: Tokens tied to device fingerprint and IP address
+
+### Layer 3: Device Intelligence
+
+- **FingerprintJS**: Device fingerprinting to detect emulators, VMs, and bot farms
+- **Jailbreak/Root Detection**: Block compromised devices
+- **Behavioral Biometrics**: Analyze touch patterns, typing speed, mouse movements
+- **Challenge-Response**: Cloudflare Turnstile for invisible human verification
+
+### Layer 4: Application Security
+
+- **OAuth-based Social Login Tokens**: Short-lived provider identity tokens validated by the Java Auth Service
+- **API Gateway**: AWS API Gateway with request validation and transformation
+- **Input Sanitization**: Strict schema validation on all API requests
+- **HTTPS Everywhere**: TLS 1.3 with certificate pinning on mobile clients
+
+### Layer 5: Data Protection
+
+- **Encryption at Rest**: AES-256 for database, S3, and backups
+- **Encryption in Transit**: TLS 1.3 for all service-to-service communication
+- **Field-Level Encryption**: Sensitive PII encrypted at application layer
+- **Key Rotation**: Automated rotation via AWS KMS with audit trails
+
+### Layer 6: Audit & Monitoring
+
+- **Immutable Logs**: OpenSearch with WORM (Write-Once-Read-Many) indices
+- **Real-Time Anomaly Detection**: Machine learning models flagging suspicious voting patterns
+- **SIEM Integration**: AWS Security Hub aggregating security events
+- **Forensic Readiness**: Complete audit trail for post-incident investigation
+
+### Liveness Detection & Identity Verification with SumSub
+
+SumSub is used for:
+
+- Facial biometrics
+- Liveness detection
+- Government document verification
+- Global fraud risk scoring
+
+Chosen for:
+
+- High antifraud robustness
+- Strong global compliance (KYC/AML)
+- Support for multiple countries
+- High-quality liveness detection against deepfake, photos, and replays
+
+SumSub React Native SDK integration:
+
+Documentation: <https://docs.sumsub.com/docs/react-native-module>
+
+### Secure Authentication with OAuth-based Social Login
+
+OAuth-based Social Login is used for:
+
+- Secure login
+- Social SSO
+- Passwordless login
+- Multi-Factor Authentication (MFA)
+- Token lifecycle management
+
+### Bot Detection with OAuth-based Login + Turnstile
+
+To prevent credential stuffing, brute-force, and automated accounts:
+
+
+- Cloudflare Turnstile is used as:
+    - Invisible human challenge
+    - CAPTCHA replacement
+    - Bot traffic filter for mobile and web
+
+The Turnstile token is attached to authentication requests and validated by the backend before granting access.
+
+### Secure API Requests with Tokens
+
+All API requests use:
+
+- OAuth2 access tokens (Bearer)
+- Short TTL (e.g., 15 minutes)
+- Secure refresh flow
+- Token binding to:
+    - Device fingerprint
+    - Session
+    - Risk score
+
+Example:
+
+``` http
+POST /vote
+Authorization: Bearer <access_token>
+```
+
+All backend services:
+
+- Validate the token signature
+- Validate expiration and issuer
+- Check device consistency
+- Enforce authorization scope
+
+### Device Fingerprinting with FingerprintJS
+
+FingerprintJS is used to:
+
+- Collect passive device signals:
+    - OS
+    - Browser/Runtime
+    - Hardware entropy
+    - Emulator detection
+- Generate a stable device ID
+- Detect:
+    - Multi-account abuse
+    - Bot emulators
+    - Device cloning
+    - Session hijacking
+
+How it is used:
+
+1. FingerprintJS runs in the webview login page.
+2. A device ID is generated.
+3. The device ID is attached to:
+    - Login requests
+4. The backend correlates:
+    - User Account
+    - Document Hash
+    - Face Template
+    - Device ID
+
+This allows detection of:
+
+- One user trying to vote from multiple devices
+- One device trying to impersonate multiple users
 
 ---
 
