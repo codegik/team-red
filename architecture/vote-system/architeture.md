@@ -152,7 +152,7 @@ The architecture is guided by seven foundational design principles that address 
 
 ![overall](diagrams/overall.architecture.png)
 
-## 5.5 Edge to API
+## 5.2 Edge to API
 
 ``` text
 Mobile App (React Native)
@@ -174,11 +174,11 @@ API Gateway (Rate Limited)
 Microservices
 ```
 
-## 5.2 🗂️ Solution architecture
+## 5.3 🗂️ Solution architecture
 
 ![solution](diagrams/micro.architecture.png)
 
-## 5.3 🗂️ Deployment
+## 5.4 🗂️ Deployment
 
 ![deployment](diagrams/deployment.app.png)
 
