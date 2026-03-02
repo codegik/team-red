@@ -372,7 +372,9 @@ We don't have migration for this architecture since its a new system.
 
 # 8. 🗂️ Use Cases
 
-Overall User Use Cases: 
+Overall User Use Cases:
+
+
 ![img_6.png](imgs/img_6.png)
 
 - User voting
@@ -380,6 +382,8 @@ Overall User Use Cases:
 ![img_12.png](imgs/img_12.png)
 
 Overall Admin Use Cases:
+
+
 ![vote-system-overall_uc+admin.drawio.png](imgs/vote-system-overall_uc_admin.drawio.png)
 
 # 9. 🧪 Testing strategy
