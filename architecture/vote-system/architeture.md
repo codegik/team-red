@@ -269,18 +269,6 @@ This document captures the key architectural decisions and their tradeoffs for t
 | **Operational Overhead**       | Low – managed service, minimal Kubernetes knowledge required           | Higher – need Kubernetes expertise, more components to maintain        | ECS is “easier to run”; EKS offers powerful orchestration but requires DevOps maturity                                 |
 
 
-## Microservices vs Monolith
-
-| Aspect              | Monolith                          | Microservices                             | Tradeoff                                      |
-|---------------------|-----------------------------------|-------------------------------------------|-----------------------------------------------|
-| **Complexity**      | Lower; single codebase            | Higher; distributed system challenges     | Accept complexity for independent scaling     |
-| **Scaling**         | Vertical; scale entire app        | Horizontal; scale individual services     | Required for 240k RPS peak traffic            |
-| **Deployment**      | Single deployment unit            | Independent deployments per service       | Faster iteration; more operational overhead   |
-| **Team Structure**  | Single team, shared codebase      | Multiple teams, service ownership         | Better for large teams; coordination overhead |
-| **Fault Isolation** | Single failure affects entire app | Failures contained to individual services | Critical for high availability requirements   |
-| **Data Management** | Shared database                   | Database per service                      | Accept eventual consistency between services  |
-
-
 ## Auditability and tamper-proof logging: S3 Object Lock vs Amazon QLDB
 
 | Aspect | S3 Object Lock | Amazon QLDB |
