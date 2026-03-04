@@ -4,6 +4,8 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+source ./scripts/container-runtime.sh
+
 PASSED=0
 FAILED=0
 
@@ -26,7 +28,7 @@ echo "-------------------------------------------"
 
 check_container() {
     local container=$1
-    if podman ps --filter "name=$container" --format "{{.Names}}" | grep -q "$container"; then
+    if $RUNTIME ps --filter "name=$container" --format "{{.Names}}" | grep -q "$container"; then
         pass "$container is running"
         return 0
     else
@@ -49,7 +51,7 @@ echo "-------------------------------------------"
 
 check_topic() {
     local topic=$1
-    if podman exec kafka kafka-topics --bootstrap-server localhost:9092 --list 2>/dev/null | grep -q "^${topic}$"; then
+    if $RUNTIME exec kafka kafka-topics --bootstrap-server localhost:9092 --list 2>/dev/null | grep -q "^${topic}$"; then
         pass "Topic $topic exists"
         return 0
     else
@@ -80,7 +82,7 @@ echo "-------------------------------------------"
 echo "Waiting 15 seconds for data to flow through pipeline..."
 sleep 15
 
-CDC_LOGS=$(podman logs --tail 100 db-ingestion-service 2>&1 | grep -c "Sent sale event" || echo "0")
+CDC_LOGS=$($RUNTIME logs --tail 100 db-ingestion-service 2>&1 | grep -c "Sent sale event" || echo "0")
 if [ "$CDC_LOGS" -gt 0 ]; then
     pass "CDC captured events ($CDC_LOGS events logged)"
 else
@@ -91,14 +93,14 @@ echo ""
 echo "Test 5: Verify data in TimescaleDB"
 echo "-------------------------------------------"
 
-CITY_COUNT=$(podman exec timescaledb psql -U analyticsuser -d analyticsdb -t -c "SELECT COUNT(*) FROM top_sales_by_city;" 2>/dev/null | tr -d ' ')
+CITY_COUNT=$($RUNTIME exec timescaledb psql -U analyticsuser -d analyticsdb -t -c "SELECT COUNT(*) FROM top_sales_by_city;" 2>/dev/null | tr -d ' ')
 if [ "$CITY_COUNT" -gt 0 ]; then
     pass "City aggregations exist in TimescaleDB (count: $CITY_COUNT)"
 else
     fail "No city aggregations found in TimescaleDB"
 fi
 
-SALESMAN_COUNT=$(podman exec timescaledb psql -U analyticsuser -d analyticsdb -t -c "SELECT COUNT(*) FROM top_salesman_country;" 2>/dev/null | tr -d ' ')
+SALESMAN_COUNT=$($RUNTIME exec timescaledb psql -U analyticsuser -d analyticsdb -t -c "SELECT COUNT(*) FROM top_salesman_country;" 2>/dev/null | tr -d ' ')
 if [ "$SALESMAN_COUNT" -gt 0 ]; then
     pass "Salesman aggregations exist in TimescaleDB (count: $SALESMAN_COUNT)"
 else
@@ -129,14 +131,14 @@ echo ""
 echo "Test 7: Verify sample data quality"
 echo "-------------------------------------------"
 
-TOP_CITY=$(podman exec timescaledb psql -U analyticsuser -d analyticsdb -t -c "SELECT city FROM top_sales_by_city ORDER BY total_sales DESC LIMIT 1;" 2>/dev/null | tr -d ' ')
+TOP_CITY=$($RUNTIME exec timescaledb psql -U analyticsuser -d analyticsdb -t -c "SELECT city FROM top_sales_by_city ORDER BY total_sales DESC LIMIT 1;" 2>/dev/null | tr -d ' ')
 if [ -n "$TOP_CITY" ]; then
     pass "Top city by sales: $TOP_CITY"
 else
     fail "Could not retrieve top city"
 fi
 
-TOP_SALESMAN=$(podman exec timescaledb psql -U analyticsuser -d analyticsdb -t -c "SELECT salesman_name FROM top_salesman_country ORDER BY total_sales DESC LIMIT 1;" 2>/dev/null | tr -d ' ')
+TOP_SALESMAN=$($RUNTIME exec timescaledb psql -U analyticsuser -d analyticsdb -t -c "SELECT salesman_name FROM top_salesman_country ORDER BY total_sales DESC LIMIT 1;" 2>/dev/null | tr -d ' ')
 if [ -n "$TOP_SALESMAN" ]; then
     pass "Top salesman: $TOP_SALESMAN"
 else

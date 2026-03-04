@@ -6,7 +6,24 @@ echo "Starting Kappa Pipeline..."
 
 cd "$(dirname "$0")/.."
 
-podman compose up -d
+source ./scripts/container-runtime.sh
+
+# Build Java artifacts required by Dockerfiles unless SKIP_BUILD=1 is set.
+if [ "${SKIP_BUILD:-0}" != "1" ]; then
+    echo "Building Java artifacts (Maven)..."
+    if command -v mvn >/dev/null 2>&1; then
+        # Use parallel build with tests skipped to speed up local runs
+        mvn -DskipTests -T1C package
+    else
+        echo "Maven (mvn) not found in PATH."
+        echo "Either install Maven or set SKIP_BUILD=1 to skip building artifacts (only recommended if artifacts already exist)."
+        exit 1
+    fi
+else
+    echo "SKIP_BUILD=1 set; skipping Maven build. Make sure required JARs are present under target/ for each module."
+fi
+
+$COMPOSE up -d
 
 echo "Waiting for services to be ready..."
 ./scripts/wait-for-services.sh
@@ -16,19 +33,19 @@ echo "Creating Kafka topics..."
 
 echo "Restarting stream processors to ensure topic metadata is current..."
 sleep 2
-podman restart stream-processor-city stream-processor-salesman
+$RUNTIME restart stream-processor-city stream-processor-salesman
 
 echo "Waiting for stream processors to stabilize..."
 sleep 10
 
 echo "Checking stream processor status..."
-if podman ps --filter "name=stream-processor-city" --format "{{.Names}}" | grep -q stream-processor-city; then
+if $RUNTIME ps --filter "name=stream-processor-city" --format "{{.Names}}" | grep -q stream-processor-city; then
     echo "  stream-processor-city: Running"
 else
     echo "  stream-processor-city: NOT Running"
 fi
 
-if podman ps --filter "name=stream-processor-salesman" --format "{{.Names}}" | grep -q stream-processor-salesman; then
+if $RUNTIME ps --filter "name=stream-processor-salesman" --format "{{.Names}}" | grep -q stream-processor-salesman; then
     echo "  stream-processor-salesman: Running"
 else
     echo "  stream-processor-salesman: NOT Running"

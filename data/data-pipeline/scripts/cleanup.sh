@@ -24,14 +24,16 @@ done
 echo "Stopping Kappa Pipeline..."
 echo ""
 
+source ./scripts/container-runtime.sh
+
 if [ "$REMOVE_VOLUMES" = true ]; then
     echo "Stopping services and removing volumes..."
     echo "WARNING: All data will be deleted!"
-    podman compose down -v
+    $COMPOSE down -v
     echo "Services stopped and volumes removed."
 else
     echo "Stopping services (preserving volumes)..."
-    podman compose down
+    $COMPOSE down
     echo "Services stopped (data preserved)."
 fi
 

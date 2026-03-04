@@ -6,6 +6,8 @@ echo "Stopping Kappa Pipeline..."
 
 cd "$(dirname "$0")/.."
 
-podman compose down
+source ./scripts/container-runtime.sh
+
+$COMPOSE down
 
 echo "Pipeline stopped successfully!"

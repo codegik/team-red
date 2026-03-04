@@ -4,12 +4,14 @@ set -e
 
 echo "Creating Kafka topics..."
 
+source ./scripts/container-runtime.sh
+
 create_topic() {
     local topic=$1
     local partitions=${2:-3}
     local replication=${3:-1}
 
-    podman exec kafka kafka-topics --bootstrap-server localhost:9092 \
+    $RUNTIME exec kafka kafka-topics --bootstrap-server localhost:9092 \
         --create \
         --if-not-exists \
         --topic "$topic" \

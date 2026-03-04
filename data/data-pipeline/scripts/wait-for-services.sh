@@ -4,6 +4,8 @@ set -e
 
 echo "Waiting for services to be ready..."
 
+source ./scripts/container-runtime.sh
+
 check_service() {
     local name=$1
     local url=$2
@@ -29,7 +31,7 @@ check_kafka() {
     local attempt=1
 
     while [ $attempt -le $max_attempts ]; do
-        if podman exec kafka kafka-topics --bootstrap-server localhost:9092 --list > /dev/null 2>&1; then
+        if $RUNTIME exec kafka kafka-topics --bootstrap-server localhost:9092 --list > /dev/null 2>&1; then
             echo "Kafka is ready"
             return 0
         fi
@@ -50,7 +52,7 @@ check_postgres() {
     local attempt=1
 
     while [ $attempt -le $max_attempts ]; do
-        if podman exec $container psql -U $user -d $db -c "SELECT 1" > /dev/null 2>&1; then
+        if $RUNTIME exec $container psql -U $user -d $db -c "SELECT 1" > /dev/null 2>&1; then
             echo "$container is ready"
             return 0
         fi
