@@ -68,10 +68,10 @@ echo ""
 echo "Test 3: Generate test data"
 echo "-------------------------------------------"
 
-echo "Inserting 50 sales records into PostgreSQL..."
+echo "Inserting 50 sales records into PostgresSQL..."
 ./scripts/generate-db-sales.sh 50 > /dev/null 2>&1
 if [ $? -eq 0 ]; then
-    pass "Generated 50 sales records in PostgreSQL"
+    pass "Generated 50 sales records in PostgresSQL"
 else
     fail "Failed to generate sales records"
 fi
