@@ -115,8 +115,8 @@ sale_timestamp TIMESTAMP
 
 Origin: Acquired company's legacy system (2018)<br/>
 Data: Daily sales export<br/>
-Volume: 25-50 records per file<br/>
-Update freq: Every 10 seconds<br/>
+Volume: 1-5 records per file<br/>
+Update freq: Every 5 seconds<br/>
 Storage: MinIO (S3-compatible object storage)<br/>
 Bucket: `sales-csv`
 
@@ -140,11 +140,10 @@ CSV2024011565432,MACBOOKPRO14,MacBook Pro 14",LAPTOP,Apple,Pedro Santos,pedro.sa
 #### SOAP
 
 Origin: Legacy sales system (2012)<br/>
-Data: Sales transactions<br/>
-Volume: ~800-1000 records per batch<br/>
-Update freq: Self-generates every 5 seconds, polled via cursor-based pagination<br/>
-Protocol: SOAP 1.1 / XML<br/>
-Storage: MongoDB
+Data: Sales transactions (mocked/generated on-demand)<br/>
+Volume: 1-5 records per request<br/>
+Update freq: Polled every 5 seconds<br/>
+Protocol: SOAP 1.1 / XML
 
 ```
 URL: http://localhost:8080/sales
@@ -218,7 +217,7 @@ Content-Type: text/xml
 | --- | -------------------------------- | -------------------------------------------- | ----------- |
 | 1   | PostgreSQL                       | Source 1 - Sales transactions from São Paulo | ✅ Yes      |
 | 2   | CSV Files (Local Volume)         | Source 2 - Sales from Minas Gerais           | ✅ Yes      |
-| 3   | SOAP Service (MongoDB)           | Source 3 - Legacy sales from Rio de Janeiro  | ✅ Yes      |
+| 3   | SOAP Service                     | Source 3 - Legacy sales from Rio de Janeiro  | ✅ Yes      |
 | 4   | Message Broker (Kafka)           | Event streaming backbone                     | ✅ Yes      |
 | 5   | Kafka Connect (Debezium)         | CDC connector for PostgreSQL                 | ✅ Yes      |
 | 6   | CSV Connector                    | Reads CSV files and publishes to Kafka       | ✅ Yes      |
@@ -237,7 +236,7 @@ Content-Type: text/xml
 ├─────────────────┬─────────────────────┬─────────────────────────────────────┤
 │   PostgreSQL    │     CSV Files       │         SOAP Service                │
 │   (São Paulo)   │   (Minas Gerais)    │       (Rio de Janeiro)              │
-│                 │                     │         + MongoDB                   │
+│                 │                     │                                     │
 └────────┬────────┴──────────┬──────────┴──────────────┬──────────────────────┘
          │                   │                         │
          ▼                   ▼                         ▼
