@@ -7,7 +7,7 @@ const MINIO_ACCESS_KEY = process.env.MINIO_ACCESS_KEY || 'minioadmin';
 const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY || 'minioadmin123';
 const MINIO_BUCKET = process.env.MINIO_BUCKET || 'sales-csv';
 const MINIO_USE_SSL = process.env.MINIO_USE_SSL === 'true';
-const GENERATION_INTERVAL = parseInt(process.env.GENERATION_INTERVAL) || 10000;
+const GENERATION_INTERVAL = parseInt(process.env.GENERATION_INTERVAL) || 5000;
 const RECORDS_PER_FILE = parseInt(process.env.RECORDS_PER_FILE) || 50;
 
 const minioClient = new Minio.Client({
