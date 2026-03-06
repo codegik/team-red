@@ -36,16 +36,16 @@ function parseCursorFromXml(xml) {
 app.post('/sales', (req, res) => {
   const { pageSize } = parseCursorFromXml(req.body || '');
 
-  // Generate fresh mocked sales on each request
-  const count = randomInt(Math.max(1, Math.floor(pageSize / 2)), pageSize);
+  // Generate a small batch of sales (1-5 records per request)
+  const count = randomInt(1, 5);
   const sales = generateSales(count);
 
   const nextCursor = sales.length > 0
     ? sales[sales.length - 1].saleId
     : '';
 
-  // Randomly decide if there's more data to simulate pagination
-  const hasMore = Math.random() > 0.3;
+  // Most of the time there's no more data (simulate sparse incoming sales)
+  const hasMore = Math.random() > 0.8;
 
   const salesXml = sales.map(s => `        <sale:record>
           <sale:saleId>${s.saleId}</sale:saleId>

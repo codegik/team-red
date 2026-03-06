@@ -120,7 +120,7 @@ async function uploadToMinio(fileName, content) {
 
 async function generateAndUploadFile() {
   const records = [];
-  const recordCount = randomInt(Math.floor(RECORDS_PER_FILE / 2), RECORDS_PER_FILE);
+  const recordCount = randomInt(1, 5);
 
   for (let i = 0; i < recordCount; i++) {
     records.push(generateRecord());

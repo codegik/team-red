@@ -65,7 +65,7 @@ async function main() {
     console.log('Connected successfully!');
 
     console.log('Generating initial sales batch...');
-    const initialSales = await generateMultipleSales(client, 100);
+    const initialSales = await generateMultipleSales(client, 10);
     console.log(`Generated ${initialSales.length} initial sales`);
 
     console.log('Starting continuous data generation (every 5 seconds)...');
