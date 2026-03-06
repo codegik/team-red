@@ -1,0 +1,445 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: electromart-postgres
+    command: ["postgres", "-c", "wal_level=logical"]
+    environment:
+      POSTGRES_USER: electromart
+      POSTGRES_PASSWORD: electromart123
+      POSTGRES_DB: electromart
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./data-sources/postgresql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U electromart -d electromart"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - electromart-network
+
+  mongo:
+    image: mongo:7-jammy
+    container_name: electromart-mongo
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.25"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - electromart-network
+
+  soap-service:
+    build:
+      context: ./data-sources/soap
+      dockerfile: Dockerfile
+    container_name: electromart-soap
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - mongo
+    networks:
+      - electromart-network
+
+  postgres-data-generator:
+    build:
+      context: ./data-sources/postgresql
+      dockerfile: Dockerfile
+    container_name: electromart-postgres-generator
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: electromart
+      DB_PASSWORD: electromart123
+      DB_NAME: electromart
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - electromart-network
+
+  kafka:
+    image: apache/kafka:3.7.1
+    container_name: electromart-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:19092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:19092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      CLUSTER_ID: electromart-kafka-cluster-01
+      KAFKA_HEAP_OPTS: "-Xms128M -Xmx256M"
+    ports:
+      - "19092:19092"
+    volumes:
+      - kafka_data:/tmp/kraft-combined-logs
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - electromart-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: electromart-kafka-ui
+    environment:
+      KAFKA_CLUSTERS_0_NAME: electromart
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: debezium
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083
+      JAVA_OPTS: "-Xms64M -Xmx128M"
+    ports:
+      - "8888:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - electromart-network
+
+  kafka-connect:
+    image: debezium/connect:2.5
+    container_name: electromart-kafka-connect
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: electromart-connect
+      CONFIG_STORAGE_TOPIC: _connect-configs
+      OFFSET_STORAGE_TOPIC: _connect-offsets
+      STATUS_STORAGE_TOPIC: _connect-status
+      CONNECT_SCHEDULED_REBALANCE_MAX_DELAY_MS: "0"
+      HEAP_OPTS: "-Xms512M -Xmx1G"
+    ports:
+      - "8083:8083"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8083/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - electromart-network
+
+  postgres-connector-source:
+    build:
+      context: ./services/postgres-connector-source
+      dockerfile: Dockerfile
+    container_name: electromart-postgres-connector-source
+    environment:
+      KAFKA_CONNECT_URL: http://kafka-connect:8083
+      CONNECTOR_NAME: postgres-connector
+      DB_HOST: postgres
+      DB_USER: electromart
+      DB_PASSWORD: electromart123
+      DB_NAME: electromart
+      JAVA_OPTS: "-Xms16M -Xmx32M"
+    depends_on:
+      kafka-connect:
+        condition: service_healthy
+    networks:
+      - electromart-network
+
+  postgres-enricher:
+    build:
+      context: ./services/postgres-enricher
+      dockerfile: Dockerfile
+    container_name: electromart-postgres-enricher
+    environment:
+      KAFKA_BROKER: kafka:9092
+      LINEAGE_ENABLED: "true"
+      JAVA_OPTS: "-Xms32M -Xmx64M"
+    depends_on:
+      kafka-connect:
+        condition: service_healthy
+    networks:
+      - electromart-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: electromart-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_NOTIFY_WEBHOOK_ENABLE_csv: "on"
+      MINIO_NOTIFY_WEBHOOK_ENDPOINT_csv: "http://csv-connector-source:8085/minio/events"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - electromart-network
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: electromart-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: |
+      /bin/sh -c '
+      sleep 5
+      mc alias set myminio http://minio:9000 minioadmin minioadmin123
+      mc mb --ignore-existing myminio/sales-csv
+      mc mb --ignore-existing myminio/sales-csv-processed
+      mc event add myminio/sales-csv arn:minio:sqs::csv:webhook --event put --suffix .csv
+      echo "MinIO bucket and webhook configured"
+      exit 0
+      '
+    environment:
+      MC_HOST_myminio: http://minioadmin:minioadmin123@minio:9000
+    networks:
+      - electromart-network
+
+  csv-files:
+    build:
+      context: ./data-sources/csv-files
+      dockerfile: Dockerfile
+    container_name: electromart-csv-files
+    environment:
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+      MINIO_BUCKET: sales-csv
+      MINIO_USE_SSL: "false"
+      GENERATION_INTERVAL: 10000
+      RECORDS_PER_FILE: 50
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    networks:
+      - electromart-network
+
+  csv-connector-source:
+    build:
+      context: ./services/csv-connector-source
+      dockerfile: Dockerfile
+    container_name: electromart-csv-connector
+    environment:
+      KAFKA_BROKER: kafka:9092
+      KAFKA_TOPIC: csv
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+      MINIO_BUCKET: sales-csv
+      MINIO_PROCESSED_BUCKET: sales-csv-processed
+      WEBHOOK_PORT: "8085"
+      LINEAGE_ENABLED: "true"
+      JAVA_OPTS: "-Xms64M -Xmx128M"
+    ports:
+      - "8085:8085"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - electromart-network
+
+  soap-connector-source:
+    build:
+      context: ./services/soap-connector-source
+      dockerfile: Dockerfile
+    container_name: electromart-soap-connector
+    environment:
+      KAFKA_BROKER: kafka:9092
+      KAFKA_TOPIC: soap
+      SOAP_URL: http://soap-service:8080/sales
+      PAGE_SIZE: "100"
+      POLL_INTERVAL: "5000"
+      LINEAGE_ENABLED: "true"
+      JAVA_OPTS: "-Xms32M -Xmx64M"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      soap-service:
+        condition: service_healthy
+    networks:
+      - electromart-network
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: electromart-timescaledb
+    environment:
+      POSTGRES_USER: sales
+      POSTGRES_PASSWORD: sales123
+      POSTGRES_DB: salesdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+      - ./services/sales-aggregator/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sales -d salesdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - electromart-network
+
+  sales-aggregator:
+    build:
+      context: ./services/sales-aggregator
+      dockerfile: Dockerfile
+    container_name: electromart-sales-aggregator
+    environment:
+      KAFKA_BROKER: kafka:9092
+      TIMESCALEDB_URL: jdbc:postgresql://timescaledb:5432/salesdb
+      TIMESCALEDB_USER: sales
+      TIMESCALEDB_PASSWORD: sales123
+      LINEAGE_ENABLED: "true"
+      JAVA_OPTS: "-Xms32M -Xmx64M"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    networks:
+      - electromart-network
+
+  lineage-consumer:
+    build:
+      context: ./services/lineage-consumer
+      dockerfile: Dockerfile
+    container_name: electromart-lineage-consumer
+    environment:
+      KAFKA_BROKER: kafka:9092
+      TIMESCALEDB_URL: jdbc:postgresql://timescaledb:5432/salesdb
+      TIMESCALEDB_USER: sales
+      TIMESCALEDB_PASSWORD: sales123
+      JAVA_OPTS: "-Xms32M -Xmx64M"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    networks:
+      - electromart-network
+
+  grafana:
+    image: grafana/grafana:10.3.1
+    container_name: electromart-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/sales-dashboard.json
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./services/grafana/provisioning:/etc/grafana/provisioning
+      - ./services/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
+    networks:
+      - electromart-network
+
+  prometheus:
+    image: prom/prometheus:v2.49.1
+    container_name: electromart-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./services/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - electromart-network
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:latest
+    container_name: electromart-kafka-exporter
+    command:
+      - "--kafka.server=kafka:9092"
+      - "--topic.filter=.*"
+      - "--group.filter=.*"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - electromart-network
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: electromart-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://electromart:electromart123@postgres:5432/electromart?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - electromart-network
+
+  timescaledb-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: electromart-timescaledb-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://sales:sales123@timescaledb:5432/salesdb?sslmode=disable"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    networks:
+      - electromart-network
+
+  mongodb-exporter:
+    image: percona/mongodb_exporter:0.40
+    container_name: electromart-mongodb-exporter
+    command:
+      - "--mongodb.uri=mongodb://mongo:27017"
+      - "--collect-all"
+      - "--compatible-mode"
+    depends_on:
+      - mongo
+    networks:
+      - electromart-network
+
+volumes:
+  postgres_data:
+  minio_data:
+  mongo_data:
+  timescaledb_data:
+  grafana_data:
+  kafka_data:
+  prometheus_data:
+
+networks:
+  electromart-network:
+    driver: bridge

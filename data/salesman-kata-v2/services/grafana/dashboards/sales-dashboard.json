@@ -1,0 +1,130 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "postgres", "uid": "" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisLabel": "", "fillOpacity": 80, "gradientMode": "none", "lineWidth": 1, "scaleDistribution": { "type": "linear" }, "thresholdsStyle": { "mode": "off" } }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "currencyBRL" },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "barRadius": 0.1, "barWidth": 0.6, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" }, "orientation": "horizontal", "showValue": "auto", "stacking": "off", "tooltip": { "mode": "single" }, "xTickLabelRotation": 0 },
+      "title": "Top 10 Salesmen by Revenue",
+      "type": "barchart",
+      "targets": [
+        {
+          "datasource": { "type": "postgres" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT salesman_name, SUM(total_amount) as revenue\nFROM sales\nWHERE sale_timestamp >= $__timeFrom() AND sale_timestamp <= $__timeTo()\n  AND status != 'CANCELLED'\nGROUP BY salesman_name\nORDER BY revenue DESC\nLIMIT 10;",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisLabel": "", "fillOpacity": 80, "gradientMode": "none", "lineWidth": 1, "scaleDistribution": { "type": "linear" }, "thresholdsStyle": { "mode": "off" } }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "currencyBRL" },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "options": { "barRadius": 0.1, "barWidth": 0.6, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" }, "orientation": "horizontal", "showValue": "auto", "stacking": "off", "tooltip": { "mode": "single" }, "xTickLabelRotation": 0 },
+      "title": "Top 10 Cities by Revenue",
+      "type": "barchart",
+      "targets": [
+        {
+          "datasource": { "type": "postgres" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT city, SUM(total_amount) as revenue\nFROM sales\nWHERE sale_timestamp >= $__timeFrom() AND sale_timestamp <= $__timeTo()\n  AND status != 'CANCELLED'\nGROUP BY city\nORDER BY revenue DESC\nLIMIT 10;",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisLabel": "", "fillOpacity": 80, "gradientMode": "none", "lineWidth": 1, "scaleDistribution": { "type": "linear" }, "thresholdsStyle": { "mode": "off" } }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "currencyBRL" },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 10 },
+      "id": 3,
+      "options": { "barRadius": 0.1, "barWidth": 0.6, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" }, "orientation": "horizontal", "showValue": "auto", "stacking": "off", "tooltip": { "mode": "single" }, "xTickLabelRotation": 0 },
+      "title": "Top 10 Products by Revenue",
+      "type": "barchart",
+      "targets": [
+        {
+          "datasource": { "type": "postgres" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT product_name, SUM(total_amount) as revenue\nFROM sales\nWHERE sale_timestamp >= $__timeFrom() AND sale_timestamp <= $__timeTo()\n  AND status != 'CANCELLED'\nGROUP BY product_name\nORDER BY revenue DESC\nLIMIT 10;",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 10 },
+      "id": 4,
+      "options": { "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "right" }, "pieType": "donut", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": true }, "tooltip": { "mode": "single" } },
+      "title": "Revenue by Source",
+      "type": "piechart",
+      "targets": [
+        {
+          "datasource": { "type": "postgres" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT source, SUM(total_amount) as revenue\nFROM sales\nWHERE sale_timestamp >= $__timeFrom() AND sale_timestamp <= $__timeTo()\n  AND status != 'CANCELLED'\nGROUP BY source\nORDER BY revenue DESC;",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisBorderShow": false, "drawStyle": "line", "fillOpacity": 20, "gradientMode": "none", "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "currencyBRL" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+      "id": 5,
+      "options": { "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "right" }, "tooltip": { "mode": "multi" } },
+      "title": "Revenue Over Time by Source",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "postgres" },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  $__timeGroupAlias(sale_timestamp, $__interval),\n  source,\n  SUM(total_amount) as revenue\nFROM sales\nWHERE $__timeFilter(sale_timestamp)\n  AND status != 'CANCELLED'\nGROUP BY 1, source\nORDER BY 1;",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["electromart", "sales"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "ElectroMart - Sales Dashboard",
+  "uid": "electromart-sales",
+  "version": 1
+}
