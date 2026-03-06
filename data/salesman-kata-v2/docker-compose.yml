@@ -22,24 +22,11 @@ services:
     networks:
       - electromart-network
 
-  mongo:
-    image: mongo:7-jammy
-    container_name: electromart-mongo
-    command: ["mongod", "--wiredTigerCacheSizeGB", "0.25"]
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-    networks:
-      - electromart-network
-
   soap-service:
     build:
       context: ./data-sources/soap
       dockerfile: Dockerfile
     container_name: electromart-soap
-    environment:
-      MONGO_URI: mongodb://mongo:27017
     ports:
       - "8080:8080"
     healthcheck:
@@ -47,8 +34,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    depends_on:
-      - mongo
     networks:
       - electromart-network
 
@@ -419,22 +404,9 @@ services:
     networks:
       - electromart-network
 
-  mongodb-exporter:
-    image: percona/mongodb_exporter:0.40
-    container_name: electromart-mongodb-exporter
-    command:
-      - "--mongodb.uri=mongodb://mongo:27017"
-      - "--collect-all"
-      - "--compatible-mode"
-    depends_on:
-      - mongo
-    networks:
-      - electromart-network
-
 volumes:
   postgres_data:
   minio_data:
-  mongo_data:
   timescaledb_data:
   grafana_data:
   kafka_data:

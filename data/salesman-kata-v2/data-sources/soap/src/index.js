@@ -1,75 +1,51 @@
 const express = require('express');
-const { MongoClient } = require('mongodb');
 const { generateSale } = require('./data');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017';
-const DB_NAME = 'electromart_sales';
-const COLLECTION = 'sales';
 const DEFAULT_PAGE_SIZE = 100;
-const GENERATION_INTERVAL = parseInt(process.env.GENERATION_INTERVAL) || 5000;
 
 app.use(express.json());
 app.use(express.text({ type: 'text/xml' }));
-
-let db;
-
-async function connectMongo() {
-  const client = new MongoClient(MONGO_URI);
-  await client.connect();
-  db = client.db(DB_NAME);
-  await db.collection(COLLECTION).createIndex({ saleId: 1 }, { unique: true });
-  console.log('Connected to MongoDB');
-}
 
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-async function generateAndStoreSales(count) {
+function generateSales(count) {
   const sales = [];
   for (let i = 0; i < count; i++) {
-    const sale = generateSale();
-    await db.collection(COLLECTION).insertOne(sale);
-    sales.push(sale);
+    sales.push(generateSale());
   }
   return sales;
 }
 
 app.get('/health', (req, res) => {
-  if (!db) return res.status(503).json({ status: 'unavailable' });
   res.json({ status: 'ok' });
 });
 
 function parseCursorFromXml(xml) {
-  let cursor = null;
   let pageSize = DEFAULT_PAGE_SIZE;
-
-  const cursorMatch = xml.match(/<cursor>(.*?)<\/cursor>/);
-  if (cursorMatch) cursor = cursorMatch[1];
 
   const pageSizeMatch = xml.match(/<pageSize>(\d+)<\/pageSize>/);
   if (pageSizeMatch) pageSize = Math.min(parseInt(pageSizeMatch[1]), 1000);
 
-  return { cursor, pageSize };
+  return { pageSize };
 }
 
-app.post('/sales', async (req, res) => {
-  const { cursor, pageSize } = parseCursorFromXml(req.body || '');
+app.post('/sales', (req, res) => {
+  const { pageSize } = parseCursorFromXml(req.body || '');
 
-  const query = cursor ? { saleId: { $gt: cursor } } : {};
-  const sales = await db.collection(COLLECTION)
-    .find(query)
-    .sort({ saleId: 1 })
-    .limit(pageSize)
-    .toArray();
+  // Generate fresh mocked sales on each request
+  const count = randomInt(Math.max(1, Math.floor(pageSize / 2)), pageSize);
+  const sales = generateSales(count);
 
   const nextCursor = sales.length > 0
     ? sales[sales.length - 1].saleId
-    : cursor || '';
+    : '';
 
-  const hasMore = sales.length === pageSize;
+  // Randomly decide if there's more data to simulate pagination
+  const hasMore = Math.random() > 0.3;
 
   const salesXml = sales.map(s => `        <sale:record>
           <sale:saleId>${s.saleId}</sale:saleId>
@@ -108,41 +84,10 @@ ${salesXml}
   res.set('Content-Type', 'text/xml');
   res.send(xml);
 
-  console.log(`SOAP poll: returned ${sales.length} sales (cursor: ${cursor || 'none'}, hasMore: ${hasMore})`);
+  console.log(`SOAP poll: returned ${sales.length} generated sales (hasMore: ${hasMore})`);
 });
 
-async function start() {
-  await connectMongo();
-
-  console.log('Generating initial sales batch...');
-  const initialSales = await generateAndStoreSales(100);
-  console.log(`Generated ${initialSales.length} initial sales`);
-
-  let totalGenerated = initialSales.length;
-
-  console.log(`Starting continuous sales generation (every ${GENERATION_INTERVAL / 1000}s)...`);
-  setInterval(async () => {
-    try {
-      const count = randomInt(1, 5);
-      const newSales = await generateAndStoreSales(count);
-      totalGenerated += count;
-
-      const timestamp = new Date().toISOString();
-      console.log(`[${timestamp}] Generated ${count} new sales | Total: ${totalGenerated}`);
-      newSales.forEach(s => {
-        console.log(`  -> Sale ${s.saleId}: ${s.productName} x${s.quantity} = R$${s.totalAmount} (${s.status})`);
-      });
-    } catch (err) {
-      console.error('Error generating sales:', err.message);
-    }
-  }, GENERATION_INTERVAL);
-
-  app.listen(PORT, () => {
-    console.log(`SOAP Sales Service running on port ${PORT}`);
-  });
-}
-
-start().catch(err => {
-  console.error('Failed to start:', err);
-  process.exit(1);
+app.listen(PORT, () => {
+  console.log(`SOAP Sales Service running on port ${PORT}`);
+  console.log('Generating mocked sales data on-demand for each request');
 });
