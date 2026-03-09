@@ -230,6 +230,8 @@ Content-Type: text/xml
 
 ### Architecture Overview
 
+![solution](/data/salesman-kata-v2/diagrams/solutions.png)
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              DATA SOURCES                                   │
