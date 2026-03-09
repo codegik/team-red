@@ -37,7 +37,7 @@ scrape_configs:
   - job_name: 'db-ingestion'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['db-connector-service:8080']
+      - targets: ['db-ingestion-service:8080']
 
   - job_name: 'file-ingestion'
     metrics_path: '/metrics'
