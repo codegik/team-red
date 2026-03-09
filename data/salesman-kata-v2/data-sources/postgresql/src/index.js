@@ -60,16 +60,11 @@ async function main() {
   const client = new Client(config);
 
   try {
-    console.log('Connecting to PostgreSQL...');
     await client.connect();
-    console.log('Connected successfully!');
+    console.log('PostgreSQL connected');
 
-    console.log('Generating initial sales batch...');
     const initialSales = await generateMultipleSales(client, 10);
-    console.log(`Generated ${initialSales.length} initial sales`);
-
-    console.log('Starting continuous data generation (every 5 seconds)...');
-    console.log('Press Ctrl+C to stop\n');
+    console.log(`Generated ${initialSales.length} initial sales - starting continuous generation`);
 
     let totalGenerated = initialSales.length;
 
@@ -81,10 +76,6 @@ async function main() {
 
         const timestamp = new Date().toISOString();
         console.log(`[${timestamp}] Generated ${count} new sales | Total: ${totalGenerated}`);
-
-        newSales.forEach(sale => {
-          console.log(`  -> Sale #${sale.sale_id}: R$${sale.total_amount} (${sale.status})`);
-        });
 
       } catch (err) {
         console.error('Error generating sales:', err.message);

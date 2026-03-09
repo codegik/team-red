@@ -117,7 +117,6 @@ public class LineageConsumer {
                 System.out.println("TimescaleDB is ready");
                 return;
             } catch (Exception e) {
-                System.out.println("Waiting for TimescaleDB...");
                 sleep(3000);
             }
         }
@@ -127,11 +126,8 @@ public class LineageConsumer {
         try (AdminClient admin = AdminClient.create(Map.of("bootstrap.servers", broker))) {
             if (!admin.listTopics().names().get().contains(topic)) {
                 admin.createTopics(List.of(new NewTopic(topic, 1, (short) 1))).all().get();
-                System.out.println("Created topic: " + topic);
             }
-        } catch (Exception e) {
-            System.out.println("Topic " + topic + " may already exist");
-        }
+        } catch (Exception ignored) {}
     }
 
     private static String env(String key, String def) {

@@ -80,7 +80,6 @@ public class SalesEnricher {
                 SalesEnricher::withStore)
             .peek((key, value) -> emitPublishedLineage(value));
 
-        enriched.peek((key, value) -> System.out.println("→ postgres | " + key));
         enriched.to(OUTPUT_TOPIC);
 
         KafkaStreams streams = new KafkaStreams(builder.build(), props);
@@ -89,7 +88,7 @@ public class SalesEnricher {
             if (lineageProducer != null) lineageProducer.close();
         }));
 
-        System.out.println("Starting Sales Enricher → topic \"" + OUTPUT_TOPIC + "\"");
+        System.out.println("Starting Sales Enricher - output topic: " + OUTPUT_TOPIC);
         streams.start();
     }
 
@@ -208,12 +207,9 @@ public class SalesEnricher {
             while (true) {
                 Set<String> existing = admin.listTopics().names().get();
                 if (existing.containsAll(required)) {
-                    System.out.println("All Debezium topics found: " + required);
+                    System.out.println("All Debezium topics found");
                     return;
                 }
-                System.out.println("Waiting for Debezium topics... found: " + existing.stream()
-                    .filter(t -> t.startsWith("electromart."))
-                    .toList());
                 Thread.sleep(5000);
             }
         }
@@ -223,10 +219,7 @@ public class SalesEnricher {
         try (AdminClient admin = AdminClient.create(Map.of("bootstrap.servers", broker))) {
             if (!admin.listTopics().names().get().contains(topic)) {
                 admin.createTopics(List.of(new NewTopic(topic, 1, (short) 1))).all().get();
-                System.out.println("Created topic: " + topic);
             }
-        } catch (Exception e) {
-            System.out.println("Topic " + topic + " may already exist: " + e.getMessage());
-        }
+        } catch (Exception ignored) {}
     }
 }

@@ -34,8 +34,8 @@ public class SoapConnector {
         long pollInterval = Long.parseLong(System.getenv().getOrDefault("POLL_INTERVAL", "5000"));
         lineageEnabled = Boolean.parseBoolean(System.getenv().getOrDefault("LINEAGE_ENABLED", "true"));
 
-        System.out.println("Starting SOAP Connector...");
-        System.out.printf("Config: broker=%s | topic=%s | soap=%s%n", broker, topic, soapUrl);
+        System.out.println("SOAP Connector starting...");
+        System.out.printf("Config: broker=%s | topic=%s%n", broker, topic);
 
         waitForKafka(broker);
         ensureTopic(broker, topic);
@@ -55,7 +55,6 @@ public class SoapConnector {
         waitForSoapService(soapUrl);
 
         String cursor = null;
-        System.out.printf("Polling every %dms...%n%n", pollInterval);
 
         while (true) {
             try {
@@ -107,7 +106,7 @@ public class SoapConnector {
         }
 
         if (totalPublished > 0) {
-            System.out.printf("[%s] → topic \"%s\" | %d records | cursor: %s%n",
+            System.out.printf("[%s] Published to topic \"%s\" | %d records | cursor: %s%n",
                 java.time.Instant.now(), topic, totalPublished, currentCursor);
         }
 
@@ -236,7 +235,6 @@ public class SoapConnector {
                     System.out.println("Kafka is ready");
                     return;
                 } catch (Exception e) {
-                    System.out.println("Waiting for Kafka...");
                     Thread.sleep(3000);
                 }
             }
@@ -255,7 +253,6 @@ public class SoapConnector {
                     return;
                 }
             } catch (Exception ignored) {}
-            System.out.println("Waiting for SOAP service...");
             try { Thread.sleep(3000); } catch (InterruptedException e) { return; }
         }
     }
@@ -264,10 +261,7 @@ public class SoapConnector {
         try (AdminClient admin = AdminClient.create(Map.of("bootstrap.servers", broker))) {
             if (!admin.listTopics().names().get().contains(topic)) {
                 admin.createTopics(List.of(new NewTopic(topic, 3, (short) 1))).all().get();
-                System.out.println("Created topic \"" + topic + "\"");
             }
-        } catch (Exception e) {
-            System.out.println("Topic " + topic + " ready");
-        }
+        } catch (Exception ignored) {}
     }
 }

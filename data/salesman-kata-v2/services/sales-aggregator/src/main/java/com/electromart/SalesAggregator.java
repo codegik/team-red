@@ -101,9 +101,7 @@ public class SalesAggregator {
             closeDb();
         }));
 
-        System.out.println("Starting Sales Aggregator");
-        System.out.println("  Sources: " + POSTGRES_TOPIC + ", " + CSV_TOPIC + ", " + SOAP_TOPIC);
-        System.out.println("  Output:  " + OUTPUT_TOPIC + " (Kafka) + TimescaleDB");
+        System.out.println("Starting Sales Aggregator: " + POSTGRES_TOPIC + ", " + CSV_TOPIC + ", " + SOAP_TOPIC + " -> " + OUTPUT_TOPIC);
         streams.start();
     }
 
@@ -228,7 +226,6 @@ public class SalesAggregator {
                 System.out.println("TimescaleDB is ready");
                 return;
             } catch (Exception e) {
-                System.out.println("Waiting for TimescaleDB...");
                 sleep(3000);
             }
         }
@@ -240,11 +237,9 @@ public class SalesAggregator {
             while (true) {
                 Set<String> existing = admin.listTopics().names().get();
                 if (existing.containsAll(required)) {
-                    System.out.println("All source topics found: " + required);
+                    System.out.println("All source topics found");
                     return;
                 }
-                System.out.println("Waiting for topics... found so far: " +
-                    existing.stream().filter(required::contains).toList());
                 sleep(5000);
             }
         }
@@ -262,10 +257,7 @@ public class SalesAggregator {
         try (AdminClient admin = AdminClient.create(Map.of("bootstrap.servers", broker))) {
             if (!admin.listTopics().names().get().contains(topic)) {
                 admin.createTopics(List.of(new NewTopic(topic, 1, (short) 1))).all().get();
-                System.out.println("Created topic: " + topic);
             }
-        } catch (Exception e) {
-            System.out.println("Topic " + topic + " may already exist: " + e.getMessage());
-        }
+        } catch (Exception ignored) {}
     }
 }

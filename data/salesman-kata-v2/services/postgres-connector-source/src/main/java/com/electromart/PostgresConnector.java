@@ -33,7 +33,6 @@ public class PostgresConnector {
     }
 
     private static void waitForKafkaConnect(String connectUrl) throws Exception {
-        System.out.println("Waiting for Kafka Connect...");
         while (true) {
             try {
                 HttpRequest request = HttpRequest.newBuilder()
@@ -89,7 +88,6 @@ public class PostgresConnector {
         HttpResponse<String> getResponse = client.send(getRequest, HttpResponse.BodyHandlers.ofString());
 
         if (getResponse.statusCode() == 200) {
-            System.out.println("Updating existing connector...");
             HttpRequest putRequest = HttpRequest.newBuilder()
                 .uri(URI.create(connectUrl + "/connectors/" + connectorName + "/config"))
                 .header("Content-Type", "application/json")
@@ -97,7 +95,6 @@ public class PostgresConnector {
                 .build();
             client.send(putRequest, HttpResponse.BodyHandlers.ofString());
         } else {
-            System.out.println("Registering new connector...");
             HttpRequest postRequest = HttpRequest.newBuilder()
                 .uri(URI.create(connectUrl + "/connectors"))
                 .header("Content-Type", "application/json")

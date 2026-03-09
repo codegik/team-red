@@ -94,17 +94,15 @@ function getFileName() {
 }
 
 async function waitForMinio() {
-  console.log('Waiting for MinIO...');
   while (true) {
     try {
       const exists = await minioClient.bucketExists(MINIO_BUCKET);
       if (exists) {
-        console.log(`MinIO is ready. Bucket '${MINIO_BUCKET}' exists.`);
+        console.log(`MinIO ready - bucket '${MINIO_BUCKET}'`);
         return;
       }
-      console.log(`Bucket '${MINIO_BUCKET}' not found yet, waiting...`);
     } catch (err) {
-      console.log(`MinIO not ready: ${err.message}. Retrying...`);
+      // Retry silently
     }
     await new Promise(resolve => setTimeout(resolve, 3000));
   }
@@ -135,15 +133,12 @@ async function generateAndUploadFile() {
 }
 
 async function main() {
-  console.log('CSV File Generator - MinIO Edition');
-  console.log(`Config: endpoint=${MINIO_ENDPOINT}:${MINIO_PORT} | bucket=${MINIO_BUCKET}`);
+  console.log('CSV Generator starting...');
 
   await waitForMinio();
 
-  console.log('Generating initial CSV file...');
   const initial = await generateAndUploadFile();
-  console.log(`Uploaded: ${initial.fileName} (${initial.recordCount} records, ${initial.size} bytes)`);
-  console.log('Starting continuous CSV generation...\\n');
+  console.log(`Initial upload: ${initial.fileName} (${initial.recordCount} records)`);
 
   let totalFiles = 1;
   let totalRecords = initial.recordCount;
@@ -154,9 +149,7 @@ async function main() {
       totalFiles++;
       totalRecords += result.recordCount;
 
-      const timestamp = new Date().toISOString();
-      console.log(`[${timestamp}] Uploaded: s3://${MINIO_BUCKET}/${result.fileName}`);
-      console.log(`  ${result.recordCount} records | ${result.size} bytes | Total: ${totalFiles} files, ${totalRecords} records`);
+      console.log(`Uploaded: ${result.fileName} | ${result.recordCount} records | Total: ${totalFiles} files`);
 
     } catch (err) {
       console.error('Error uploading CSV:', err.message);

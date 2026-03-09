@@ -83,11 +83,8 @@ ${salesXml}
 
   res.set('Content-Type', 'text/xml');
   res.send(xml);
-
-  console.log(`SOAP poll: returned ${sales.length} generated sales (hasMore: ${hasMore})`);
 });
 
 app.listen(PORT, () => {
   console.log(`SOAP Sales Service running on port ${PORT}`);
-  console.log('Generating mocked sales data on-demand for each request');
 });
