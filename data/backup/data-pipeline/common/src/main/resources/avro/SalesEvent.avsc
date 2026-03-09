@@ -1,0 +1,86 @@
+{
+  "type": "record",
+  "name": "SalesEvent",
+  "namespace": "com.teamred.datapipeline.model",
+  "fields": [
+    {
+      "name": "saleId",
+      "type": "string",
+      "doc": "Unique identifier for the sale"
+    },
+    {
+      "name": "timestamp",
+      "type": "long",
+      "doc": "Sale timestamp in epoch milliseconds"
+    },
+    {
+      "name": "salesmanId",
+      "type": "string",
+      "doc": "Unique identifier for the salesman"
+    },
+    {
+      "name": "salesmanName",
+      "type": "string",
+      "doc": "Name of the salesman"
+    },
+    {
+      "name": "customerId",
+      "type": "string",
+      "doc": "Unique identifier for the customer"
+    },
+    {
+      "name": "productId",
+      "type": "string",
+      "doc": "Unique identifier for the product"
+    },
+    {
+      "name": "productName",
+      "type": "string",
+      "doc": "Name of the product"
+    },
+    {
+      "name": "quantity",
+      "type": "int",
+      "doc": "Quantity of products sold"
+    },
+    {
+      "name": "unitPrice",
+      "type": "double",
+      "doc": "Price per unit"
+    },
+    {
+      "name": "totalAmount",
+      "type": "double",
+      "doc": "Total sale amount (quantity * unitPrice)"
+    },
+    {
+      "name": "city",
+      "type": "string",
+      "doc": "City where the sale occurred"
+    },
+    {
+      "name": "country",
+      "type": "string",
+      "doc": "Country where the sale occurred"
+    },
+    {
+      "name": "sourceSystem",
+      "type": {
+        "type": "enum",
+        "name": "SourceSystem",
+        "symbols": ["DB", "FILE", "SOAP"]
+      },
+      "doc": "Source system from which the event originated"
+    },
+    {
+      "name": "ingestionTimestamp",
+      "type": "long",
+      "doc": "Timestamp when the event was ingested into Kafka"
+    },
+    {
+      "name": "lineageId",
+      "type": "string",
+      "doc": "UUID for tracking data lineage"
+    }
+  ]
+}
