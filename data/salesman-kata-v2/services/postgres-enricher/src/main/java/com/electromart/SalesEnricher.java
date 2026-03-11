@@ -18,27 +18,40 @@ import org.apache.kafka.streams.kstream.KStream;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 
 public class SalesEnricher {
 
     private static final ObjectMapper mapper = new ObjectMapper();
-    private static final String LINEAGE_TOPIC = "lineage";
     private static final String COMPONENT_NAME = "postgres-enricher";
 
-    private static final String SALES_TOPIC = "electromart.public.sales";
-    private static final String PRODUCTS_TOPIC = "electromart.public.products";
-    private static final String SALESMEN_TOPIC = "electromart.public.salesmen";
-    private static final String STORES_TOPIC = "electromart.public.stores";
+    private static String SALES_TOPIC;
+    private static String PRODUCTS_TOPIC;
+    private static String SALESMEN_TOPIC;
+    private static String STORES_TOPIC;
     private static String OUTPUT_TOPIC;
+    private static String LINEAGE_TOPIC;
 
     private static KafkaProducer<String, String> lineageProducer;
     private static boolean lineageEnabled;
 
     public static void main(String[] args) throws Exception {
         String broker = System.getenv().getOrDefault("KAFKA_BROKER", "kafka:9092");
-        OUTPUT_TOPIC = System.getenv().getOrDefault("OUTPUT_TOPIC", "raw-sales");
+        String debeziumPrefix = System.getenv().getOrDefault("DEBEZIUM_PREFIX", "electromart.public");
+        SALES_TOPIC = System.getenv().getOrDefault("TOPIC_CDC_SALES", debeziumPrefix + ".sales");
+        PRODUCTS_TOPIC = System.getenv().getOrDefault("TOPIC_CDC_PRODUCTS", debeziumPrefix + ".products");
+        SALESMEN_TOPIC = System.getenv().getOrDefault("TOPIC_CDC_SALESMEN", debeziumPrefix + ".salesmen");
+        STORES_TOPIC = System.getenv().getOrDefault("TOPIC_CDC_STORES", debeziumPrefix + ".stores");
+        OUTPUT_TOPIC = System.getenv().getOrDefault("TOPIC_RAW_SALES", System.getenv().getOrDefault("OUTPUT_TOPIC", "raw-sales"));
+        LINEAGE_TOPIC = System.getenv().getOrDefault("TOPIC_LINEAGE", "lineage");
         lineageEnabled = Boolean.parseBoolean(System.getenv().getOrDefault("LINEAGE_ENABLED", "true"));
+
+        validateTopicConfig(Map.of(
+            "TOPIC_CDC_SALES", SALES_TOPIC, "TOPIC_CDC_PRODUCTS", PRODUCTS_TOPIC,
+            "TOPIC_CDC_SALESMEN", SALESMEN_TOPIC, "TOPIC_CDC_STORES", STORES_TOPIC,
+            "TOPIC_RAW_SALES", OUTPUT_TOPIC, "TOPIC_LINEAGE", LINEAGE_TOPIC
+        ));
 
         Properties props = new Properties();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "postgres-enricher");
@@ -231,6 +244,21 @@ public class SalesEnricher {
         } catch (Exception e) {
             return json;
         }
+    }
+
+    private static void validateTopicConfig(Map<String, String> topics) {
+        List<String> errors = new ArrayList<>();
+        for (var entry : topics.entrySet()) {
+            if (entry.getValue() == null || entry.getValue().isBlank()) {
+                errors.add(entry.getKey() + " is blank");
+            } else if (!entry.getValue().matches("[a-zA-Z0-9._-]+")) {
+                errors.add(entry.getKey() + "='" + entry.getValue() + "' contains invalid characters");
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException("Invalid topic configuration: " + String.join(", ", errors));
+        }
+        System.out.println("Topic config validated: " + topics);
     }
 
     private static void waitForTopics(String broker) throws InterruptedException, ExecutionException {

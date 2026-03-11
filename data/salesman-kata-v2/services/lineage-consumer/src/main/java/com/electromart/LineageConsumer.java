@@ -12,6 +12,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import java.sql.*;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -19,7 +20,7 @@ import java.util.Properties;
 public class LineageConsumer {
 
     private static final ObjectMapper mapper = new ObjectMapper();
-    private static final String LINEAGE_TOPIC = "lineage";
+    private static String lineageTopic;
 
     private static Connection dbConnection;
     private static String dbUrl;
@@ -34,12 +35,14 @@ public class LineageConsumer {
 
     public static void main(String[] args) throws Exception {
         String broker = env("KAFKA_BROKER", "kafka:9092");
+        lineageTopic = env("TOPIC_LINEAGE", "lineage");
+        validateTopicConfig(Map.of("TOPIC_LINEAGE", lineageTopic));
         dbUrl = env("TIMESCALEDB_URL", "jdbc:postgresql://timescaledb:5432/salesdb");
         dbUser = env("TIMESCALEDB_USER", "sales");
         dbPassword = env("TIMESCALEDB_PASSWORD", "sales123");
 
         waitForTimescaleDB();
-        ensureTopic(broker, LINEAGE_TOPIC);
+        ensureTopic(broker, lineageTopic);
 
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, broker);
@@ -50,14 +53,14 @@ public class LineageConsumer {
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
 
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
-        consumer.subscribe(List.of(LINEAGE_TOPIC));
+        consumer.subscribe(List.of(lineageTopic));
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             consumer.close();
             closeDb();
         }));
 
-        System.out.println("Lineage Consumer started - listening to topic: " + LINEAGE_TOPIC);
+        System.out.println("Lineage Consumer started - listening to topic: " + lineageTopic);
 
         while (true) {
             ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
@@ -132,6 +135,21 @@ public class LineageConsumer {
 
     private static String env(String key, String def) {
         return System.getenv().getOrDefault(key, def);
+    }
+
+    private static void validateTopicConfig(Map<String, String> topics) {
+        List<String> errors = new ArrayList<>();
+        for (var entry : topics.entrySet()) {
+            if (entry.getValue() == null || entry.getValue().isBlank()) {
+                errors.add(entry.getKey() + " is blank");
+            } else if (!entry.getValue().matches("[a-zA-Z0-9._-]+")) {
+                errors.add(entry.getKey() + "='" + entry.getValue() + "' contains invalid characters");
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException("Invalid topic configuration: " + String.join(", ", errors));
+        }
+        System.out.println("Topic config validated: " + topics);
     }
 
     private static void sleep(long ms) {

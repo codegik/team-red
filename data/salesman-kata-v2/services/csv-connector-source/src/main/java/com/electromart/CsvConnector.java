@@ -20,6 +20,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
+import java.util.ArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -30,7 +31,6 @@ public class CsvConnector {
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final AtomicLong filesProcessed = new AtomicLong(0);
     private static final AtomicLong recordsProcessed = new AtomicLong(0);
-    private static final String LINEAGE_TOPIC = "lineage";
     private static final String COMPONENT_NAME = "csv-connector";
     private static final String[] HEADERS = {
         "sale_id", "product_code", "product_name", "category", "brand",
@@ -42,13 +42,16 @@ public class CsvConnector {
     private static KafkaProducer<String, String> producer;
     private static MinioClient minioClient;
     private static String kafkaTopic;
+    private static String lineageTopic;
     private static String sourceBucket;
     private static String processedBucket;
     private static boolean lineageEnabled;
 
     public static void main(String[] args) throws Exception {
         String broker = env("KAFKA_BROKER", "kafka:9092");
-        kafkaTopic = env("KAFKA_TOPIC", "raw-sales");
+        kafkaTopic = env("TOPIC_RAW_SALES", env("KAFKA_TOPIC", "raw-sales"));
+        lineageTopic = env("TOPIC_LINEAGE", "lineage");
+        validateTopicConfig(Map.of("TOPIC_RAW_SALES", kafkaTopic, "TOPIC_LINEAGE", lineageTopic));
         String minioEndpoint = env("MINIO_ENDPOINT", "http://minio:9000");
         sourceBucket = env("MINIO_BUCKET", "sales-csv");
         processedBucket = env("MINIO_PROCESSED_BUCKET", "sales-csv-processed");
@@ -65,7 +68,7 @@ public class CsvConnector {
         waitForMinio();
         waitForKafka(broker);
         ensureTopic(broker, kafkaTopic);
-        if (lineageEnabled) ensureTopic(broker, LINEAGE_TOPIC);
+        if (lineageEnabled) ensureTopic(broker, lineageTopic);
 
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, broker);
@@ -239,8 +242,23 @@ public class CsvConnector {
             if (targetTopic != null) event.put("target_topic", targetTopic);
             if (latencyMs > 0) event.put("latency_ms", latencyMs);
             if (metadata != null) event.put("metadata", metadata);
-            producer.send(new ProducerRecord<>(LINEAGE_TOPIC, traceId, mapper.writeValueAsString(event)));
+            producer.send(new ProducerRecord<>(lineageTopic, traceId, mapper.writeValueAsString(event)));
         } catch (Exception ignored) {}
+    }
+
+    private static void validateTopicConfig(Map<String, String> topics) {
+        List<String> errors = new ArrayList<>();
+        for (var entry : topics.entrySet()) {
+            if (entry.getValue() == null || entry.getValue().isBlank()) {
+                errors.add(entry.getKey() + " is blank");
+            } else if (!entry.getValue().matches("[a-zA-Z0-9._-]+")) {
+                errors.add(entry.getKey() + "='" + entry.getValue() + "' contains invalid characters");
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException("Invalid topic configuration: " + String.join(", ", errors));
+        }
+        System.out.println("Topic config validated: " + topics);
     }
 
     private static void startPollingFallback(long intervalSeconds) {

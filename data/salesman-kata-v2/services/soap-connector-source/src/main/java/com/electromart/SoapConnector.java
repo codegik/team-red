@@ -18,17 +18,20 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
+import java.util.ArrayList;
 
 public class SoapConnector {
 
     private static final ObjectMapper mapper = new ObjectMapper();
-    private static final String LINEAGE_TOPIC = "lineage";
     private static final String COMPONENT_NAME = "soap-connector";
+    private static String lineageTopic;
     private static boolean lineageEnabled;
 
     public static void main(String[] args) throws Exception {
         String broker = System.getenv().getOrDefault("KAFKA_BROKER", "kafka:9092");
-        String topic = System.getenv().getOrDefault("KAFKA_TOPIC", "raw-sales");
+        String topic = env("TOPIC_RAW_SALES", env("KAFKA_TOPIC", "raw-sales"));
+        lineageTopic = env("TOPIC_LINEAGE", "lineage");
+        validateTopicConfig(Map.of("TOPIC_RAW_SALES", topic, "TOPIC_LINEAGE", lineageTopic));
         String soapUrl = System.getenv().getOrDefault("SOAP_URL", "http://soap-service:8080/sales");
         int pageSize = Integer.parseInt(System.getenv().getOrDefault("PAGE_SIZE", "100"));
         long pollInterval = Long.parseLong(System.getenv().getOrDefault("POLL_INTERVAL", "5000"));
@@ -40,7 +43,7 @@ public class SoapConnector {
         waitForKafka(broker);
         ensureTopic(broker, topic);
         if (lineageEnabled) {
-            ensureTopic(broker, LINEAGE_TOPIC);
+            ensureTopic(broker, lineageTopic);
             System.out.println("Lineage tracking: ENABLED");
         }
 
@@ -222,8 +225,27 @@ public class SoapConnector {
             if (targetTopic != null) event.put("target_topic", targetTopic);
             if (latencyMs > 0) event.put("latency_ms", latencyMs);
             if (metadata != null) event.put("metadata", metadata);
-            producer.send(new ProducerRecord<>(LINEAGE_TOPIC, traceId, mapper.writeValueAsString(event)));
+            producer.send(new ProducerRecord<>(lineageTopic, traceId, mapper.writeValueAsString(event)));
         } catch (Exception ignored) {}
+    }
+
+    private static void validateTopicConfig(Map<String, String> topics) {
+        List<String> errors = new ArrayList<>();
+        for (var entry : topics.entrySet()) {
+            if (entry.getValue() == null || entry.getValue().isBlank()) {
+                errors.add(entry.getKey() + " is blank");
+            } else if (!entry.getValue().matches("[a-zA-Z0-9._-]+")) {
+                errors.add(entry.getKey() + "='" + entry.getValue() + "' contains invalid characters");
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException("Invalid topic configuration: " + String.join(", ", errors));
+        }
+        System.out.println("Topic config validated: " + topics);
+    }
+
+    private static String env(String key, String def) {
+        return System.getenv().getOrDefault(key, def);
     }
 
     private static void waitForKafka(String broker) throws Exception {

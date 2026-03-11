@@ -219,7 +219,9 @@ services:
     container_name: electromart-postgres-enricher
     environment:
       KAFKA_BROKER: kafka:9092
-      OUTPUT_TOPIC: raw-sales
+      DEBEZIUM_PREFIX: electromart.public
+      TOPIC_RAW_SALES: raw-sales
+      TOPIC_LINEAGE: lineage
       LINEAGE_ENABLED: "true"
       JAVA_OPTS: "-Xms32M -Xmx64M"
     depends_on:
@@ -235,7 +237,8 @@ services:
     container_name: electromart-csv-connector
     environment:
       KAFKA_BROKER: kafka:9092
-      KAFKA_TOPIC: raw-sales
+      TOPIC_RAW_SALES: raw-sales
+      TOPIC_LINEAGE: lineage
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin123
@@ -261,7 +264,8 @@ services:
     container_name: electromart-soap-connector
     environment:
       KAFKA_BROKER: kafka:9092
-      KAFKA_TOPIC: raw-sales
+      TOPIC_RAW_SALES: raw-sales
+      TOPIC_LINEAGE: lineage
       SOAP_URL: http://soap-service:8080/sales
       PAGE_SIZE: "100"
       POLL_INTERVAL: "5000"
@@ -302,7 +306,10 @@ services:
     container_name: electromart-sales-aggregator
     environment:
       KAFKA_BROKER: kafka:9092
-      INPUT_TOPIC: raw-sales
+      TOPIC_RAW_SALES: raw-sales
+      TOPIC_SALES: sales
+      TOPIC_DLQ: sales-dlq
+      TOPIC_LINEAGE: lineage
       TIMESCALEDB_URL: jdbc:postgresql://timescaledb:5432/salesdb
       TIMESCALEDB_USER: sales
       TIMESCALEDB_PASSWORD: sales123
@@ -323,6 +330,7 @@ services:
     container_name: electromart-lineage-consumer
     environment:
       KAFKA_BROKER: kafka:9092
+      TOPIC_LINEAGE: lineage
       TIMESCALEDB_URL: jdbc:postgresql://timescaledb:5432/salesdb
       TIMESCALEDB_USER: sales
       TIMESCALEDB_PASSWORD: sales123
@@ -341,6 +349,8 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/sales-dashboard.json
     ports:
       - "3000:3000"

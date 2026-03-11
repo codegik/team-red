@@ -23,16 +23,17 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.ArrayList;
 
 public class SalesAggregator {
 
     private static final ObjectMapper mapper = new ObjectMapper();
-    private static final String LINEAGE_TOPIC = "lineage";
     private static final String COMPONENT_NAME = "sales-aggregator";
 
     private static String INPUT_TOPIC;
-    private static final String OUTPUT_TOPIC = "sales";
-    private static final String DLQ_TOPIC = "sales-dlq";
+    private static String OUTPUT_TOPIC;
+    private static String DLQ_TOPIC;
+    private static String LINEAGE_TOPIC;
 
     // Canonical SaleEvent required fields — any record missing these goes to the DLQ
     private static final Set<String> REQUIRED_FIELDS = Set.of(
@@ -57,7 +58,14 @@ public class SalesAggregator {
 
     public static void main(String[] args) throws Exception {
         String broker = env("KAFKA_BROKER", "kafka:9092");
-        INPUT_TOPIC = env("INPUT_TOPIC", "raw-sales");
+        INPUT_TOPIC = env("TOPIC_RAW_SALES", env("INPUT_TOPIC", "raw-sales"));
+        OUTPUT_TOPIC = env("TOPIC_SALES", "sales");
+        DLQ_TOPIC = env("TOPIC_DLQ", "sales-dlq");
+        LINEAGE_TOPIC = env("TOPIC_LINEAGE", "lineage");
+        validateTopicConfig(Map.of(
+            "TOPIC_RAW_SALES", INPUT_TOPIC, "TOPIC_SALES", OUTPUT_TOPIC,
+            "TOPIC_DLQ", DLQ_TOPIC, "TOPIC_LINEAGE", LINEAGE_TOPIC
+        ));
         dbUrl = env("TIMESCALEDB_URL", "jdbc:postgresql://timescaledb:5432/salesdb");
         dbUser = env("TIMESCALEDB_USER", "sales");
         dbPassword = env("TIMESCALEDB_PASSWORD", "sales123");
@@ -244,6 +252,21 @@ public class SalesAggregator {
 
     private static String env(String key, String def) {
         return System.getenv().getOrDefault(key, def);
+    }
+
+    private static void validateTopicConfig(Map<String, String> topics) {
+        List<String> errors = new ArrayList<>();
+        for (var entry : topics.entrySet()) {
+            if (entry.getValue() == null || entry.getValue().isBlank()) {
+                errors.add(entry.getKey() + " is blank");
+            } else if (!entry.getValue().matches("[a-zA-Z0-9._-]+")) {
+                errors.add(entry.getKey() + "='" + entry.getValue() + "' contains invalid characters");
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException("Invalid topic configuration: " + String.join(", ", errors));
+        }
+        System.out.println("Topic config validated: " + topics);
     }
 
     private static void sleep(long ms) {
