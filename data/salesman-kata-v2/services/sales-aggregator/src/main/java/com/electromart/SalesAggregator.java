@@ -13,7 +13,9 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.kstream.Branched;
 import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Named;
 
 import java.sql.*;
 import java.time.Instant;
@@ -28,10 +30,14 @@ public class SalesAggregator {
     private static final String LINEAGE_TOPIC = "lineage";
     private static final String COMPONENT_NAME = "sales-aggregator";
 
-    private static final String POSTGRES_TOPIC = "postgres";
-    private static final String CSV_TOPIC = "csv";
-    private static final String SOAP_TOPIC = "soap";
+    private static String INPUT_TOPIC;
     private static final String OUTPUT_TOPIC = "sales";
+    private static final String DLQ_TOPIC = "sales-dlq";
+
+    // Canonical SaleEvent required fields — any record missing these goes to the DLQ
+    private static final Set<String> REQUIRED_FIELDS = Set.of(
+        "sale_id", "source", "sale_timestamp", "total_amount"
+    );
 
     private static volatile Connection dbConnection;
     private static String dbUrl;
@@ -51,6 +57,7 @@ public class SalesAggregator {
 
     public static void main(String[] args) throws Exception {
         String broker = env("KAFKA_BROKER", "kafka:9092");
+        INPUT_TOPIC = env("INPUT_TOPIC", "raw-sales");
         dbUrl = env("TIMESCALEDB_URL", "jdbc:postgresql://timescaledb:5432/salesdb");
         dbUser = env("TIMESCALEDB_USER", "sales");
         dbPassword = env("TIMESCALEDB_PASSWORD", "sales123");
@@ -64,6 +71,7 @@ public class SalesAggregator {
 
         waitForTopics(broker);
         waitForTimescaleDB();
+        ensureTopic(broker, DLQ_TOPIC);
 
         if (lineageEnabled) {
             ensureTopic(broker, LINEAGE_TOPIC);
@@ -77,22 +85,26 @@ public class SalesAggregator {
 
         StreamsBuilder builder = new StreamsBuilder();
 
-        KStream<String, String> postgres = builder.<String, String>stream(POSTGRES_TOPIC)
-            .filter((key, value) -> value != null)
-            .mapValues(v -> normalize(v, "postgres"));
+        // Connectors now own normalization — aggregator only validates the canonical contract
+        KStream<String, String> merged = builder
+            .<String, String>stream(INPUT_TOPIC)
+            .filter((key, value) -> value != null);
 
-        KStream<String, String> csv = builder.<String, String>stream(CSV_TOPIC)
-            .filter((key, value) -> value != null)
-            .mapValues(v -> normalize(v, "csv"));
+        Map<String, KStream<String, String>> branches = merged
+            .split(Named.as("branch-"))
+            .branch((key, value) -> validate(value), Branched.as("valid"))
+            .defaultBranch(Branched.as("invalid"));
 
-        KStream<String, String> soap = builder.<String, String>stream(SOAP_TOPIC)
-            .filter((key, value) -> value != null)
-            .mapValues(v -> normalize(v, "soap"));
+        KStream<String, String> valid   = branches.get("branch-valid");
+        KStream<String, String> invalid = branches.get("branch-invalid");
 
-        KStream<String, String> merged = postgres.merge(csv).merge(soap);
+        valid.to(OUTPUT_TOPIC);
+        valid.foreach((key, value) -> insertSale(value));
 
-        merged.to(OUTPUT_TOPIC);
-        merged.foreach((key, value) -> insertSale(value));
+        invalid
+            .peek((key, value) -> System.err.printf(
+                "[DLQ] Schema violation — key=%s missing required fields. Routing to %s%n", key, DLQ_TOPIC))
+            .to(DLQ_TOPIC);
 
         KafkaStreams streams = new KafkaStreams(builder.build(), props);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -101,43 +113,28 @@ public class SalesAggregator {
             closeDb();
         }));
 
-        System.out.println("Starting Sales Aggregator: " + POSTGRES_TOPIC + ", " + CSV_TOPIC + ", " + SOAP_TOPIC + " -> " + OUTPUT_TOPIC);
+        System.out.println("Starting Sales Aggregator | input: " + INPUT_TOPIC + " | valid -> " + OUTPUT_TOPIC + " | invalid -> " + DLQ_TOPIC);
         streams.start();
     }
 
-    static String normalize(String json, String defaultSource) {
+    /**
+     * Validates that a record conforms to the canonical SaleEvent schema.
+     * All format normalization is now the responsibility of each source connector.
+     * Records that fail validation are routed to the DLQ topic.
+     */
+    static boolean validate(String json) {
         try {
-            ObjectNode node = (ObjectNode) mapper.readTree(json);
-
-            if (!node.has("source")) {
-                node.put("source", defaultSource);
+            JsonNode node = mapper.readTree(json);
+            for (String field : REQUIRED_FIELDS) {
+                JsonNode val = node.get(field);
+                if (val == null || val.isNull() || val.asText().isBlank()) {
+                    System.err.printf("[Validation] Missing or empty required field '%s'%n", field);
+                    return false;
+                }
             }
-
-            JsonNode saleId = node.get("sale_id");
-            if (saleId != null && saleId.isNumber()) {
-                node.put("sale_id", "PG-" + saleId.asLong());
-            }
-
-            if (node.has("sale_date") && !node.has("sale_timestamp")) {
-                node.set("sale_timestamp", node.get("sale_date"));
-                node.remove("sale_date");
-            }
-
-            JsonNode ts = node.get("sale_timestamp");
-            if (ts != null && ts.isNumber()) {
-                node.put("sale_timestamp", Instant.ofEpochMilli(ts.asLong()).toString());
-            }
-
-            if (!node.has("ingested_at")) {
-                node.put("ingested_at", Instant.now().toString());
-            }
-
-            node.remove("created_at");
-            node.remove("updated_at");
-
-            return mapper.writeValueAsString(node);
+            return true;
         } catch (Exception e) {
-            return json;
+            return false;
         }
     }
 
@@ -190,7 +187,7 @@ public class SalesAggregator {
             event.put("component", COMPONENT_NAME);
             event.put("event_type", eventType);
             event.put("timestamp", Instant.now().toString());
-            event.put("source_topic", source.equals("postgres") ? POSTGRES_TOPIC : source.equals("csv") ? CSV_TOPIC : SOAP_TOPIC);
+            event.put("source_topic", INPUT_TOPIC);
             event.put("target_topic", OUTPUT_TOPIC);
             lineageProducer.send(new ProducerRecord<>(LINEAGE_TOPIC, traceId, mapper.writeValueAsString(event)));
         } catch (Exception ignored) {}
@@ -232,14 +229,14 @@ public class SalesAggregator {
     }
 
     private static void waitForTopics(String broker) throws Exception {
-        Set<String> required = Set.of(POSTGRES_TOPIC, CSV_TOPIC, SOAP_TOPIC);
         try (AdminClient admin = AdminClient.create(Map.of("bootstrap.servers", broker))) {
             while (true) {
                 Set<String> existing = admin.listTopics().names().get();
-                if (existing.containsAll(required)) {
-                    System.out.println("All source topics found");
+                if (existing.contains(INPUT_TOPIC)) {
+                    System.out.println("Input topic '" + INPUT_TOPIC + "' found");
                     return;
                 }
+                System.out.println("Waiting for topic '" + INPUT_TOPIC + "'...");
                 sleep(5000);
             }
         }

@@ -1,12 +1,12 @@
-const Minio = require('minio');
-const mockData = require('./data');
+const Minio = require("minio");
+const mockData = require("./data");
 
-const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || 'minio';
+const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || "minio";
 const MINIO_PORT = parseInt(process.env.MINIO_PORT) || 9000;
-const MINIO_ACCESS_KEY = process.env.MINIO_ACCESS_KEY || 'minioadmin';
-const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY || 'minioadmin123';
-const MINIO_BUCKET = process.env.MINIO_BUCKET || 'sales-csv';
-const MINIO_USE_SSL = process.env.MINIO_USE_SSL === 'true';
+const MINIO_ACCESS_KEY = process.env.MINIO_ACCESS_KEY || "minioadmin";
+const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY || "minioadmin123";
+const MINIO_BUCKET = process.env.MINIO_BUCKET || "sales-csv";
+const MINIO_USE_SSL = process.env.MINIO_USE_SSL === "true";
 const GENERATION_INTERVAL = parseInt(process.env.GENERATION_INTERVAL) || 5000;
 const RECORDS_PER_FILE = parseInt(process.env.RECORDS_PER_FILE) || 50;
 
@@ -15,7 +15,7 @@ const minioClient = new Minio.Client({
   port: MINIO_PORT,
   useSSL: MINIO_USE_SSL,
   accessKey: MINIO_ACCESS_KEY,
-  secretKey: MINIO_SECRET_KEY
+  secretKey: MINIO_SECRET_KEY,
 });
 
 function randomInt(min, max) {
@@ -28,20 +28,20 @@ function randomElement(array) {
 
 function randomStatus() {
   const rand = Math.random();
-  if (rand < 0.7) return 'PENDING';
-  if (rand < 0.95) return 'CONFIRMED';
-  return 'CANCELLED';
+  if (rand < 0.7) return "PENDING";
+  if (rand < 0.95) return "CONFIRMED";
+  return "CANCELLED";
 }
 
 function generateSaleId() {
   const date = new Date();
-  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
   const random = randomInt(10000, 99999);
   return `CSV${dateStr}${random}`;
 }
 
 function formatDate(date) {
-  return date.toISOString().slice(0, 19).replace('T', ' ');
+  return date.toISOString().slice(0, 19).replace("T", " ");
 }
 
 function formatAmount(amount) {
@@ -75,21 +75,27 @@ function generateRecord() {
     unit_price: formatAmount(unitPrice),
     total_amount: formatAmount(totalAmount),
     status: randomStatus(),
-    sale_date: formatDate(date)
+    sale_date: formatDate(date),
   };
 }
 
 function generateCSVContent(records) {
-  const header = 'sale_id,product_code,product_name,category,brand,salesman_name,salesman_email,region,store_name,city,store_type,quantity,unit_price,total_amount,status,sale_date';
-  const rows = records.map(r =>
-    `${r.sale_id},${r.product_code},${r.product_name},${r.category},${r.brand},${r.salesman_name},${r.salesman_email},${r.region},${r.store_name},${r.city},${r.store_type},${r.quantity},${r.unit_price},${r.total_amount},${r.status},${r.sale_date}`
+  const header =
+    "sale_id,product_code,product_name,category,brand,salesman_name,salesman_email,region,store_name,city,store_type,quantity,unit_price,total_amount,status,sale_date";
+  const rows = records.map(
+    (r) =>
+      `${r.sale_id},${r.product_code},${r.product_name},${r.category},${r.brand},${r.salesman_name},${r.salesman_email},${r.region},${r.store_name},${r.city},${r.store_type},${r.quantity},${r.unit_price},${r.total_amount},${r.status},${r.sale_date}`,
   );
-  return [header, ...rows].join('\n');
+  return [header, ...rows].join("\n");
 }
 
 function getFileName() {
   const date = new Date();
-  const timestamp = date.toISOString().replace(/[-:]/g, '').replace('T', '_').slice(0, 15);
+  const timestamp = date
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace("T", "_")
+    .slice(0, 15);
   return `sales_${timestamp}.csv`;
 }
 
@@ -104,21 +110,21 @@ async function waitForMinio() {
     } catch (err) {
       // Retry silently
     }
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 3000));
   }
 }
 
 async function uploadToMinio(fileName, content) {
-  const buffer = Buffer.from(content, 'utf-8');
+  const buffer = Buffer.from(content, "utf-8");
   await minioClient.putObject(MINIO_BUCKET, fileName, buffer, buffer.length, {
-    'Content-Type': 'text/csv'
+    "Content-Type": "text/csv",
   });
   return { fileName, size: buffer.length };
 }
 
 async function generateAndUploadFile() {
   const records = [];
-  const recordCount = randomInt(1, 5);
+  const recordCount = randomInt(1, RECORDS_PER_FILE);
 
   for (let i = 0; i < recordCount; i++) {
     records.push(generateRecord());
@@ -133,12 +139,14 @@ async function generateAndUploadFile() {
 }
 
 async function main() {
-  console.log('CSV Generator starting...');
+  console.log("CSV Generator starting...");
 
   await waitForMinio();
 
   const initial = await generateAndUploadFile();
-  console.log(`Initial upload: ${initial.fileName} (${initial.recordCount} records)`);
+  console.log(
+    `Initial upload: ${initial.fileName} (${initial.recordCount} records)`,
+  );
 
   let totalFiles = 1;
   let totalRecords = initial.recordCount;
@@ -149,21 +157,22 @@ async function main() {
       totalFiles++;
       totalRecords += result.recordCount;
 
-      console.log(`Uploaded: ${result.fileName} | ${result.recordCount} records | Total: ${totalFiles} files`);
-
+      console.log(
+        `Uploaded: ${result.fileName} | ${result.recordCount} records | Total: ${totalFiles} files`,
+      );
     } catch (err) {
-      console.error('Error uploading CSV:', err.message);
+      console.error("Error uploading CSV:", err.message);
     }
   }, GENERATION_INTERVAL);
 }
 
-process.on('SIGINT', () => {
-  console.log('\\nShutting down');
+process.on("SIGINT", () => {
+  console.log("\\nShutting down");
   process.exit(0);
 });
 
-process.on('SIGTERM', () => {
-  console.log('\\nShutting down');
+process.on("SIGTERM", () => {
+  console.log("\\nShutting down");
   process.exit(0);
 });
 

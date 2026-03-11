@@ -30,13 +30,14 @@ public class SalesEnricher {
     private static final String PRODUCTS_TOPIC = "electromart.public.products";
     private static final String SALESMEN_TOPIC = "electromart.public.salesmen";
     private static final String STORES_TOPIC = "electromart.public.stores";
-    private static final String OUTPUT_TOPIC = "postgres";
+    private static String OUTPUT_TOPIC;
 
     private static KafkaProducer<String, String> lineageProducer;
     private static boolean lineageEnabled;
 
     public static void main(String[] args) throws Exception {
         String broker = System.getenv().getOrDefault("KAFKA_BROKER", "kafka:9092");
+        OUTPUT_TOPIC = System.getenv().getOrDefault("OUTPUT_TOPIC", "raw-sales");
         lineageEnabled = Boolean.parseBoolean(System.getenv().getOrDefault("LINEAGE_ENABLED", "true"));
 
         Properties props = new Properties();
@@ -78,6 +79,7 @@ public class SalesEnricher {
             .join(stores,
                 (key, sale) -> toKey("id", sale, "store_id"),
                 SalesEnricher::withStore)
+            .mapValues(SalesEnricher::normalizeCanonical)
             .peek((key, value) -> emitPublishedLineage(value));
 
         enriched.to(OUTPUT_TOPIC);
@@ -98,6 +100,8 @@ public class SalesEnricher {
             if (!node.has("trace_id")) {
                 node.put("trace_id", UUID.randomUUID().toString().substring(0, 8));
             }
+            node.put("source", "postgres");
+            node.put("source_version", "v1");
             node.put("ingested_at", Instant.now().toString());
             return mapper.writeValueAsString(node);
         } catch (Exception e) {
@@ -197,6 +201,35 @@ public class SalesEnricher {
             return mapper.writeValueAsString(sale);
         } catch (Exception e) {
             return saleJson;
+        }
+    }
+
+    /**
+     * Converts a CDC-enriched postgres record to the canonical SaleEvent schema:
+     *  - numeric sale_id (auto-increment PK)  → "PG-{id}"
+     *  - sale_timestamp as epoch ms (Debezium connect mode) → ISO-8601 string
+     *  - strips internal DB audit columns (created_at, updated_at)
+     */
+    private static String normalizeCanonical(String json) {
+        try {
+            ObjectNode node = (ObjectNode) mapper.readTree(json);
+
+            JsonNode saleId = node.get("sale_id");
+            if (saleId != null && saleId.isNumber()) {
+                node.put("sale_id", "PG-" + saleId.asLong());
+            }
+
+            JsonNode ts = node.get("sale_timestamp");
+            if (ts != null && ts.isNumber()) {
+                node.put("sale_timestamp", Instant.ofEpochMilli(ts.asLong()).toString());
+            }
+
+            node.remove("created_at");
+            node.remove("updated_at");
+
+            return mapper.writeValueAsString(node);
+        } catch (Exception e) {
+            return json;
         }
     }
 

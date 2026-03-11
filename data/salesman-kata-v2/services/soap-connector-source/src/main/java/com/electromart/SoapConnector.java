@@ -28,7 +28,7 @@ public class SoapConnector {
 
     public static void main(String[] args) throws Exception {
         String broker = System.getenv().getOrDefault("KAFKA_BROKER", "kafka:9092");
-        String topic = System.getenv().getOrDefault("KAFKA_TOPIC", "soap");
+        String topic = System.getenv().getOrDefault("KAFKA_TOPIC", "raw-sales");
         String soapUrl = System.getenv().getOrDefault("SOAP_URL", "http://soap-service:8080/sales");
         int pageSize = Integer.parseInt(System.getenv().getOrDefault("PAGE_SIZE", "100"));
         long pollInterval = Long.parseLong(System.getenv().getOrDefault("POLL_INTERVAL", "5000"));
@@ -163,8 +163,6 @@ public class SoapConnector {
         return null;
     }
 
-    private static final Set<String> NUMERIC_FIELDS = Set.of("quantity", "unitPrice", "totalAmount");
-
     private static final Map<String, String> FIELD_MAP = Map.ofEntries(
         Map.entry("sale:saleId", "sale_id"),
         Map.entry("sale:productCode", "product_code"),
@@ -188,6 +186,7 @@ public class SoapConnector {
         ObjectNode node = mapper.createObjectNode();
         node.put("trace_id", traceId);
         node.put("source", "soap");
+        node.put("source_version", "v1");
 
         for (var entry : FIELD_MAP.entrySet()) {
             String value = getTagValue(record, entry.getKey());

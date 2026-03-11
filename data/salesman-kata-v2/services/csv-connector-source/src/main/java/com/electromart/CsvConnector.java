@@ -20,6 +20,9 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class CsvConnector {
@@ -32,7 +35,7 @@ public class CsvConnector {
     private static final String[] HEADERS = {
         "sale_id", "product_code", "product_name", "category", "brand",
         "salesman_name", "salesman_email", "region", "store_name", "city",
-        "store_type", "quantity", "unit_price", "total_amount", "status", "sale_date"
+        "store_type", "quantity", "unit_price", "total_amount", "status", "sale_timestamp"
     };
     private static final Set<String> NUMERIC_FIELDS = Set.of("quantity", "unit_price", "total_amount");
 
@@ -45,7 +48,7 @@ public class CsvConnector {
 
     public static void main(String[] args) throws Exception {
         String broker = env("KAFKA_BROKER", "kafka:9092");
-        kafkaTopic = env("KAFKA_TOPIC", "csv");
+        kafkaTopic = env("KAFKA_TOPIC", "raw-sales");
         String minioEndpoint = env("MINIO_ENDPOINT", "http://minio:9000");
         sourceBucket = env("MINIO_BUCKET", "sales-csv");
         processedBucket = env("MINIO_PROCESSED_BUCKET", "sales-csv-processed");
@@ -73,10 +76,13 @@ public class CsvConnector {
         producer = new KafkaProducer<>(props);
         Runtime.getRuntime().addShutdownHook(new Thread(producer::close));
 
+        long pollIntervalSec = Long.parseLong(env("POLL_INTERVAL_SECONDS", "10"));
+
         processExistingFiles();
         startWebhookServer(webhookPort);
+        startPollingFallback(pollIntervalSec);
 
-        System.out.println("Ready - listening for MinIO events");
+        System.out.println("Ready - listening for MinIO events + polling every " + pollIntervalSec + "s");
         Thread.currentThread().join();
     }
 
@@ -205,6 +211,7 @@ public class CsvConnector {
             ObjectNode node = mapper.createObjectNode();
             node.put("trace_id", traceId);
             node.put("source", "csv");
+            node.put("source_version", "v1");
 
             for (int i = 0; i < HEADERS.length; i++) {
                 String field = HEADERS[i], value = values[i].trim();
@@ -234,6 +241,27 @@ public class CsvConnector {
             if (metadata != null) event.put("metadata", metadata);
             producer.send(new ProducerRecord<>(LINEAGE_TOPIC, traceId, mapper.writeValueAsString(event)));
         } catch (Exception ignored) {}
+    }
+
+    private static void startPollingFallback(long intervalSeconds) {
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "csv-poll-fallback");
+            t.setDaemon(true);
+            return t;
+        });
+        scheduler.scheduleWithFixedDelay(() -> {
+            try {
+                int before = (int) recordsProcessed.get();
+                processExistingFiles();
+                int after = (int) recordsProcessed.get();
+                int picked = after - before;
+                if (picked > 0) {
+                    System.out.printf("[poll-fallback] Picked up %d records from unprocessed files%n", picked);
+                }
+            } catch (Exception e) {
+                System.err.println("Poll fallback error: " + e.getMessage());
+            }
+        }, intervalSeconds, intervalSeconds, TimeUnit.SECONDS);
     }
 
     private static void waitForMinio() throws Exception {

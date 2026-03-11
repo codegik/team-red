@@ -94,8 +94,8 @@ services:
       MINIO_SECRET_KEY: minioadmin123
       MINIO_BUCKET: sales-csv
       MINIO_USE_SSL: "false"
-      GENERATION_INTERVAL: 10000
-      RECORDS_PER_FILE: 50
+      GENERATION_INTERVAL: 5000
+      RECORDS_PER_FILE: 5
     depends_on:
       minio-init:
         condition: service_completed_successfully
@@ -219,6 +219,7 @@ services:
     container_name: electromart-postgres-enricher
     environment:
       KAFKA_BROKER: kafka:9092
+      OUTPUT_TOPIC: raw-sales
       LINEAGE_ENABLED: "true"
       JAVA_OPTS: "-Xms32M -Xmx64M"
     depends_on:
@@ -234,7 +235,7 @@ services:
     container_name: electromart-csv-connector
     environment:
       KAFKA_BROKER: kafka:9092
-      KAFKA_TOPIC: csv
+      KAFKA_TOPIC: raw-sales
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin123
@@ -260,7 +261,7 @@ services:
     container_name: electromart-soap-connector
     environment:
       KAFKA_BROKER: kafka:9092
-      KAFKA_TOPIC: soap
+      KAFKA_TOPIC: raw-sales
       SOAP_URL: http://soap-service:8080/sales
       PAGE_SIZE: "100"
       POLL_INTERVAL: "5000"
@@ -301,6 +302,7 @@ services:
     container_name: electromart-sales-aggregator
     environment:
       KAFKA_BROKER: kafka:9092
+      INPUT_TOPIC: raw-sales
       TIMESCALEDB_URL: jdbc:postgresql://timescaledb:5432/salesdb
       TIMESCALEDB_USER: sales
       TIMESCALEDB_PASSWORD: sales123

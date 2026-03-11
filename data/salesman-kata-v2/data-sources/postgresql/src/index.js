@@ -71,7 +71,7 @@ async function main() {
     setInterval(async () => {
       try {
         const count = randomInt(1, 5);
-        const newSales = await generateMultipleSales(client, count);
+        await generateMultipleSales(client, count);
         totalGenerated += count;
 
         const timestamp = new Date().toISOString();
