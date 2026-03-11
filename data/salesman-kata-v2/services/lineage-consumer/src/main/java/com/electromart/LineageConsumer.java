@@ -41,6 +41,7 @@ public class LineageConsumer {
         dbUser = env("TIMESCALEDB_USER", "sales");
         dbPassword = env("TIMESCALEDB_PASSWORD", "sales123");
 
+        waitForKafka(broker);
         waitForTimescaleDB();
         ensureTopic(broker, lineageTopic);
 
@@ -113,7 +114,23 @@ public class LineageConsumer {
         dbConnection = null;
     }
 
+    private static void waitForKafka(String broker) {
+        System.out.println("Waiting for Kafka at " + broker + "...");
+        try (AdminClient admin = AdminClient.create(Map.of("bootstrap.servers", broker))) {
+            while (true) {
+                try {
+                    admin.listTopics().names().get();
+                    System.out.println("Kafka is ready");
+                    return;
+                } catch (Exception e) {
+                    sleep(3000);
+                }
+            }
+        }
+    }
+
     private static void waitForTimescaleDB() {
+        System.out.println("Waiting for TimescaleDB...");
         while (true) {
             try {
                 dbConnection = DriverManager.getConnection(dbUrl, dbUser, dbPassword);

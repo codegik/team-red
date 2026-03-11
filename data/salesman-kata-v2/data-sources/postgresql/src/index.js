@@ -1,11 +1,11 @@
-const { Client } = require('pg');
+const { Client } = require("pg");
 
 const config = {
-  host: process.env.DB_HOST || 'localhost',
+  host: process.env.DB_HOST || "localhost",
   port: process.env.DB_PORT || 5432,
-  user: process.env.DB_USER || 'electromart',
-  password: process.env.DB_PASSWORD || 'electromart123',
-  database: process.env.DB_NAME || 'electromart'
+  user: process.env.DB_USER || "electromart",
+  password: process.env.DB_PASSWORD || "electromart123",
+  database: process.env.DB_NAME || "electromart",
 };
 
 function randomInt(min, max) {
@@ -18,15 +18,15 @@ function randomElement(array) {
 
 function randomStatus() {
   const rand = Math.random();
-  if (rand < 0.7) return 'PENDING';
-  if (rand < 0.95) return 'CONFIRMED';
-  return 'CANCELLED';
+  if (rand < 0.7) return "PENDING";
+  if (rand < 0.95) return "CONFIRMED";
+  return "CANCELLED";
 }
 
 async function generateSale(client) {
-  const products = await client.query('SELECT id, base_price FROM products');
-  const salesmen = await client.query('SELECT id FROM salesmen');
-  const stores = await client.query('SELECT id FROM stores');
+  const products = await client.query("SELECT id, base_price FROM products");
+  const salesmen = await client.query("SELECT id FROM salesmen");
+  const stores = await client.query("SELECT id FROM stores");
 
   const product = randomElement(products.rows);
   const salesman = randomElement(salesmen.rows);
@@ -41,7 +41,15 @@ async function generateSale(client) {
     `INSERT INTO sales (product_id, salesman_id, store_id, quantity, unit_price, total_amount, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING sale_id, total_amount, status`,
-    [product.id, salesman.id, store.id, quantity, unitPrice, totalAmount, status]
+    [
+      product.id,
+      salesman.id,
+      store.id,
+      quantity,
+      unitPrice,
+      totalAmount,
+      status,
+    ],
   );
 
   return result.rows[0];
@@ -56,46 +64,58 @@ async function generateMultipleSales(client, count) {
   return sales;
 }
 
-async function main() {
-  const client = new Client(config);
-
-  try {
-    await client.connect();
-    console.log('PostgreSQL connected');
-
-    const initialSales = await generateMultipleSales(client, 10);
-    console.log(`Generated ${initialSales.length} initial sales - starting continuous generation`);
-
-    let totalGenerated = initialSales.length;
-
-    setInterval(async () => {
+async function connectWithRetry() {
+  while (true) {
+    const client = new Client(config);
+    try {
+      await client.connect();
+      console.log("PostgreSQL connected");
+      return client;
+    } catch (err) {
+      console.log(
+        `Waiting for PostgreSQL at ${config.host}:${config.port}... (${err.message})`,
+      );
       try {
-        const count = randomInt(1, 5);
-        await generateMultipleSales(client, count);
-        totalGenerated += count;
-
-        const timestamp = new Date().toISOString();
-        console.log(`[${timestamp}] Generated ${count} new sales | Total: ${totalGenerated}`);
-
-      } catch (err) {
-        console.error('Error generating sales:', err.message);
-      }
-    }, 5000);
-
-  } catch (err) {
-    console.error('Fatal error:', err);
-    await client.end();
-    process.exit(1);
+        await client.end();
+      } catch (_) {}
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
   }
 }
 
-process.on('SIGINT', async () => {
-  console.log('\nShutting down');
+async function main() {
+  const client = await connectWithRetry();
+
+  const initialSales = await generateMultipleSales(client, 10);
+  console.log(
+    `Generated ${initialSales.length} initial sales - starting continuous generation`,
+  );
+
+  let totalGenerated = initialSales.length;
+
+  setInterval(async () => {
+    try {
+      const count = randomInt(1, 5);
+      await generateMultipleSales(client, count);
+      totalGenerated += count;
+
+      const timestamp = new Date().toISOString();
+      console.log(
+        `[${timestamp}] Generated ${count} new sales | Total: ${totalGenerated}`,
+      );
+    } catch (err) {
+      console.error("Error generating sales:", err.message);
+    }
+  }, 5000);
+}
+
+process.on("SIGINT", async () => {
+  console.log("\nShutting down");
   process.exit(0);
 });
 
-process.on('SIGTERM', async () => {
-  console.log('\nShutting down');
+process.on("SIGTERM", async () => {
+  console.log("\nShutting down");
   process.exit(0);
 });
 

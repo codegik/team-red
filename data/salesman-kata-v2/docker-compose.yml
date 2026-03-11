@@ -33,9 +33,6 @@ services:
       DB_USER: electromart
       DB_PASSWORD: electromart123
       DB_NAME: electromart
-    depends_on:
-      postgres:
-        condition: service_healthy
     networks:
       - electromart-network
 
@@ -96,9 +93,6 @@ services:
       MINIO_USE_SSL: "false"
       GENERATION_INTERVAL: 5000
       RECORDS_PER_FILE: 5
-    depends_on:
-      minio-init:
-        condition: service_completed_successfully
     networks:
       - electromart-network
 
@@ -206,9 +200,6 @@ services:
       DB_PASSWORD: electromart123
       DB_NAME: electromart
       JAVA_OPTS: "-Xms16M -Xmx32M"
-    depends_on:
-      kafka-connect:
-        condition: service_healthy
     networks:
       - electromart-network
 
@@ -224,9 +215,6 @@ services:
       TOPIC_LINEAGE: lineage
       LINEAGE_ENABLED: "true"
       JAVA_OPTS: "-Xms32M -Xmx64M"
-    depends_on:
-      kafka-connect:
-        condition: service_healthy
     networks:
       - electromart-network
 
@@ -249,11 +237,6 @@ services:
       JAVA_OPTS: "-Xms64M -Xmx128M"
     ports:
       - "8085:8085"
-    depends_on:
-      kafka:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
     networks:
       - electromart-network
 
@@ -271,11 +254,6 @@ services:
       POLL_INTERVAL: "5000"
       LINEAGE_ENABLED: "true"
       JAVA_OPTS: "-Xms32M -Xmx64M"
-    depends_on:
-      kafka:
-        condition: service_healthy
-      soap-service:
-        condition: service_healthy
     networks:
       - electromart-network
 
@@ -315,11 +293,6 @@ services:
       TIMESCALEDB_PASSWORD: sales123
       LINEAGE_ENABLED: "true"
       JAVA_OPTS: "-Xms32M -Xmx64M"
-    depends_on:
-      kafka:
-        condition: service_healthy
-      timescaledb:
-        condition: service_healthy
     networks:
       - electromart-network
 
@@ -335,11 +308,6 @@ services:
       TIMESCALEDB_USER: sales
       TIMESCALEDB_PASSWORD: sales123
       JAVA_OPTS: "-Xms32M -Xmx64M"
-    depends_on:
-      kafka:
-        condition: service_healthy
-      timescaledb:
-        condition: service_healthy
     networks:
       - electromart-network
 
