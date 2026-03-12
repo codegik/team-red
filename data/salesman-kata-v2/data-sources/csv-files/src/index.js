@@ -57,7 +57,6 @@ function generateRecord() {
   const totalAmount = quantity * unitPrice;
 
   const date = new Date();
-  date.setHours(date.getHours() - randomInt(0, 24));
 
   return {
     sale_id: generateSaleId(),
