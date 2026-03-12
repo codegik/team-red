@@ -2,87 +2,13 @@
 
 ## Problem Context
 
-We are building a software for a Eletronic Store. This store sales cell phones, computers, and relateds.
-
-**Company characteristics:**
-
-- Multi warehouse
-- Multi sales person
-- Multi retailers
-
-### Problem to solve
-
-Every Monday, the CEO asks:
-
-- "Which cities are generating the most revenue this month?"
-- "Who are our top-performing salespeople in each country?"
-
-**Current solution:**
-
-Monday 8:00 AM - CEO asks for the report
-
-Data Analyst Maria does:
-
-1. Export data from PostgreSQL → Excel (2 hours)
-2. Download CSV files from shared folder (30 min)
-3. Manually poll SOAP service for sales data (3 hours)
-4. Merge everything in Excel (4 hours)
-5. Create pivot tables and charts (2 hours)
-6. Send email to CEO (30 min)
-
-Wednesday 6:00 PM - Report finally delivered
-
-## Knowledge base
-
-### 1) What is Data Ingestion?
-
-Ingestion is the process of collection and importing data from various sources into your pipeline system for processing. It's a funnel that receives data from many places
-
-```
-[Relational DB] ──────┐
-                      │
-[File System]  ───────┼──▶  [ Your Pipeline ]  ──▶  [Processing]
-                      │
-[SOAP/WS-*]    ───────┘
-```
-
-### 2) What is Data Lineage?
-
-Data Lineage tracks the origin, movement, and transformation of data throughout its lifecycle. It answers:
-
-- Where did this data come from? (origin)
-- What happened to it? (transformations)
-- Where did it go? (destination)
-
-```
-[Raw Sales Data] ──▶ [Cleaned] ──▶ [Aggregated by City] ──▶ [Final DB]
-      │                  │                  │                    │
-      └──────────────────┴──────────────────┴────────────────────┘
-                    Data Lineage Graph (tracked)
-```
-
-### 3) What is Message Broker
-
-A Message Broker is middleware that translates and routes messages between different applications/services.
-
-```
-┌──────────┐                              ┌──────────┐
-│ Producer │ ───▶  ┌────────────────┐ ───▶│ Consumer │
-│ (Source) │       │ MESSAGE BROKER │     │ (Target) │
-└──────────┘       │    (Kafka)     │     └──────────┘
-                   └────────────────┘
-                          │
-                   • Receives messages
-                   • Stores temporarily
-                   • Routes to consumers
-                   • Guarantees delivery
-```
+We are building software for a multi-warehouse, multi-salesperson electronics store that sells cell phones, computers, and related products across multiple retailers. Every Monday the CEO asks for revenue and top-salesperson reports, but today a data analyst spends nearly two days manually exporting data from PostgreSQL, downloading CSV files, polling a legacy SOAP service, merging everything in Excel, and building charts before the report is finally delivered on Wednesday evening. The goal is to replace this manual process with a real-time data pipeline that ingests from all three sources, unifies the data, and delivers live dashboards.
 
 ## Solution
 
 ### Data Sources
 
-All three data sources share the same consistent master data: **22 products**, **15 salesmen**, and **18 stores** across Brazil.
+All three data sources share the same consistent master data: **22 products**, **15 salesmen**, and **18 stores**.
 
 #### Postgresql
 
@@ -215,9 +141,9 @@ Content-Type: text/xml
 
 | #   | Service/Component                | Purpose                                      | Implemented |
 | --- | -------------------------------- | -------------------------------------------- | ----------- |
-| 1   | PostgreSQL                       | Source 1 - Sales transactions from São Paulo | ✅ Yes      |
-| 2   | CSV Files (Local Volume)         | Source 2 - Sales from Minas Gerais           | ✅ Yes      |
-| 3   | SOAP Service                     | Source 3 - Legacy sales from Rio de Janeiro  | ✅ Yes      |
+| 1   | PostgreSQL                       | Source 1 - Sales transactions                | ✅ Yes      |
+| 2   | CSV Files (Local Volume)         | Source 2 - Sales from legacy system          | ✅ Yes      |
+| 3   | SOAP Service                     | Source 3 - Legacy sales                      | ✅ Yes      |
 | 4   | Message Broker (Kafka)           | Event streaming backbone                     | ✅ Yes      |
 | 5   | Kafka Connect (Debezium)         | CDC connector for PostgreSQL                 | ✅ Yes      |
 | 6   | CSV Connector                    | Reads CSV files and publishes to Kafka       | ✅ Yes      |
@@ -237,7 +163,6 @@ Content-Type: text/xml
 │                              DATA SOURCES                                   │
 ├─────────────────┬─────────────────────┬─────────────────────────────────────┤
 │   PostgreSQL    │     CSV Files       │         SOAP Service                │
-│   (São Paulo)   │   (Minas Gerais)    │       (Rio de Janeiro)              │
 │                 │                     │                                     │
 └────────┬────────┴──────────┬──────────┴──────────────┬──────────────────────┘
          │                   │                         │
@@ -283,16 +208,6 @@ Content-Type: text/xml
 | `soap`                     | SOAP Connector     | Sales from SOAP service        |
 | `postgres`                 | Postgres Connector | Enriched PostgreSQL sales      |
 | `sales`                    | Sales Aggregator   | Unified sales from all sources |
-
-### Data Regions
-
-Each data source contains data from a different Brazilian state:
-
-| Source       | Region         | Cities                                      |
-| ------------ | -------------- | ------------------------------------------- |
-| PostgreSQL   | São Paulo      | São Paulo                                   |
-| CSV Files    | Minas Gerais   | Belo Horizonte, Contagem, Betim, Uberlândia |
-| SOAP Service | Rio de Janeiro | Rio de Janeiro, Niterói, Duque de Caxias    |
 
 ## How to Run
 
