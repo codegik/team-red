@@ -112,8 +112,8 @@ Content-Type: text/xml
 | `raw_csv`                     | CSV Connector                       | Raw sales from CSV files                     |
 | `raw_soap`                    | SOAP Connector                      | Raw sales from SOAP service                  |
 | `raw_postgres`                | Postgres Enricher                   | Enriched sales from PostgreSQL CDC           |
-| `sales`                       | Sales Aggregator                    | Normalized and validated sales               |
-| `sales-dlq`                   | Sales Aggregator                    | Records that failed validation               |
+| `aggregated.sales`          | Sales Aggregator                    | Normalized and validated sales               |
+| `aggregated.sales-dlq`      | Sales Aggregator                    | Records that failed validation               |
 
 ## How to Run
 
