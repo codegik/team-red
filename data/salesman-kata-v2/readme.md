@@ -175,14 +175,14 @@ Content-Type: text/xml
          ▼                   ▼                         ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           APACHE KAFKA                                      │
-│  Topics: electromart.public.sales | csv | soap | postgres | sales           │
+│  Topics: electromart.public.* | raw-sales | sales | sales-dlq | lineage    │
 └─────────────────────────────────────────────────────────────────────────────┘
          │                   │                         │
          └───────────────────┼─────────────────────────┘
                              ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                      SALES AGGREGATOR (Kafka Streams)                       │
-│         Consumes: csv, soap, postgres → Produces: unified "sales" topic     │
+│         Consumes: raw-sales → Produces: unified "sales" topic               │
 └─────────────────────────────────────────────────────────────────────────────┘
                              │
                              ▼
@@ -201,13 +201,16 @@ Content-Type: text/xml
 
 ### Kafka Topics
 
-| Topic                      | Source             | Description                    |
-| -------------------------- | ------------------ | ------------------------------ |
-| `electromart.public.sales` | Debezium CDC       | Raw CDC events from PostgreSQL |
-| `csv`                      | CSV Connector      | Sales from CSV files           |
-| `soap`                     | SOAP Connector     | Sales from SOAP service        |
-| `postgres`                 | Postgres Connector | Enriched PostgreSQL sales      |
-| `sales`                    | Sales Aggregator   | Unified sales from all sources |
+| Topic                         | Source                              | Description                                  |
+| ----------------------------- | ----------------------------------- | -------------------------------------------- |
+| `electromart.public.sales`    | Debezium CDC                        | CDC events from PostgreSQL sales table       |
+| `electromart.public.products` | Debezium CDC                        | CDC events from PostgreSQL products table    |
+| `electromart.public.salesmen` | Debezium CDC                        | CDC events from PostgreSQL salesmen table    |
+| `electromart.public.stores`   | Debezium CDC                        | CDC events from PostgreSQL stores table      |
+| `raw-sales`                   | CSV, SOAP, and Postgres Connectors  | Raw sales from all sources                   |
+| `sales`                       | Sales Aggregator                    | Unified/aggregated sales from all sources    |
+| `sales-dlq`                   | Sales Aggregator                    | Dead letter queue for invalid records        |
+| `lineage`                     | All Connectors / Aggregator         | Data lineage tracking metadata               |
 
 ## How to Run
 
