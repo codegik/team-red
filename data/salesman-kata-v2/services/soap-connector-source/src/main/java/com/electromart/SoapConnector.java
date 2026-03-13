@@ -16,7 +16,6 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.*;
 import java.util.ArrayList;
 
@@ -26,8 +25,8 @@ public class SoapConnector {
 
     public static void main(String[] args) throws Exception {
         String broker = System.getenv().getOrDefault("KAFKA_BROKER", "kafka:9092");
-        String topic = env("TOPIC_RAW_SALES", env("KAFKA_TOPIC", "raw-sales"));
-        validateTopicConfig(Map.of("TOPIC_RAW_SALES", topic));
+        String topic = env("TOPIC_OUTPUT", "raw_soap");
+        validateTopicConfig(Map.of("TOPIC_OUTPUT", topic));
         String soapUrl = System.getenv().getOrDefault("SOAP_URL", "http://soap-service:8080/sales");
         int pageSize = Integer.parseInt(System.getenv().getOrDefault("PAGE_SIZE", "100"));
         long pollInterval = Long.parseLong(System.getenv().getOrDefault("POLL_INTERVAL", "5000"));
@@ -80,8 +79,7 @@ public class SoapConnector {
 
             for (int i = 0; i < records.getLength(); i++) {
                 Element record = (Element) records.item(i);
-                String traceId = UUID.randomUUID().toString().substring(0, 8);
-                String json = recordToJson(record, traceId);
+                String json = recordToJson(record);
                 String saleId = getTagValue(record, "sale:saleId");
                 producer.send(new ProducerRecord<>(topic, saleId, json));
                 totalPublished++;
@@ -168,12 +166,8 @@ public class SoapConnector {
         Map.entry("sale:saleTimestamp", "sale_timestamp")
     );
 
-    private static String recordToJson(Element record, String traceId) throws Exception {
+    private static String recordToJson(Element record) throws Exception {
         ObjectNode node = mapper.createObjectNode();
-        node.put("trace_id", traceId);
-        node.put("source", "soap");
-        node.put("source_version", "v1");
-
         for (var entry : FIELD_MAP.entrySet()) {
             String value = getTagValue(record, entry.getKey());
             if (value == null) continue;
@@ -187,8 +181,6 @@ public class SoapConnector {
                 node.put(jsonField, value);
             }
         }
-
-        node.put("ingested_at", Instant.now().toString());
         return mapper.writeValueAsString(node);
     }
 

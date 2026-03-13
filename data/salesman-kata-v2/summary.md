@@ -38,10 +38,10 @@ Node.js 20 with Express.js (v4.18.2) running on port 8080. It exposes a POST `/s
 
 ## Data Ingestion
 
-Data ingestion is the process of extracting data from the three heterogeneous sources, converting it into a common JSON format, and publishing it to Kafka. Each source has a dedicated connector that handles the specific protocol (CDC, S3 webhooks, or SOAP polling) and normalizes the output into the `raw-sales` Kafka topic.
+Data ingestion is the process of extracting data from the three heterogeneous sources, converting it into JSON, and publishing it to Kafka. Each source has a dedicated connector that handles the specific protocol (CDC, S3 webhooks, or SOAP polling) and publishes to its own dedicated Kafka topic (`raw_csv`, `raw_soap`, `raw_postgres`).
 ### Connector sources
 
-Source connectors are responsible for reading data from external systems and publishing it into Kafka. Each connector is a standalone Java 17 application that handles connection management, data transformation, and topic auto-creation. They all write to the `raw-sales` topic with a consistent schema that includes `source`, `trace_id`, and `ingested_at` metadata fields.
+Source connectors are responsible for reading data from external systems and publishing it into Kafka. Each connector is a standalone Java 17 application that handles connection management, data transformation, and topic auto-creation. Connectors are intentionally simple — they only convert the source format to JSON and publish to their dedicated topic. Normalization (adding `source`, `trace_id`, `ingested_at` metadata) is handled downstream by the Sales Aggregator.
 
 #### 1) Postgres Connector
 
@@ -49,11 +49,11 @@ Java 17 application that registers a Debezium PostgreSQL CDC connector via Kafka
 
 #### 2) CSV Connector
 
-Java 17 application using Kafka Clients 3.7.0 and MinIO Client 8.5.7. It runs an embedded HTTP server on port 8085 that receives webhook notifications from MinIO when new CSV files land in the `sales-csv` bucket. On each event, it downloads the file, parses each CSV row into a JSON record, publishes to the `raw-sales` topic, then moves the processed file to `sales-csv-processed`. A fallback polling mechanism (every 10 seconds) catches any missed webhook events.
+Java 17 application using Kafka Clients 3.7.0 and MinIO Client 8.5.7. It runs an embedded HTTP server on port 8085 that receives webhook notifications from MinIO when new CSV files land in the `sales-csv` bucket. On each event, it downloads the file, parses each CSV row into a JSON record, publishes to the `raw_csv` topic, then moves the processed file to `sales-csv-processed`. A fallback polling mechanism (every 10 seconds) catches any missed webhook events.
 
 #### 3) SOAP Connector
 
-Java 17 application using Kafka Clients 3.7.0 and built-in Java XML parsers. It polls the SOAP endpoint every 5 seconds using cursor-based pagination (page size of 100). Each SOAP XML response is parsed, individual `<sale:record>` elements are mapped to JSON fields, and the records are published to the `raw-sales` topic with `source: "soap"` metadata.
+Java 17 application using Kafka Clients 3.7.0 and built-in Java XML parsers. It polls the SOAP endpoint every 5 seconds using cursor-based pagination (page size of 100). Each SOAP XML response is parsed, individual `<sale:record>` elements are mapped to JSON fields, and the records are published to the `raw_soap` topic.
 
 ### Processing Connectors
 
@@ -61,15 +61,15 @@ Beyond source connectors, the pipeline includes processing connectors that trans
 
 #### 1) Postgres Enricher
 
-Java 17 Kafka Streams application (v3.7.0) that enriches raw CDC events from PostgreSQL. It consumes the `electromart.public.sales` stream and joins it with three GlobalKTables (`electromart.public.products`, `electromart.public.salesmen`, `electromart.public.stores`) to denormalize each sale with full product, salesman, and store details. It also normalizes the schema — converting numeric `sale_id` to `"PG-{id}"` format, timestamps to ISO-8601, and removing internal DB columns (`created_at`, `updated_at`, foreign keys). The enriched records are published to `raw-sales`.
+Java 17 Kafka Streams application (v3.7.0) that enriches raw CDC events from PostgreSQL. It consumes the `electromart.public.sales` stream and joins it with three GlobalKTables (`electromart.public.products`, `electromart.public.salesmen`, `electromart.public.stores`) to denormalize each sale with full product, salesman, and store details. It also normalizes the schema — converting numeric `sale_id` to `"PG-{id}"` format, timestamps to ISO-8601, and removing internal DB columns (`created_at`, `updated_at`, foreign keys). The enriched records are published to `raw_postgres`.
 
 #### 2) Sales Aggregator
 
-Java 17 Kafka Streams application (v3.7.0) that acts as the pipeline's final gatekeeper. It consumes from the `raw-sales` topic, validates each record against the canonical schema (required fields: `sale_id`, `source`, `sale_timestamp`, `total_amount`), and branches valid records to the `sales` topic while routing invalid ones to `sales-dlq` (dead letter queue). Valid records are also inserted into TimescaleDB's `sales` hypertable via the Timescale API.
+Java 17 Kafka Streams application (v3.7.0) that acts as the pipeline's normalizer and gatekeeper. It consumes from three source-specific topics (`raw_csv`, `raw_soap`, `raw_postgres`), adds normalization metadata (`trace_id`, `source`, `source_version`, `ingested_at`) to CSV and SOAP records, validates each record against the canonical schema (required fields: `sale_id`, `source`, `sale_timestamp`, `total_amount`), and branches valid records to the `sales` topic while routing invalid ones to `sales-dlq` (dead letter queue). Valid records are also inserted into TimescaleDB's `sales` hypertable via the Timescale API.
 
 ### Kafka
 
-Apache Kafka 3.7.1 running in KRaft mode (no ZooKeeper) as a single broker. It serves as the central event streaming backbone connecting all data sources, processing stages, and storage. Key application topics: `raw-sales` (normalized input from all connectors), `sales` (validated/aggregated output), `sales-dlq` (dead letter queue), and `electromart.public.*` (CDC topics from Debezium). Topics are auto-created by connectors with 1–3 partitions and replication factor 1.
+Apache Kafka 3.7.1 running in KRaft mode (no ZooKeeper) as a single broker. It serves as the central event streaming backbone connecting all data sources, processing stages, and storage. Key application topics: `raw_csv`, `raw_soap`, `raw_postgres` (source-specific raw input), `sales` (normalized/validated output), `sales-dlq` (dead letter queue), and `electromart.public.*` (CDC topics from Debezium). Topics are auto-created by connectors with 1–3 partitions and replication factor 1.
 
 #### Kafka Connector
 

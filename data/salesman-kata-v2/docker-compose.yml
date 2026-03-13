@@ -209,7 +209,7 @@ services:
     environment:
       KAFKA_BROKER: kafka:9092
       DEBEZIUM_PREFIX: electromart.public
-      TOPIC_RAW_SALES: raw-sales
+      TOPIC_OUTPUT: raw_postgres
       JAVA_OPTS: "-Xms32M -Xmx64M"
     networks:
       - electromart-network
@@ -221,7 +221,7 @@ services:
     container_name: electromart-csv-connector
     environment:
       KAFKA_BROKER: kafka:9092
-      TOPIC_RAW_SALES: raw-sales
+      TOPIC_OUTPUT: raw_csv
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin123
@@ -241,7 +241,7 @@ services:
     container_name: electromart-soap-connector
     environment:
       KAFKA_BROKER: kafka:9092
-      TOPIC_RAW_SALES: raw-sales
+      TOPIC_OUTPUT: raw_soap
       SOAP_URL: http://soap-service:8080/sales
       PAGE_SIZE: "100"
       POLL_INTERVAL: "5000"
@@ -276,7 +276,9 @@ services:
     container_name: electromart-sales-aggregator
     environment:
       KAFKA_BROKER: kafka:9092
-      TOPIC_RAW_SALES: raw-sales
+      TOPIC_RAW_CSV: raw_csv
+      TOPIC_RAW_SOAP: raw_soap
+      TOPIC_RAW_POSTGRES: raw_postgres
       TOPIC_SALES: sales
       TOPIC_DLQ: sales-dlq
       TIMESCALE_API_URL: http://timescale-api:8090

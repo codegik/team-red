@@ -2,6 +2,7 @@ package com.electromart;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.serialization.Serdes;
@@ -17,17 +18,21 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 
 public class SalesAggregator {
 
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    private static String INPUT_TOPIC;
+    private static String TOPIC_RAW_CSV;
+    private static String TOPIC_RAW_SOAP;
+    private static String TOPIC_RAW_POSTGRES;
     private static String OUTPUT_TOPIC;
     private static String DLQ_TOPIC;
     private static String TIMESCALE_API_URL;
@@ -40,12 +45,16 @@ public class SalesAggregator {
 
     public static void main(String[] args) throws Exception {
         String broker = env("KAFKA_BROKER", "kafka:9092");
-        INPUT_TOPIC = env("TOPIC_RAW_SALES", env("INPUT_TOPIC", "raw-sales"));
+        TOPIC_RAW_CSV = env("TOPIC_RAW_CSV", "raw_csv");
+        TOPIC_RAW_SOAP = env("TOPIC_RAW_SOAP", "raw_soap");
+        TOPIC_RAW_POSTGRES = env("TOPIC_RAW_POSTGRES", "raw_postgres");
         OUTPUT_TOPIC = env("TOPIC_SALES", "sales");
         DLQ_TOPIC = env("TOPIC_DLQ", "sales-dlq");
         TIMESCALE_API_URL = env("TIMESCALE_API_URL", "http://timescale-api:8090");
         validateTopicConfig(Map.of(
-            "TOPIC_RAW_SALES", INPUT_TOPIC,
+            "TOPIC_RAW_CSV", TOPIC_RAW_CSV,
+            "TOPIC_RAW_SOAP", TOPIC_RAW_SOAP,
+            "TOPIC_RAW_POSTGRES", TOPIC_RAW_POSTGRES,
             "TOPIC_SALES", OUTPUT_TOPIC,
             "TOPIC_DLQ", DLQ_TOPIC
         ));
@@ -64,9 +73,19 @@ public class SalesAggregator {
         ensureTopic(broker, DLQ_TOPIC);
 
         StreamsBuilder builder = new StreamsBuilder();
-        KStream<String, String> merged = builder
-            .<String, String>stream(INPUT_TOPIC)
+
+        KStream<String, String> csvStream = builder.<String, String>stream(TOPIC_RAW_CSV)
+            .filter((key, value) -> value != null)
+            .mapValues(value -> addSourceMetadata(value, "csv"));
+
+        KStream<String, String> soapStream = builder.<String, String>stream(TOPIC_RAW_SOAP)
+            .filter((key, value) -> value != null)
+            .mapValues(value -> addSourceMetadata(value, "soap"));
+
+        KStream<String, String> postgresStream = builder.<String, String>stream(TOPIC_RAW_POSTGRES)
             .filter((key, value) -> value != null);
+
+        KStream<String, String> merged = csvStream.merge(soapStream).merge(postgresStream);
 
         Map<String, KStream<String, String>> branches = merged
             .split(Named.as("branch-"))
@@ -87,8 +106,30 @@ public class SalesAggregator {
         KafkaStreams streams = new KafkaStreams(builder.build(), props);
         Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
 
-        System.out.println("Starting Sales Aggregator | input: " + INPUT_TOPIC + " | valid -> " + OUTPUT_TOPIC + " | invalid -> " + DLQ_TOPIC);
+        System.out.printf("Starting Sales Aggregator | input: %s, %s, %s | valid -> %s | invalid -> %s%n",
+            TOPIC_RAW_CSV, TOPIC_RAW_SOAP, TOPIC_RAW_POSTGRES, OUTPUT_TOPIC, DLQ_TOPIC);
         streams.start();
+    }
+
+    static String addSourceMetadata(String json, String source) {
+        try {
+            ObjectNode node = (ObjectNode) mapper.readTree(json);
+            if (!node.has("trace_id")) {
+                node.put("trace_id", UUID.randomUUID().toString().substring(0, 8));
+            }
+            if (!node.has("source")) {
+                node.put("source", source);
+            }
+            if (!node.has("source_version")) {
+                node.put("source_version", "v1");
+            }
+            if (!node.has("ingested_at")) {
+                node.put("ingested_at", Instant.now().toString());
+            }
+            return mapper.writeValueAsString(node);
+        } catch (Exception e) {
+            return json;
+        }
     }
 
     static boolean validate(String json) {
@@ -153,14 +194,15 @@ public class SalesAggregator {
     }
 
     private static void waitForTopics(String broker) throws Exception {
+        Set<String> required = Set.of(TOPIC_RAW_CSV, TOPIC_RAW_SOAP, TOPIC_RAW_POSTGRES);
         try (AdminClient admin = AdminClient.create(Map.of("bootstrap.servers", broker))) {
             while (true) {
                 Set<String> existing = admin.listTopics().names().get();
-                if (existing.contains(INPUT_TOPIC)) {
-                    System.out.println("Input topic '" + INPUT_TOPIC + "' found");
+                if (existing.containsAll(required)) {
+                    System.out.printf("All input topics found: %s%n", required);
                     return;
                 }
-                System.out.println("Waiting for topic '" + INPUT_TOPIC + "'...");
+                System.out.printf("Waiting for input topics %s (have: %s)...%n", required, existing);
                 sleep(5000);
             }
         }

@@ -109,7 +109,11 @@ Content-Type: text/xml
 | `electromart.public.products` | Debezium CDC                        | CDC events from PostgreSQL products table    |
 | `electromart.public.salesmen` | Debezium CDC                        | CDC events from PostgreSQL salesmen table    |
 | `electromart.public.stores`   | Debezium CDC                        | CDC events from PostgreSQL stores table      |
-| `raw-sales`                   | CSV, SOAP, and Postgres Connectors  | Raw sales from all sources                   |
+| `raw_csv`                     | CSV Connector                       | Raw sales from CSV files                     |
+| `raw_soap`                    | SOAP Connector                      | Raw sales from SOAP service                  |
+| `raw_postgres`                | Postgres Enricher                   | Enriched sales from PostgreSQL CDC           |
+| `sales`                       | Sales Aggregator                    | Normalized and validated sales               |
+| `sales-dlq`                   | Sales Aggregator                    | Records that failed validation               |
 
 ## How to Run
 
@@ -194,11 +198,11 @@ These services run inside Docker and are part of the pipeline even when they do 
 | ------- | -------------- |
 | `postgres-data-generator` | Generates sample sales in PostgreSQL |
 | `postgres-connector-source` | Registers the PostgreSQL Debezium connector |
-| `postgres-enricher` | Normalizes PostgreSQL CDC events into `raw-sales` |
+| `postgres-enricher` | Enriches PostgreSQL CDC events into `raw_postgres` |
 | `csv-files` | Generates CSV sales files |
 | `csv-connector-source` | Receives MinIO webhook events and publishes CSV sales to Kafka |
 | `soap-connector-source` | Polls the SOAP service and publishes sales to Kafka |
-| `sales-aggregator` | Consumes `raw-sales` and writes unified records to `timescale-api` |
+| `sales-aggregator` | Consumes `raw_csv`, `raw_soap`, `raw_postgres`, normalizes and writes to `timescale-api` |
 | `timescale-api` | Only service allowed to write to and read from TimescaleDB |
 | `postgres-exporter` | Exposes PostgreSQL metrics for Prometheus |
 | `timescaledb-exporter` | Exposes TimescaleDB metrics for Prometheus |

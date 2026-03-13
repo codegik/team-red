@@ -18,7 +18,6 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
@@ -46,8 +45,8 @@ public class CsvConnector {
 
     public static void main(String[] args) throws Exception {
         String broker = env("KAFKA_BROKER", "kafka:9092");
-        kafkaTopic = env("TOPIC_RAW_SALES", env("KAFKA_TOPIC", "raw-sales"));
-        validateTopicConfig(Map.of("TOPIC_RAW_SALES", kafkaTopic));
+        kafkaTopic = env("TOPIC_OUTPUT", "raw_csv");
+        validateTopicConfig(Map.of("TOPIC_OUTPUT", kafkaTopic));
         String minioEndpoint = env("MINIO_ENDPOINT", "http://minio:9000");
         sourceBucket = env("MINIO_BUCKET", "sales-csv");
         processedBucket = env("MINIO_PROCESSED_BUCKET", "sales-csv-processed");
@@ -163,11 +162,9 @@ public class CsvConnector {
                 String line = lines.get(i).trim();
                 if (line.isEmpty()) continue;
 
-                String traceId = UUID.randomUUID().toString().substring(0, 8);
                 String saleId = line.split(",", 2)[0];
-                long recordStart = System.currentTimeMillis();
 
-                String json = csvLineToJson(line, traceId);
+                String json = csvLineToJson(line);
                 if (json == null) continue;
 
                 producer.send(new ProducerRecord<>(kafkaTopic, saleId, json));
@@ -195,16 +192,12 @@ public class CsvConnector {
         } catch (Exception ignored) {}
     }
 
-    private static String csvLineToJson(String line, String traceId) {
+    private static String csvLineToJson(String line) {
         try {
             String[] values = line.split(",", -1);
             if (values.length < HEADERS.length) return null;
 
             ObjectNode node = mapper.createObjectNode();
-            node.put("trace_id", traceId);
-            node.put("source", "csv");
-            node.put("source_version", "v1");
-
             for (int i = 0; i < HEADERS.length; i++) {
                 String field = HEADERS[i], value = values[i].trim();
                 if (NUMERIC_FIELDS.contains(field)) {
@@ -213,7 +206,6 @@ public class CsvConnector {
                     node.put(field, value);
                 }
             }
-            node.put("ingested_at", Instant.now().toString());
             return mapper.writeValueAsString(node);
         } catch (Exception e) {
             return null;

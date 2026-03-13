@@ -47,12 +47,12 @@
       "pluginVersion": "10.3.1",
       "targets": [
         {
-          "expr": "sum(kafka_topic_partition_current_offset{topic=\"raw-sales\"})",
+          "expr": "sum(kafka_topic_partition_current_offset{topic=~\"raw_csv|raw_soap|raw_postgres\"})",
           "legendFormat": "Total Messages",
           "refId": "A"
         }
       ],
-      "title": "raw-sales Topic - Total Ingested",
+      "title": "Raw Topics - Total Ingested",
       "type": "stat"
     },
     {
@@ -301,19 +301,29 @@
       "pluginVersion": "10.3.1",
       "targets": [
         {
-          "expr": "rate(kafka_topic_partition_current_offset{topic=\"raw-sales\"}[1m])",
-          "legendFormat": "raw-sales (input)",
+          "expr": "rate(kafka_topic_partition_current_offset{topic=\"raw_csv\"}[1m])",
+          "legendFormat": "raw_csv",
           "refId": "A"
+        },
+        {
+          "expr": "rate(kafka_topic_partition_current_offset{topic=\"raw_soap\"}[1m])",
+          "legendFormat": "raw_soap",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(kafka_topic_partition_current_offset{topic=\"raw_postgres\"}[1m])",
+          "legendFormat": "raw_postgres",
+          "refId": "C"
         },
         {
           "expr": "rate(kafka_topic_partition_current_offset{topic=\"sales\"}[1m])",
           "legendFormat": "sales (validated)",
-          "refId": "B"
+          "refId": "D"
         },
         {
           "expr": "rate(kafka_topic_partition_current_offset{topic=\"sales-dlq\"}[1m])",
           "legendFormat": "sales-dlq (rejected)",
-          "refId": "C"
+          "refId": "E"
         }
       ],
       "title": "Messages per Second by Topic",

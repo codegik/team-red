@@ -33,12 +33,12 @@ public class SalesEnricher {
         PRODUCTS_TOPIC = System.getenv().getOrDefault("TOPIC_CDC_PRODUCTS", debeziumPrefix + ".products");
         SALESMEN_TOPIC = System.getenv().getOrDefault("TOPIC_CDC_SALESMEN", debeziumPrefix + ".salesmen");
         STORES_TOPIC = System.getenv().getOrDefault("TOPIC_CDC_STORES", debeziumPrefix + ".stores");
-        OUTPUT_TOPIC = System.getenv().getOrDefault("TOPIC_RAW_SALES", System.getenv().getOrDefault("OUTPUT_TOPIC", "raw-sales"));
+        OUTPUT_TOPIC = System.getenv().getOrDefault("TOPIC_OUTPUT", "raw_postgres");
 
         validateTopicConfig(Map.of(
             "TOPIC_CDC_SALES", SALES_TOPIC, "TOPIC_CDC_PRODUCTS", PRODUCTS_TOPIC,
             "TOPIC_CDC_SALESMEN", SALESMEN_TOPIC, "TOPIC_CDC_STORES", STORES_TOPIC,
-            "TOPIC_RAW_SALES", OUTPUT_TOPIC
+            "TOPIC_OUTPUT", OUTPUT_TOPIC
         ));
 
         Properties props = new Properties();
