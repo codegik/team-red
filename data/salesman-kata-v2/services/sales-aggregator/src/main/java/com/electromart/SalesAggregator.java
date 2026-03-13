@@ -2,14 +2,9 @@ package com.electromart;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
@@ -22,7 +17,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,20 +26,16 @@ import java.util.Set;
 public class SalesAggregator {
 
     private static final ObjectMapper mapper = new ObjectMapper();
-    private static final String COMPONENT_NAME = "sales-aggregator";
 
     private static String INPUT_TOPIC;
     private static String OUTPUT_TOPIC;
     private static String DLQ_TOPIC;
-    private static String LINEAGE_TOPIC;
     private static String TIMESCALE_API_URL;
 
     private static final Set<String> REQUIRED_FIELDS = Set.of(
         "sale_id", "source", "sale_timestamp", "total_amount"
     );
 
-    private static KafkaProducer<String, String> lineageProducer;
-    private static boolean lineageEnabled;
     private static HttpClient timescaleApiClient;
 
     public static void main(String[] args) throws Exception {
@@ -53,15 +43,12 @@ public class SalesAggregator {
         INPUT_TOPIC = env("TOPIC_RAW_SALES", env("INPUT_TOPIC", "raw-sales"));
         OUTPUT_TOPIC = env("TOPIC_SALES", "sales");
         DLQ_TOPIC = env("TOPIC_DLQ", "sales-dlq");
-        LINEAGE_TOPIC = env("TOPIC_LINEAGE", "lineage");
         TIMESCALE_API_URL = env("TIMESCALE_API_URL", "http://timescale-api:8090");
         validateTopicConfig(Map.of(
             "TOPIC_RAW_SALES", INPUT_TOPIC,
             "TOPIC_SALES", OUTPUT_TOPIC,
-            "TOPIC_DLQ", DLQ_TOPIC,
-            "TOPIC_LINEAGE", LINEAGE_TOPIC
+            "TOPIC_DLQ", DLQ_TOPIC
         ));
-        lineageEnabled = Boolean.parseBoolean(env("LINEAGE_ENABLED", "true"));
         timescaleApiClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .build();
@@ -75,16 +62,6 @@ public class SalesAggregator {
         waitForTopics(broker);
         waitForTimescaleApi();
         ensureTopic(broker, DLQ_TOPIC);
-
-        if (lineageEnabled) {
-            ensureTopic(broker, LINEAGE_TOPIC);
-            Properties producerProps = new Properties();
-            producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, broker);
-            producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            lineageProducer = new KafkaProducer<>(producerProps);
-            System.out.println("Lineage tracking: ENABLED");
-        }
 
         StreamsBuilder builder = new StreamsBuilder();
         KStream<String, String> merged = builder
@@ -108,12 +85,7 @@ public class SalesAggregator {
             .to(DLQ_TOPIC);
 
         KafkaStreams streams = new KafkaStreams(builder.build(), props);
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            streams.close();
-            if (lineageProducer != null) {
-                lineageProducer.close();
-            }
-        }));
+        Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
 
         System.out.println("Starting Sales Aggregator | input: " + INPUT_TOPIC + " | valid -> " + OUTPUT_TOPIC + " | invalid -> " + DLQ_TOPIC);
         streams.start();
@@ -137,37 +109,9 @@ public class SalesAggregator {
 
     private static synchronized void insertSale(String json) {
         try {
-            JsonNode node = mapper.readTree(json);
-            String traceId = node.path("trace_id").asText();
-            String saleId = node.get("sale_id").asText();
-            String source = node.path("source").asText("unknown");
-
-            JsonNode responseNode = postJson("/api/sales", json);
-            if (responseNode.path("inserted").asBoolean(false)) {
-                emitLineage(traceId, saleId, source, "storage", "inserted");
-            }
+            postJson("/api/sales", json);
         } catch (Exception e) {
             System.err.println("Insert error: " + e.getMessage());
-        }
-    }
-
-    private static void emitLineage(String traceId, String saleId, String source, String stage, String eventType) {
-        if (!lineageEnabled || lineageProducer == null || traceId == null || traceId.isEmpty()) {
-            return;
-        }
-        try {
-            ObjectNode event = mapper.createObjectNode();
-            event.put("trace_id", traceId);
-            event.put("sale_id", saleId);
-            event.put("stage", stage);
-            event.put("component", COMPONENT_NAME);
-            event.put("event_type", eventType);
-            event.put("timestamp", Instant.now().toString());
-            event.put("source_topic", INPUT_TOPIC);
-            event.put("target_topic", OUTPUT_TOPIC);
-            event.putObject("metadata").put("source", source);
-            lineageProducer.send(new ProducerRecord<>(LINEAGE_TOPIC, traceId, mapper.writeValueAsString(event)));
-        } catch (Exception ignored) {
         }
     }
 

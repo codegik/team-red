@@ -210,8 +210,6 @@ services:
       KAFKA_BROKER: kafka:9092
       DEBEZIUM_PREFIX: electromart.public
       TOPIC_RAW_SALES: raw-sales
-      TOPIC_LINEAGE: lineage
-      LINEAGE_ENABLED: "true"
       JAVA_OPTS: "-Xms32M -Xmx64M"
     networks:
       - electromart-network
@@ -224,14 +222,12 @@ services:
     environment:
       KAFKA_BROKER: kafka:9092
       TOPIC_RAW_SALES: raw-sales
-      TOPIC_LINEAGE: lineage
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin123
       MINIO_BUCKET: sales-csv
       MINIO_PROCESSED_BUCKET: sales-csv-processed
       WEBHOOK_PORT: "8085"
-      LINEAGE_ENABLED: "true"
       JAVA_OPTS: "-Xms64M -Xmx128M"
     ports:
       - "8085:8085"
@@ -246,11 +242,9 @@ services:
     environment:
       KAFKA_BROKER: kafka:9092
       TOPIC_RAW_SALES: raw-sales
-      TOPIC_LINEAGE: lineage
       SOAP_URL: http://soap-service:8080/sales
       PAGE_SIZE: "100"
       POLL_INTERVAL: "5000"
-      LINEAGE_ENABLED: "true"
       JAVA_OPTS: "-Xms32M -Xmx64M"
     networks:
       - electromart-network
@@ -285,24 +279,6 @@ services:
       TOPIC_RAW_SALES: raw-sales
       TOPIC_SALES: sales
       TOPIC_DLQ: sales-dlq
-      TOPIC_LINEAGE: lineage
-      TIMESCALE_API_URL: http://timescale-api:8090
-      LINEAGE_ENABLED: "true"
-      JAVA_OPTS: "-Xms32M -Xmx64M"
-    depends_on:
-      timescale-api:
-        condition: service_healthy
-    networks:
-      - electromart-network
-
-  lineage-consumer:
-    build:
-      context: ./services/lineage-consumer
-      dockerfile: Dockerfile
-    container_name: electromart-lineage-consumer
-    environment:
-      KAFKA_BROKER: kafka:9092
-      TOPIC_LINEAGE: lineage
       TIMESCALE_API_URL: http://timescale-api:8090
       JAVA_OPTS: "-Xms32M -Xmx64M"
     depends_on:

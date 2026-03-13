@@ -38,11 +38,10 @@ Node.js 20 with Express.js (v4.18.2) running on port 8080. It exposes a POST `/s
 
 ## Data Ingestion
 
-Data ingestion is the process of extracting data from the three heterogeneous sources, converting it into a common JSON format, and publishing it to Kafka. Each source has a dedicated connector that handles the specific protocol (CDC, S3 webhooks, or SOAP polling) and normalizes the output into the `raw-sales` Kafka topic. All connectors also emit lineage events for end-to-end traceability.
-
+Data ingestion is the process of extracting data from the three heterogeneous sources, converting it into a common JSON format, and publishing it to Kafka. Each source has a dedicated connector that handles the specific protocol (CDC, S3 webhooks, or SOAP polling) and normalizes the output into the `raw-sales` Kafka topic.
 ### Connector sources
 
-Source connectors are responsible for reading data from external systems and publishing it into Kafka. Each connector is a standalone Java 17 application that handles connection management, data transformation, topic auto-creation, and lineage tracking. They all write to the `raw-sales` topic with a consistent schema that includes `source`, `trace_id`, and `ingested_at` metadata fields.
+Source connectors are responsible for reading data from external systems and publishing it into Kafka. Each connector is a standalone Java 17 application that handles connection management, data transformation, and topic auto-creation. They all write to the `raw-sales` topic with a consistent schema that includes `source`, `trace_id`, and `ingested_at` metadata fields.
 
 #### 1) Postgres Connector
 
@@ -66,11 +65,11 @@ Java 17 Kafka Streams application (v3.7.0) that enriches raw CDC events from Pos
 
 #### 2) Sales Aggregator
 
-Java 17 Kafka Streams application (v3.7.0) that acts as the pipeline's final gatekeeper. It consumes from the `raw-sales` topic, validates each record against the canonical schema (required fields: `sale_id`, `source`, `sale_timestamp`, `total_amount`), and branches valid records to the `sales` topic while routing invalid ones to `sales-dlq` (dead letter queue). Valid records are also inserted into TimescaleDB's `sales` hypertable with their `trace_id` for lineage correlation. It emits lineage events at the storage stage, completing the end-to-end traceability chain.
+Java 17 Kafka Streams application (v3.7.0) that acts as the pipeline's final gatekeeper. It consumes from the `raw-sales` topic, validates each record against the canonical schema (required fields: `sale_id`, `source`, `sale_timestamp`, `total_amount`), and branches valid records to the `sales` topic while routing invalid ones to `sales-dlq` (dead letter queue). Valid records are also inserted into TimescaleDB's `sales` hypertable via the Timescale API.
 
 ### Kafka
 
-Apache Kafka 3.7.1 running in KRaft mode (no ZooKeeper) as a single broker. It serves as the central event streaming backbone connecting all data sources, processing stages, and storage. Key application topics: `raw-sales` (normalized input from all connectors), `sales` (validated/aggregated output), `sales-dlq` (dead letter queue), `lineage` (tracking metadata), and `electromart.public.*` (CDC topics from Debezium). Topics are auto-created by connectors with 1–3 partitions and replication factor 1.
+Apache Kafka 3.7.1 running in KRaft mode (no ZooKeeper) as a single broker. It serves as the central event streaming backbone connecting all data sources, processing stages, and storage. Key application topics: `raw-sales` (normalized input from all connectors), `sales` (validated/aggregated output), `sales-dlq` (dead letter queue), and `electromart.public.*` (CDC topics from Debezium). Topics are auto-created by connectors with 1–3 partitions and replication factor 1.
 
 #### Kafka Connector
 
@@ -84,15 +83,11 @@ Kafka UI v0.7.2 (ProVectus Labs), a web-based interface on port 8888 for monitor
 
 #### TimescaleDB
 
-TimescaleDB (latest, on PostgreSQL 15) running on port 5433 (credentials: sales/sales123, database: salesdb). It extends PostgreSQL with time-series optimizations — the `sales` table is a hypertable partitioned by `sale_timestamp`, enabling efficient time-range queries and automatic chunk management. Three continuous aggregates (`top_products`, `top_cities`, `top_salesmen`) pre-compute hourly revenue rollups and auto-refresh every 5 minutes. A separate `lineage` hypertable and its aggregates (`lineage_flow`, `pipeline_throughput`) store pipeline observability data. TimescaleDB was chosen over regular PostgreSQL for its automatic time partitioning, continuous aggregates, and built-in compression for historical data.
-
-## Data Lineage
-
-Data lineage is implemented as an event-based tracking system using a shared `LineageTracker` utility. Every connector and processing component emits lineage events to the `lineage` Kafka topic, recording the trace_id, sale_id, stage (ingestion/enrichment/aggregation/storage), component name, event type (received/processed/published/stored/error), and latency. A dedicated `LineageConsumer` reads these events and persists them to the TimescaleDB `lineage` hypertable. Continuous aggregates then power the lineage dashboard, providing visibility into record counts, processing latencies, and pipeline throughput per stage and component.
+TimescaleDB (latest, on PostgreSQL 15) running on port 5433 (credentials: sales/sales123, database: salesdb). It extends PostgreSQL with time-series optimizations — the `sales` table is a hypertable partitioned by `sale_timestamp`, enabling efficient time-range queries and automatic chunk management. Three continuous aggregates (`top_products`, `top_cities`, `top_salesmen`) pre-compute hourly revenue rollups and auto-refresh every 5 minutes. TimescaleDB was chosen over regular PostgreSQL for its automatic time partitioning, continuous aggregates, and built-in compression for historical data.
 
 ## Results
 
-The project delivers two categories of results: business analytics (sales performance dashboards) and operational observability (pipeline health and data lineage monitoring). All results are served through Grafana dashboards backed by TimescaleDB queries and Prometheus metrics.
+The project delivers two categories of results: business analytics (sales performance dashboards) and operational observability (pipeline health monitoring). All results are served through Grafana dashboards backed by TimescaleDB queries and Prometheus metrics.
 
 ### Prometheus
 
@@ -100,4 +95,4 @@ Prometheus v2.49.1 scrapes metrics every 15 seconds from three exporters: `kafka
 
 ### Grafana
 
-Grafana 10.3.1 with two provisioned datasources (TimescaleDB as default, Prometheus for infra metrics) and three pre-configured dashboards. The **Sales Dashboard** shows top 10 salesmen, cities, and products by revenue plus revenue-by-source breakdowns using TimescaleDB continuous aggregates. The **Lineage Dashboard** visualizes data provenance — total records traced, event counts by stage/component, and processing latencies. The **Pipeline Observability Dashboard** uses Prometheus metrics to display Kafka topic ingestion rates, consumer lag, broker health, and database connection stats.
+Grafana 10.3.1 with two provisioned datasources (TimescaleDB as default, Prometheus for infra metrics) and two pre-configured dashboards. The **Sales Dashboard** shows top 10 salesmen, cities, and products by revenue plus revenue-by-source breakdowns using TimescaleDB continuous aggregates. The **Pipeline Observability Dashboard** uses Prometheus metrics to display Kafka topic ingestion rates, consumer lag, broker health, and database connection stats.

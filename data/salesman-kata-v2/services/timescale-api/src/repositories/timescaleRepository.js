@@ -19,14 +19,6 @@ const insertSaleSql = `
   ON CONFLICT (sale_id, sale_timestamp) DO NOTHING
 `;
 
-const insertLineageSql = `
-  INSERT INTO lineage (
-    trace_id, sale_id, stage, component, event_type,
-    source_topic, target_topic, latency_ms, metadata, event_timestamp
-  )
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)
-`;
-
 async function ping() {
   await pool.query("SELECT 1");
 }
@@ -62,36 +54,6 @@ async function insertSale(payload) {
     inserted: result.rowCount > 0,
     saleId: payload.sale_id,
     saleTimestamp,
-  };
-}
-
-async function insertLineage(payload) {
-  requireField(payload.trace_id, "trace_id");
-  requireField(payload.stage, "stage");
-  requireField(payload.component, "component");
-  requireField(payload.event_type, "event_type");
-
-  const eventTimestamp = payload.timestamp
-    ? normalizeTimestamp(payload.timestamp, "timestamp")
-    : new Date().toISOString();
-
-  await pool.query(insertLineageSql, [
-    payload.trace_id,
-    payload.sale_id || null,
-    payload.stage,
-    payload.component,
-    payload.event_type,
-    payload.source_topic || null,
-    payload.target_topic || null,
-    payload.latency_ms ?? 0,
-    toNullableJson(payload.metadata),
-    eventTimestamp,
-  ]);
-
-  return {
-    inserted: true,
-    traceId: payload.trace_id,
-    eventTimestamp,
   };
 }
 
@@ -207,7 +169,6 @@ async function closePool() {
 
 module.exports = {
   closePool,
-  insertLineage,
   insertSale,
   ping,
   queryTopCities,

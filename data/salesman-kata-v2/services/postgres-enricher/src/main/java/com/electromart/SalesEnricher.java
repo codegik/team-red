@@ -4,12 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
@@ -24,17 +19,12 @@ import java.util.concurrent.ExecutionException;
 public class SalesEnricher {
 
     private static final ObjectMapper mapper = new ObjectMapper();
-    private static final String COMPONENT_NAME = "postgres-enricher";
 
     private static String SALES_TOPIC;
     private static String PRODUCTS_TOPIC;
     private static String SALESMEN_TOPIC;
     private static String STORES_TOPIC;
     private static String OUTPUT_TOPIC;
-    private static String LINEAGE_TOPIC;
-
-    private static KafkaProducer<String, String> lineageProducer;
-    private static boolean lineageEnabled;
 
     public static void main(String[] args) throws Exception {
         String broker = System.getenv().getOrDefault("KAFKA_BROKER", "kafka:9092");
@@ -44,13 +34,11 @@ public class SalesEnricher {
         SALESMEN_TOPIC = System.getenv().getOrDefault("TOPIC_CDC_SALESMEN", debeziumPrefix + ".salesmen");
         STORES_TOPIC = System.getenv().getOrDefault("TOPIC_CDC_STORES", debeziumPrefix + ".stores");
         OUTPUT_TOPIC = System.getenv().getOrDefault("TOPIC_RAW_SALES", System.getenv().getOrDefault("OUTPUT_TOPIC", "raw-sales"));
-        LINEAGE_TOPIC = System.getenv().getOrDefault("TOPIC_LINEAGE", "lineage");
-        lineageEnabled = Boolean.parseBoolean(System.getenv().getOrDefault("LINEAGE_ENABLED", "true"));
 
         validateTopicConfig(Map.of(
             "TOPIC_CDC_SALES", SALES_TOPIC, "TOPIC_CDC_PRODUCTS", PRODUCTS_TOPIC,
             "TOPIC_CDC_SALESMEN", SALESMEN_TOPIC, "TOPIC_CDC_STORES", STORES_TOPIC,
-            "TOPIC_RAW_SALES", OUTPUT_TOPIC, "TOPIC_LINEAGE", LINEAGE_TOPIC
+            "TOPIC_RAW_SALES", OUTPUT_TOPIC
         ));
 
         Properties props = new Properties();
@@ -60,16 +48,6 @@ public class SalesEnricher {
         props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.StringSerde.class);
 
         waitForTopics(broker);
-
-        if (lineageEnabled) {
-            ensureTopic(broker, LINEAGE_TOPIC);
-            Properties producerProps = new Properties();
-            producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, broker);
-            producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            lineageProducer = new KafkaProducer<>(producerProps);
-            System.out.println("Lineage tracking: ENABLED");
-        }
 
         StreamsBuilder builder = new StreamsBuilder();
 
@@ -82,7 +60,6 @@ public class SalesEnricher {
         KStream<String, String> enriched = sales
             .filter((key, value) -> value != null)
             .mapValues(SalesEnricher::addTraceId)
-            .peek((key, value) -> emitReceivedLineage(value))
             .join(products,
                 (key, sale) -> toKey("id", sale, "product_id"),
                 SalesEnricher::withProduct)
@@ -92,16 +69,12 @@ public class SalesEnricher {
             .join(stores,
                 (key, sale) -> toKey("id", sale, "store_id"),
                 SalesEnricher::withStore)
-            .mapValues(SalesEnricher::normalizeCanonical)
-            .peek((key, value) -> emitPublishedLineage(value));
+            .mapValues(SalesEnricher::normalizeCanonical);
 
         enriched.to(OUTPUT_TOPIC);
 
         KafkaStreams streams = new KafkaStreams(builder.build(), props);
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            streams.close();
-            if (lineageProducer != null) lineageProducer.close();
-        }));
+        Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
 
         System.out.println("Starting Sales Enricher - output topic: " + OUTPUT_TOPIC);
         streams.start();
@@ -120,47 +93,6 @@ public class SalesEnricher {
         } catch (Exception e) {
             return json;
         }
-    }
-
-    private static void emitReceivedLineage(String json) {
-        if (!lineageEnabled || lineageProducer == null) return;
-        try {
-            JsonNode node = mapper.readTree(json);
-            String traceId = node.path("trace_id").asText();
-            String saleId = node.path("sale_id").asText();
-            if (traceId.isEmpty()) return;
-
-            ObjectNode event = mapper.createObjectNode();
-            event.put("trace_id", traceId);
-            event.put("sale_id", saleId);
-            event.put("stage", "enrichment");
-            event.put("component", COMPONENT_NAME);
-            event.put("event_type", "received");
-            event.put("timestamp", Instant.now().toString());
-            event.put("source_topic", SALES_TOPIC);
-            lineageProducer.send(new ProducerRecord<>(LINEAGE_TOPIC, traceId, mapper.writeValueAsString(event)));
-        } catch (Exception ignored) {}
-    }
-
-    private static void emitPublishedLineage(String json) {
-        if (!lineageEnabled || lineageProducer == null) return;
-        try {
-            JsonNode node = mapper.readTree(json);
-            String traceId = node.path("trace_id").asText();
-            String saleId = node.path("sale_id").asText();
-            if (traceId.isEmpty()) return;
-
-            ObjectNode event = mapper.createObjectNode();
-            event.put("trace_id", traceId);
-            event.put("sale_id", saleId);
-            event.put("stage", "enrichment");
-            event.put("component", COMPONENT_NAME);
-            event.put("event_type", "published");
-            event.put("timestamp", Instant.now().toString());
-            event.put("source_topic", SALES_TOPIC);
-            event.put("target_topic", OUTPUT_TOPIC);
-            lineageProducer.send(new ProducerRecord<>(LINEAGE_TOPIC, traceId, mapper.writeValueAsString(event)));
-        } catch (Exception ignored) {}
     }
 
     private static String toKey(String pkField, String json, String fkField) {
@@ -276,11 +208,4 @@ public class SalesEnricher {
         }
     }
 
-    private static void ensureTopic(String broker, String topic) {
-        try (AdminClient admin = AdminClient.create(Map.of("bootstrap.servers", broker))) {
-            if (!admin.listTopics().names().get().contains(topic)) {
-                admin.createTopics(List.of(new NewTopic(topic, 1, (short) 1))).all().get();
-            }
-        } catch (Exception ignored) {}
-    }
 }

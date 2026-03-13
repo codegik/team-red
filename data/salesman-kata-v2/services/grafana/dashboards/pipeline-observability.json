@@ -314,11 +314,6 @@
           "expr": "rate(kafka_topic_partition_current_offset{topic=\"sales-dlq\"}[1m])",
           "legendFormat": "sales-dlq (rejected)",
           "refId": "C"
-        },
-        {
-          "expr": "rate(kafka_topic_partition_current_offset{topic=\"lineage\"}[1m])",
-          "legendFormat": "lineage",
-          "refId": "D"
         }
       ],
       "title": "Messages per Second by Topic",

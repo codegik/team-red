@@ -110,7 +110,6 @@ Content-Type: text/xml
 | `electromart.public.salesmen` | Debezium CDC                        | CDC events from PostgreSQL salesmen table    |
 | `electromart.public.stores`   | Debezium CDC                        | CDC events from PostgreSQL stores table      |
 | `raw-sales`                   | CSV, SOAP, and Postgres Connectors  | Raw sales from all sources                   |
-| `lineage`                     | All Connectors / Aggregator         | Data lineage tracking metadata               |
 
 ## How to Run
 
@@ -200,7 +199,6 @@ These services run inside Docker and are part of the pipeline even when they do 
 | `csv-connector-source` | Receives MinIO webhook events and publishes CSV sales to Kafka |
 | `soap-connector-source` | Polls the SOAP service and publishes sales to Kafka |
 | `sales-aggregator` | Consumes `raw-sales` and writes unified records to `timescale-api` |
-| `lineage-consumer` | Consumes the `lineage` topic and writes lineage events to `timescale-api` |
 | `timescale-api` | Only service allowed to write to and read from TimescaleDB |
 | `postgres-exporter` | Exposes PostgreSQL metrics for Prometheus |
 | `timescaledb-exporter` | Exposes TimescaleDB metrics for Prometheus |

@@ -31,7 +31,6 @@ public class CsvConnector {
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final AtomicLong filesProcessed = new AtomicLong(0);
     private static final AtomicLong recordsProcessed = new AtomicLong(0);
-    private static final String COMPONENT_NAME = "csv-connector";
     private static final String[] HEADERS = {
         "sale_id", "product_code", "product_name", "category", "brand",
         "salesman_name", "salesman_email", "region", "store_name", "city",
@@ -42,21 +41,17 @@ public class CsvConnector {
     private static KafkaProducer<String, String> producer;
     private static MinioClient minioClient;
     private static String kafkaTopic;
-    private static String lineageTopic;
     private static String sourceBucket;
     private static String processedBucket;
-    private static boolean lineageEnabled;
 
     public static void main(String[] args) throws Exception {
         String broker = env("KAFKA_BROKER", "kafka:9092");
         kafkaTopic = env("TOPIC_RAW_SALES", env("KAFKA_TOPIC", "raw-sales"));
-        lineageTopic = env("TOPIC_LINEAGE", "lineage");
-        validateTopicConfig(Map.of("TOPIC_RAW_SALES", kafkaTopic, "TOPIC_LINEAGE", lineageTopic));
+        validateTopicConfig(Map.of("TOPIC_RAW_SALES", kafkaTopic));
         String minioEndpoint = env("MINIO_ENDPOINT", "http://minio:9000");
         sourceBucket = env("MINIO_BUCKET", "sales-csv");
         processedBucket = env("MINIO_PROCESSED_BUCKET", "sales-csv-processed");
         int webhookPort = Integer.parseInt(env("WEBHOOK_PORT", "8085"));
-        lineageEnabled = Boolean.parseBoolean(env("LINEAGE_ENABLED", "true"));
 
         System.out.printf("CSV Connector | Kafka: %s | MinIO: %s | Port: %d%n", broker, minioEndpoint, webhookPort);
 
@@ -68,7 +63,6 @@ public class CsvConnector {
         waitForMinio();
         waitForKafka(broker);
         ensureTopic(broker, kafkaTopic);
-        if (lineageEnabled) ensureTopic(broker, lineageTopic);
 
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, broker);
@@ -177,11 +171,6 @@ public class CsvConnector {
                 if (json == null) continue;
 
                 producer.send(new ProducerRecord<>(kafkaTopic, saleId, json));
-                
-                if (lineageEnabled) {
-                    emitLineage(traceId, saleId, "ingestion", "received", "minio:" + bucket, null, 0, key);
-                    emitLineage(traceId, saleId, "ingestion", "published", null, kafkaTopic, System.currentTimeMillis() - recordStart, null);
-                }
                 count++;
             }
 
@@ -229,21 +218,6 @@ public class CsvConnector {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    private static void emitLineage(String traceId, String saleId, String stage, String eventType, 
-                                     String sourceTopic, String targetTopic, long latencyMs, String metadata) {
-        try {
-            ObjectNode event = mapper.createObjectNode();
-            event.put("trace_id", traceId).put("sale_id", saleId).put("stage", stage)
-                 .put("component", COMPONENT_NAME).put("event_type", eventType)
-                 .put("timestamp", Instant.now().toString());
-            if (sourceTopic != null) event.put("source_topic", sourceTopic);
-            if (targetTopic != null) event.put("target_topic", targetTopic);
-            if (latencyMs > 0) event.put("latency_ms", latencyMs);
-            if (metadata != null) event.put("metadata", metadata);
-            producer.send(new ProducerRecord<>(lineageTopic, traceId, mapper.writeValueAsString(event)));
-        } catch (Exception ignored) {}
     }
 
     private static void validateTopicConfig(Map<String, String> topics) {
