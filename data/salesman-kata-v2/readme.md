@@ -1,9 +1,5 @@
 # TOP Salesman - Data KATA
 
-## Problem Context
-
-We are building software for a multi-warehouse, multi-salesperson electronics store that sells cell phones, computers, and related products across multiple retailers. Every Monday the CEO asks for revenue and top-salesperson reports, but today a data analyst spends nearly two days manually exporting data from PostgreSQL, downloading CSV files, polling a legacy SOAP service, merging everything in Excel, and building charts before the report is finally delivered on Wednesday evening. The goal is to replace this manual process with a real-time data pipeline that ingests from all three sources, unifies the data, and delivers live dashboards.
-
 ## Solution
 
 ### Data Sources
@@ -12,9 +8,6 @@ All three data sources share the same consistent master data: **22 products**, *
 
 #### Postgresql
 
-Origin: Original ERP system (SAP on PostgreSQL)<br/>
-Data: Real-time sales from POS terminals<br/>
-Volume: ~50,000 transactions per day<br/>
 Update freq: Real-time (continuous, every 5 seconds)<br/>
 Database: `electromart`
 
@@ -23,7 +16,7 @@ Schema is initialized automatically via `init.sql` mounted into the PostgreSQL c
 **Tables:** `products`, `salesmen`, `stores`, `sales`
 
 ```sql
--- Sales table structure
+-- Sales table structure ---- TODO: REMOVE
 sale_id     BIGSERIAL PRIMARY KEY
 product_id  INTEGER  (FK → products)
 salesman_id INTEGER  (FK → salesmen)
@@ -39,9 +32,6 @@ sale_timestamp TIMESTAMP
 
 #### CSV Files (via MinIO S3)
 
-Origin: Acquired company's legacy system (2018)<br/>
-Data: Daily sales export<br/>
-Volume: 1-5 records per file<br/>
 Update freq: Every 5 seconds<br/>
 Storage: MinIO (S3-compatible object storage)<br/>
 Bucket: `sales-csv`
@@ -54,8 +44,6 @@ Bucket: `sales-csv`
 
 The CSV connector is event-driven: MinIO sends webhook notifications when new files are uploaded, eliminating polling and enabling true real-time streaming.
 
-**MinIO Console:** http://localhost:9001 (minioadmin / minioadmin123)
-
 ```csv
 sale_id,product_code,product_name,category,brand,salesman_name,salesman_email,region,store_name,city,store_type,quantity,unit_price,total_amount,status,sale_date
 CSV2024011543210,IPHONE15PRO256,iPhone 15 Pro 256GB,SMARTPHONE,Apple,João Silva,joao.silva@electromart.com.br,São Paulo,Magazine Luiza Paulista,São Paulo,RETAIL,2,8999.00,17998.00,PENDING,2024-01-15 10:32:15
@@ -65,9 +53,6 @@ CSV2024011565432,MACBOOKPRO14,MacBook Pro 14",LAPTOP,Apple,Pedro Santos,pedro.sa
 
 #### SOAP
 
-Origin: Legacy sales system (2012)<br/>
-Data: Sales transactions (mocked/generated on-demand)<br/>
-Volume: 1-5 records per request<br/>
 Update freq: Polled every 5 seconds<br/>
 Protocol: SOAP 1.1 / XML
 
@@ -75,13 +60,6 @@ Protocol: SOAP 1.1 / XML
 URL: http://localhost:8080/sales
 Method: POST
 Content-Type: text/xml
-```
-
-**Request (cursor-based pagination)**
-
-```xml
-<cursor>SOAP-20240115-00050</cursor>
-<pageSize>100</pageSize>
 ```
 
 **Example SOAP Response**
@@ -113,91 +91,15 @@ Content-Type: text/xml
           <sale:status>PENDING</sale:status>
           <sale:saleTimestamp>2024-01-15T10:32:15Z</sale:saleTimestamp>
         </sale:record>
-        <sale:record>
-          <sale:saleId>SOAP-20240115-00002</sale:saleId>
-          <sale:productCode>GALAXYS24ULTRA</sale:productCode>
-          <sale:productName>Galaxy S24 Ultra</sale:productName>
-          <sale:category>SMARTPHONE</sale:category>
-          <sale:brand>Samsung</sale:brand>
-          <sale:salesmanName>Pedro Santos</sale:salesmanName>
-          <sale:salesmanEmail>pedro.santos@electromart.com.br</sale:salesmanEmail>
-          <sale:region>Rio de Janeiro</sale:region>
-          <sale:storeName>Casas Bahia Madureira</sale:storeName>
-          <sale:city>Rio de Janeiro</sale:city>
-          <sale:storeType>RETAIL</sale:storeType>
-          <sale:quantity>1</sale:quantity>
-          <sale:unitPrice>7999.00</sale:unitPrice>
-          <sale:totalAmount>7999.00</sale:totalAmount>
-          <sale:status>CONFIRMED</sale:status>
-          <sale:saleTimestamp>2024-01-15T11:05:42Z</sale:saleTimestamp>
-        </sale:record>
       </sale:sales>
     </sale:GetSalesResponse>
   </soapenv:Body>
 </soapenv:Envelope>
 ```
 
-## Services needed
-
-| #   | Service/Component                | Purpose                                      | Implemented |
-| --- | -------------------------------- | -------------------------------------------- | ----------- |
-| 1   | PostgreSQL                       | Source 1 - Sales transactions                | ✅ Yes      |
-| 2   | CSV Files (Local Volume)         | Source 2 - Sales from legacy system          | ✅ Yes      |
-| 3   | SOAP Service                     | Source 3 - Legacy sales                      | ✅ Yes      |
-| 4   | Message Broker (Kafka)           | Event streaming backbone                     | ✅ Yes      |
-| 5   | Kafka Connect (Debezium)         | CDC connector for PostgreSQL                 | ✅ Yes      |
-| 6   | CSV Connector                    | Reads CSV files and publishes to Kafka       | ✅ Yes      |
-| 7   | SOAP Connector                   | Polls SOAP service and publishes to Kafka    | ✅ Yes      |
-| 8   | Postgres Connector               | Enriches PostgreSQL CDC events               | ✅ Yes      |
-| 9   | Sales Aggregator (Kafka Streams) | Aggregates all sources into unified topic    | ✅ Yes      |
-| 10  | TimescaleDB                      | Time-series database for aggregated results  | ✅ Yes      |
-| 11  | Grafana                          | Dashboard & visualization                    | ✅ Yes      |
-| 12  | Kafka UI                         | Kafka monitoring and management              | ✅ Yes      |
-
 ### Architecture Overview
 
-![solution](/data/salesman-kata-v2/diagrams/solutions.png)
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              DATA SOURCES                                   │
-├─────────────────┬─────────────────────┬─────────────────────────────────────┤
-│   PostgreSQL    │     CSV Files       │         SOAP Service                │
-│                 │                     │                                     │
-└────────┬────────┴──────────┬──────────┴──────────────┬──────────────────────┘
-         │                   │                         │
-         ▼                   ▼                         ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────────────────────────┐
-│ Kafka Connect   │ │ CSV Connector   │ │       SOAP Connector                │
-│ (Debezium CDC)  │ │                 │ │                                     │
-└────────┬────────┘ └────────┬────────┘ └──────────────┬──────────────────────┘
-         │                   │                         │
-         ▼                   ▼                         ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           APACHE KAFKA                                      │
-│  Topics: electromart.public.* | raw-sales | sales | sales-dlq | lineage    │
-└─────────────────────────────────────────────────────────────────────────────┘
-         │                   │                         │
-         └───────────────────┼─────────────────────────┘
-                             ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      SALES AGGREGATOR (Kafka Streams)                       │
-│         Consumes: raw-sales → Produces: unified "sales" topic               │
-└─────────────────────────────────────────────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          TIMESCALEDB                                        │
-│              Time-series database for aggregated sales data                 │
-│                    Tables: sales (hypertable)                               │
-└─────────────────────────────────────────────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                            GRAFANA                                          │
-│                   Real-time dashboards and analytics                        │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![solution](/diagrams/solutions.png)
 
 ### Kafka Topics
 
@@ -208,8 +110,6 @@ Content-Type: text/xml
 | `electromart.public.salesmen` | Debezium CDC                        | CDC events from PostgreSQL salesmen table    |
 | `electromart.public.stores`   | Debezium CDC                        | CDC events from PostgreSQL stores table      |
 | `raw-sales`                   | CSV, SOAP, and Postgres Connectors  | Raw sales from all sources                   |
-| `sales`                       | Sales Aggregator                    | Unified/aggregated sales from all sources    |
-| `sales-dlq`                   | Sales Aggregator                    | Dead letter queue for invalid records        |
 | `lineage`                     | All Connectors / Aggregator         | Data lineage tracking metadata               |
 
 ## How to Run
@@ -226,6 +126,12 @@ docker compose ps
 
 # View logs from the full stack
 docker compose logs -f
+
+# Stop all services
+docker compose down
+
+# Stop and remove all data (clean start)
+docker compose down -v
 ```
 
 ### Prerequisites
@@ -263,28 +169,6 @@ curl http://localhost:8090/api/aggregates/summary
 # Aggregated results for a specific time range
 
 curl "http://localhost:8090/api/aggregates/summary?from=2026-03-13T00:00:00Z&to=2026-03-13T23:59:59Z"
-```
-
-### Internal Write Endpoints
-
-The `timescale-api` is the only service that talks directly to TimescaleDB. These routes are used internally by other services:
-
-```bash
-# Insert a unified sale
-POST /api/sales
-
-# Insert a lineage event
-POST /api/lineage
-```
-
-### Stop the Stack
-
-```bash
-# Stop all services
-docker compose down
-
-# Stop and remove all data (clean start)
-docker compose down -v
 ```
 
 ### Access Points
@@ -325,10 +209,10 @@ These services run inside Docker and are part of the pipeline even when they do 
 ## Results
 
 **Messages on Kafka UI**
-<img src="/screenshots/kafka-ui-sales.png" alt="messages"/>
+<img src="screenshots/kafka-ui-sales.png" alt="messages"/>
 
 **Results on Grafana**
-<img src="/screenshots/graphana-results.png" alt="results"/>
+<img src="screenshots/graphana-results.png" alt="results"/>
 
 **Observability on Grafana**
-<img src="/screenshots/graphana-observability.png" alt="observability"/>
+<img src="screenshots/graphana-observability.png" alt="observability"/>
