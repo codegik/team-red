@@ -286,11 +286,12 @@ services:
       TOPIC_SALES: sales
       TOPIC_DLQ: sales-dlq
       TOPIC_LINEAGE: lineage
-      TIMESCALEDB_URL: jdbc:postgresql://timescaledb:5432/salesdb
-      TIMESCALEDB_USER: sales
-      TIMESCALEDB_PASSWORD: sales123
+      TIMESCALE_API_URL: http://timescale-api:8090
       LINEAGE_ENABLED: "true"
       JAVA_OPTS: "-Xms32M -Xmx64M"
+    depends_on:
+      timescale-api:
+        condition: service_healthy
     networks:
       - electromart-network
 
@@ -302,31 +303,37 @@ services:
     environment:
       KAFKA_BROKER: kafka:9092
       TOPIC_LINEAGE: lineage
-      TIMESCALEDB_URL: jdbc:postgresql://timescaledb:5432/salesdb
-      TIMESCALEDB_USER: sales
-      TIMESCALEDB_PASSWORD: sales123
+      TIMESCALE_API_URL: http://timescale-api:8090
       JAVA_OPTS: "-Xms32M -Xmx64M"
+    depends_on:
+      timescale-api:
+        condition: service_healthy
     networks:
       - electromart-network
 
-  query-api-node:
+  timescale-api:
     build:
-      context: ./services/query-api-node
+      context: ./services/timescale-api
       dockerfile: Dockerfile
-    container_name: electromart-query-api-node
+    container_name: electromart-timescale-api
     environment:
       PORT: "8090"
-      DB_HOST: timescaledb
-      DB_PORT: 5432
-      DB_USER: sales
-      DB_PASSWORD: sales123
-      DB_NAME: salesdb
+      TIMESCALEDB_HOST: timescaledb
+      TIMESCALEDB_PORT: 5432
+      TIMESCALEDB_USER: sales
+      TIMESCALEDB_PASSWORD: sales123
+      TIMESCALEDB_DATABASE: salesdb
       DB_POOL_MAX: "10"
     ports:
       - "8090:8090"
     depends_on:
       timescaledb:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8090/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - electromart-network
 
