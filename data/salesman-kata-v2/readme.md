@@ -238,7 +238,7 @@ docker compose logs -f
 Wait until the main services are healthy, then test:
 
 ```bash
-# Query API
+# Timescale API
 curl http://localhost:8090/health
 
 # SOAP service
@@ -265,6 +265,18 @@ curl http://localhost:8090/api/aggregates/summary
 curl "http://localhost:8090/api/aggregates/summary?from=2026-03-13T00:00:00Z&to=2026-03-13T23:59:59Z"
 ```
 
+### Internal Write Endpoints
+
+The `timescale-api` is the only service that talks directly to TimescaleDB. These routes are used internally by other services:
+
+```bash
+# Insert a unified sale
+POST /api/sales
+
+# Insert a lineage event
+POST /api/lineage
+```
+
 ### Stop the Stack
 
 ```bash
@@ -279,7 +291,7 @@ docker compose down -v
 
 | Service | URL / Port | Purpose | Credentials |
 | ------- | ---------- | ------- | ----------- |
-| Query API Node | http://localhost:8090 | Read aggregated results from TimescaleDB | - |
+| Timescale API | http://localhost:8090 | Single entrypoint for writes and reads against TimescaleDB | - |
 | Grafana | http://localhost:3000 | Dashboards and observability | `admin / admin` |
 | Prometheus | http://localhost:9090 | Metrics scraping and queries | - |
 | Kafka UI | http://localhost:8888 | Browse topics, messages, and Kafka Connect | - |
@@ -303,8 +315,9 @@ These services run inside Docker and are part of the pipeline even when they do 
 | `csv-files` | Generates CSV sales files |
 | `csv-connector-source` | Receives MinIO webhook events and publishes CSV sales to Kafka |
 | `soap-connector-source` | Polls the SOAP service and publishes sales to Kafka |
-| `sales-aggregator` | Consumes `raw-sales` and stores unified records in TimescaleDB |
-| `lineage-consumer` | Consumes the `lineage` topic and stores lineage events in TimescaleDB |
+| `sales-aggregator` | Consumes `raw-sales` and writes unified records to `timescale-api` |
+| `lineage-consumer` | Consumes the `lineage` topic and writes lineage events to `timescale-api` |
+| `timescale-api` | Only service allowed to write to and read from TimescaleDB |
 | `postgres-exporter` | Exposes PostgreSQL metrics for Prometheus |
 | `timescaledb-exporter` | Exposes TimescaleDB metrics for Prometheus |
 | `kafka-exporter` | Exposes Kafka metrics for Prometheus |
