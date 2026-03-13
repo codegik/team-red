@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   postgres:
     image: postgres:18-alpine
@@ -308,6 +306,27 @@ services:
       TIMESCALEDB_USER: sales
       TIMESCALEDB_PASSWORD: sales123
       JAVA_OPTS: "-Xms32M -Xmx64M"
+    networks:
+      - electromart-network
+
+  query-api-node:
+    build:
+      context: ./services/query-api-node
+      dockerfile: Dockerfile
+    container_name: electromart-query-api-node
+    environment:
+      PORT: "8090"
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_USER: sales
+      DB_PASSWORD: sales123
+      DB_NAME: salesdb
+      DB_POOL_MAX: "10"
+    ports:
+      - "8090:8090"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
     networks:
       - electromart-network
 

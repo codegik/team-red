@@ -215,32 +215,99 @@ Content-Type: text/xml
 ## How to Run
 
 ```bash
-# Start all services
-docker-compose up -d
+# From the repository root
+cd data/salesman-kata-v2
+
+# Build and start all services
+docker compose up -d --build
 
 # Check running containers
-docker-compose ps
+docker compose ps
 
-# View logs
-docker-compose logs -f
+# View logs from the full stack
+docker compose logs -f
+```
 
+### Prerequisites
+
+- Docker Engine with Docker Compose plugin
+- Ports available on the host: `3000`, `5432`, `5433`, `8080`, `8083`, `8085`, `8090`, `8888`, `9000`, `9001`, `9090`, `19092`
+
+### First Checks
+
+Wait until the main services are healthy, then test:
+
+```bash
+# Query API
+curl http://localhost:8090/health
+
+# SOAP service
+curl http://localhost:8080/health
+
+# Kafka Connect
+curl http://localhost:8083/
+```
+
+### Query Aggregated Results
+
+```bash
+# Latest top cities snapshot
+curl http://localhost:8090/api/aggregates/top-sales-per-city
+
+# Latest top salesmen snapshot
+curl http://localhost:8090/api/aggregates/top-salesman-country
+
+# Combined response
+curl http://localhost:8090/api/aggregates/summary
+
+# Aggregated results for a specific time range
+
+curl "http://localhost:8090/api/aggregates/summary?from=2026-03-13T00:00:00Z&to=2026-03-13T23:59:59Z"
+```
+
+### Stop the Stack
+
+```bash
 # Stop all services
-docker-compose down
+docker compose down
 
 # Stop and remove all data (clean start)
-docker-compose down -v
+docker compose down -v
 ```
 
 ### Access Points
 
-| Service       | URL                         | Credentials                  |
-| ------------- | --------------------------- | ---------------------------- |
-| Kafka UI      | http://localhost:8888       | -                            |
-| Grafana       | http://localhost:3000       | admin / admin                |
-| PostgreSQL    | localhost:5432              | electromart / electromart123 |
-| TimescaleDB   | localhost:5433              | sales / sales123             |
-| SOAP Service  | http://localhost:8080/sales | -                            |
-| Kafka Connect | http://localhost:8083       | -                            |
+| Service | URL / Port | Purpose | Credentials |
+| ------- | ---------- | ------- | ----------- |
+| Query API Node | http://localhost:8090 | Read aggregated results from TimescaleDB | - |
+| Grafana | http://localhost:3000 | Dashboards and observability | `admin / admin` |
+| Prometheus | http://localhost:9090 | Metrics scraping and queries | - |
+| Kafka UI | http://localhost:8888 | Browse topics, messages, and Kafka Connect | - |
+| Kafka Connect | http://localhost:8083 | Debezium/connectors API | - |
+| SOAP Service | http://localhost:8080/sales | Mock SOAP sales source | - |
+| MinIO API | http://localhost:9000 | S3-compatible object storage | `minioadmin / minioadmin123` |
+| MinIO Console | http://localhost:9001 | MinIO web console | `minioadmin / minioadmin123` |
+| PostgreSQL | `localhost:5432` | Source ERP database | `electromart / electromart123` |
+| TimescaleDB | `localhost:5433` | Aggregated warehouse database | `sales / sales123` |
+| Kafka Broker | `localhost:19092` | External Kafka bootstrap server | - |
+
+### Main Internal Services
+
+These services run inside Docker and are part of the pipeline even when they do not expose ports directly on the host:
+
+| Service | Responsibility |
+| ------- | -------------- |
+| `postgres-data-generator` | Generates sample sales in PostgreSQL |
+| `postgres-connector-source` | Registers the PostgreSQL Debezium connector |
+| `postgres-enricher` | Normalizes PostgreSQL CDC events into `raw-sales` |
+| `csv-files` | Generates CSV sales files |
+| `csv-connector-source` | Receives MinIO webhook events and publishes CSV sales to Kafka |
+| `soap-connector-source` | Polls the SOAP service and publishes sales to Kafka |
+| `sales-aggregator` | Consumes `raw-sales` and stores unified records in TimescaleDB |
+| `lineage-consumer` | Consumes the `lineage` topic and stores lineage events in TimescaleDB |
+| `postgres-exporter` | Exposes PostgreSQL metrics for Prometheus |
+| `timescaledb-exporter` | Exposes TimescaleDB metrics for Prometheus |
+| `kafka-exporter` | Exposes Kafka metrics for Prometheus |
 
 ## Results
 

@@ -1,0 +1,16 @@
+{
+  "name": "electromart-query-api-node",
+  "version": "1.0.0",
+  "description": "Node.js API for querying aggregated sales data from TimescaleDB",
+  "main": "src/index.js",
+  "engines": {
+    "node": "25.x"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.16.3"
+  }
+}
