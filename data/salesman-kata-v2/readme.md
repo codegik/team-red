@@ -180,7 +180,6 @@ curl "http://localhost:8090/api/aggregates/summary?from=2026-03-13T00:00:00Z&to=
 | ------- | ---------- | ------- | ----------- |
 | Timescale API | http://localhost:8090 | Single entrypoint for writes and reads against TimescaleDB | - |
 | Grafana | http://localhost:3000 | Dashboards and observability | `admin / admin` |
-| Prometheus | http://localhost:9090 | Metrics scraping and queries | - |
 | Kafka UI | http://localhost:8888 | Browse topics, messages, and Kafka Connect | - |
 | Kafka Connect | http://localhost:8083 | Debezium/connectors API | - |
 | SOAP Service | http://localhost:8080/sales | Mock SOAP sales source | - |
@@ -202,11 +201,7 @@ These services run inside Docker and are part of the pipeline even when they do 
 | `csv-files` | Generates CSV sales files |
 | `csv-connector-source` | Receives MinIO webhook events and publishes CSV sales to Kafka |
 | `soap-connector-source` | Polls the SOAP service and publishes sales to Kafka |
-| `sales-aggregator` | Consumes `raw_csv`, `raw_soap`, `raw_postgres`, normalizes and writes to `timescale-api` |
-| `timescale-api` | Only service allowed to write to and read from TimescaleDB |
-| `postgres-exporter` | Exposes PostgreSQL metrics for Prometheus |
-| `timescaledb-exporter` | Exposes TimescaleDB metrics for Prometheus |
-| `kafka-exporter` | Exposes Kafka metrics for Prometheus |
+| `sales-api` | Consumes `raw_csv`, `raw_soap`, `raw_postgres`, normalizes and writes to TimescaleDB (via own consumer) |
 
 ## Results
 
