@@ -13,11 +13,6 @@ import org.apache.kafka.streams.kstream.Branched;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Named;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,13 +30,10 @@ public class SalesAggregator {
     private static String TOPIC_RAW_POSTGRES;
     private static String OUTPUT_TOPIC;
     private static String DLQ_TOPIC;
-    private static String TIMESCALE_API_URL;
 
     private static final Set<String> REQUIRED_FIELDS = Set.of(
         "sale_id", "source", "sale_timestamp", "total_amount"
     );
-
-    private static HttpClient timescaleApiClient;
 
     public static void main(String[] args) throws Exception {
         String broker = env("KAFKA_BROKER", "kafka:9092");
@@ -50,7 +42,6 @@ public class SalesAggregator {
         TOPIC_RAW_POSTGRES = env("TOPIC_RAW_POSTGRES", "raw_postgres");
         OUTPUT_TOPIC = env("TOPIC_SALES", "sales");
         DLQ_TOPIC = env("TOPIC_DLQ", "sales-dlq");
-        TIMESCALE_API_URL = env("TIMESCALE_API_URL", "http://timescale-api:8090");
         validateTopicConfig(Map.of(
             "TOPIC_RAW_CSV", TOPIC_RAW_CSV,
             "TOPIC_RAW_SOAP", TOPIC_RAW_SOAP,
@@ -58,9 +49,6 @@ public class SalesAggregator {
             "TOPIC_SALES", OUTPUT_TOPIC,
             "TOPIC_DLQ", DLQ_TOPIC
         ));
-        timescaleApiClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5))
-            .build();
 
         Properties props = new Properties();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "sales-aggregator");
@@ -69,7 +57,6 @@ public class SalesAggregator {
         props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.StringSerde.class);
 
         waitForTopics(broker);
-        waitForTimescaleApi();
         ensureTopic(broker, DLQ_TOPIC);
 
         StreamsBuilder builder = new StreamsBuilder();
@@ -96,7 +83,6 @@ public class SalesAggregator {
         KStream<String, String> invalid = branches.get("branch-invalid");
 
         valid.to(OUTPUT_TOPIC);
-        valid.foreach((key, value) -> insertSale(value));
 
         invalid
             .peek((key, value) -> System.err.printf(
@@ -146,51 +132,6 @@ public class SalesAggregator {
         } catch (Exception e) {
             return false;
         }
-    }
-
-    private static synchronized void insertSale(String json) {
-        try {
-            postJson("/api/sales", json);
-        } catch (Exception e) {
-            System.err.println("Insert error: " + e.getMessage());
-        }
-    }
-
-    private static void waitForTimescaleApi() {
-        while (true) {
-            try {
-                HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(TIMESCALE_API_URL + "/health"))
-                    .timeout(Duration.ofSeconds(5))
-                    .GET()
-                    .build();
-                HttpResponse<String> response = timescaleApiClient.send(request, HttpResponse.BodyHandlers.ofString());
-                if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                    System.out.println("Timescale API is ready");
-                    return;
-                }
-            } catch (Exception ignored) {
-            }
-            sleep(3000);
-        }
-    }
-
-    private static JsonNode postJson(String path, String body) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(TIMESCALE_API_URL + path))
-            .timeout(Duration.ofSeconds(10))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(body))
-            .build();
-
-        HttpResponse<String> response = timescaleApiClient.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IllegalStateException("Timescale API returned " + response.statusCode() + ": " + response.body());
-        }
-        if (response.body() == null || response.body().isBlank()) {
-            return mapper.createObjectNode();
-        }
-        return mapper.readTree(response.body());
     }
 
     private static void waitForTopics(String broker) throws Exception {

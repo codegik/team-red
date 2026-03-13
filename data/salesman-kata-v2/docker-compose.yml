@@ -281,10 +281,29 @@ services:
       TOPIC_RAW_POSTGRES: raw_postgres
       TOPIC_SALES: sales
       TOPIC_DLQ: sales-dlq
-      TIMESCALE_API_URL: http://timescale-api:8090
+      JAVA_OPTS: "-Xms32M -Xmx64M"
+    networks:
+      - electromart-network
+
+  sales-consumer:
+    build:
+      context: ./services/sales-consumer
+      dockerfile: Dockerfile
+    container_name: electromart-sales-consumer
+    environment:
+      KAFKA_BROKER: kafka:9092
+      KAFKA_TOPIC_SALES: sales
+      KAFKA_GROUP_ID: timescale-sales-writer
+      TIMESCALEDB_HOST: timescaledb
+      TIMESCALEDB_PORT: 5432
+      TIMESCALEDB_USER: sales
+      TIMESCALEDB_PASSWORD: sales123
+      TIMESCALEDB_DATABASE: salesdb
       JAVA_OPTS: "-Xms32M -Xmx64M"
     depends_on:
-      timescale-api:
+      timescaledb:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     networks:
       - electromart-network
