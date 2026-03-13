@@ -99,7 +99,7 @@ Content-Type: text/xml
 
 ### Architecture Overview
 
-![solution](/diagrams/solutions.png)
+![solution](diagrams/solutions.png)
 
 ### Kafka Topics
 
