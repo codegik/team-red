@@ -1,11 +1,11 @@
 <mxfile host="65bd71144e">
     <diagram id="qCO-GmOhChKqBvaxt-PU" name="Page-1">
-        <mxGraphModel dx="2263" dy="864" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="3180" dy="3515" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
                 <mxCell id="41" value="" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;dashPattern=12 12;" parent="1" vertex="1">
-                    <mxGeometry x="-80" y="10" width="820" height="1610" as="geometry"/>
+                    <mxGeometry x="-100" y="-10" width="820" height="1460" as="geometry"/>
                 </mxCell>
                 <mxCell id="9" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;Data Sources&lt;/font&gt;" style="swimlane;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;" parent="1" vertex="1">
                     <mxGeometry x="65" y="40" width="540" height="200" as="geometry"/>
@@ -13,19 +13,19 @@
                 <mxCell id="3" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;Postgres&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;(datasource1)&lt;/font&gt;&lt;/div&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" parent="9" vertex="1">
                     <mxGeometry x="20" y="40" width="120" height="140" as="geometry"/>
                 </mxCell>
-                <mxCell id="4" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;CSV Files&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;" parent="9" vertex="1">
+                <mxCell id="4" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;CSV Files&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;(data&lt;br&gt;source2)&lt;/font&gt;&lt;/div&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;" parent="9" vertex="1">
                     <mxGeometry x="200" y="45" width="100" height="130" as="geometry"/>
                 </mxCell>
-                <mxCell id="7" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;SOAP Service&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="9" vertex="1">
+                <mxCell id="7" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;SOAP Service&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;(datasource3)&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="9" vertex="1">
                     <mxGeometry x="342.5" y="70" width="185" height="90" as="geometry"/>
                 </mxCell>
-                <mxCell id="12" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;Postgres Connector&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;(Debezium CDC)&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                <mxCell id="12" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;Postgres Connector&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;[Debezium CDC]&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="60" y="320" width="150" height="90" as="geometry"/>
                 </mxCell>
-                <mxCell id="14" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;Postgres&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;Enricher&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                <mxCell id="14" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;Postgres&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;Enricher&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;(Aggregator)&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="60" y="730" width="150" height="90" as="geometry"/>
                 </mxCell>
-                <mxCell id="15" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;CSV Connector&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;(MinIO)&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                <mxCell id="15" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;CSV Connector&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;[MinIO]&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="260" y="320" width="150" height="90" as="geometry"/>
                 </mxCell>
                 <mxCell id="22" style="edgeStyle=none;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeWidth=2;" parent="1" source="16" target="7" edge="1">
@@ -36,7 +36,7 @@
                         <mxPoint x="535" y="820" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="16" value="&lt;span style=&quot;font-size: 17px;&quot;&gt;SOAP Connector&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;font-size: 17px;&quot;&gt;(Pulling)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                <mxCell id="16" value="&lt;span style=&quot;font-size: 17px;&quot;&gt;SOAP Connector&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;font-size: 17px;&quot;&gt;[Pulling]&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="460" y="320" width="150" height="90" as="geometry"/>
                 </mxCell>
                 <mxCell id="17" value="" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;rotation=90;" parent="1" vertex="1">
@@ -48,8 +48,8 @@
                 <mxCell id="20" value="" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;rotation=90;" parent="1" vertex="1">
                     <mxGeometry x="315" y="635" width="50" height="570" as="geometry"/>
                 </mxCell>
-                <mxCell id="21" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;Apache Kafka Topics: postgres | csv | soap&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
-                    <mxGeometry x="200" y="905" width="340" height="30" as="geometry"/>
+                <mxCell id="21" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;Apache Kafka&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="905" width="130" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="23" style="edgeStyle=none;html=1;strokeWidth=2;" parent="1" source="4" target="15" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
@@ -71,47 +71,58 @@
                 <mxCell id="30" style="edgeStyle=none;html=1;entryX=0.001;entryY=0.858;entryDx=0;entryDy=0;entryPerimeter=0;strokeWidth=2;" parent="1" source="14" target="20" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="37" style="edgeStyle=none;html=1;strokeWidth=2;" parent="1" source="31" edge="1">
+                <mxCell id="37" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;" parent="1" source="31" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="335" y="950" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="140" y="980"/>
+                            <mxPoint x="335" y="980"/>
+                        </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="31" value="&lt;span style=&quot;font-size: 17px;&quot;&gt;Sales Aggregator&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;font-size: 17px;&quot;&gt;(Kafka Streams)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="260" y="1060" width="150" height="90" as="geometry"/>
+                <mxCell id="31" value="&lt;span style=&quot;font-size: 17px;&quot;&gt;Sales API&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;font-size: 17px;&quot;&gt;(Aggregator)&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 17px;&quot;&gt;[Kafka Streams]&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="1010" width="150" height="90" as="geometry"/>
                 </mxCell>
-                <mxCell id="19" value="&lt;ul&gt;&lt;li&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;electromart.public.sales&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;electromart.public.products&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;electromart.public.salesmen&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;electromart.public.stores&lt;/font&gt;&lt;/li&gt;&lt;/ul&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
-                    <mxGeometry x="-60" y="460" width="210" height="70" as="geometry"/>
+                <mxCell id="19" value="&lt;ul&gt;&lt;li&gt;&lt;font style=&quot;font-size: 13px; color: rgb(0, 0, 0);&quot;&gt;Topics:&lt;/font&gt;&lt;/li&gt;&lt;ul&gt;&lt;li&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;&lt;font style=&quot;font-size: 13px; color: rgb(0, 0, 0);&quot;&gt;electromart.public.sales&lt;/font&gt;&lt;/span&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;font-size: 13px; color: rgb(0, 0, 0);&quot;&gt;electromart.public.products&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;font-size: 13px; color: rgb(0, 0, 0);&quot;&gt;electromart.public.salesmen&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;font-size: 13px; color: rgb(0, 0, 0);&quot;&gt;electromart.public.stores&lt;/font&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/ul&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="-110" y="480" width="210" height="70" as="geometry"/>
                 </mxCell>
                 <mxCell id="33" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;TimescaleDB&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;(aggregated sales)&lt;/font&gt;&lt;/div&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" parent="1" vertex="1">
-                    <mxGeometry x="282.5" y="1360" width="105" height="110" as="geometry"/>
+                    <mxGeometry x="302.5" y="1180" width="105" height="110" as="geometry"/>
                 </mxCell>
                 <mxCell id="34" value="&lt;span style=&quot;font-size: 17px;&quot;&gt;Grafana&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="260" y="1510" width="150" height="90" as="geometry"/>
+                    <mxGeometry x="280" y="1330" width="150" height="90" as="geometry"/>
                 </mxCell>
                 <mxCell id="35" style="edgeStyle=none;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;strokeWidth=2;" parent="1" source="34" target="33" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="36" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;strokeWidth=2;" parent="1" source="42" target="33" edge="1">
+                <mxCell id="47" value="&lt;ul&gt;&lt;li&gt;&lt;font style=&quot;font-size: 13px; color: rgb(0, 0, 0);&quot;&gt;Topics&lt;/font&gt;&lt;/li&gt;&lt;ul&gt;&lt;li&gt;&lt;font style=&quot;font-size: 13px; color: rgb(0, 0, 0);&quot;&gt;postgres&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;font-size: 13px; color: rgb(0, 0, 0);&quot;&gt;csv&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font style=&quot;font-size: 13px; color: rgb(0, 0, 0);&quot;&gt;soap&lt;/font&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/ul&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                    <mxGeometry x="350" y="785" width="150" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="48" value="" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;rotation=90;" vertex="1" parent="1">
+                    <mxGeometry x="325" y="975" width="50" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="49" value="&lt;font style=&quot;font-size: 17px;&quot;&gt;Apache Kafka&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="285" y="1040" width="110" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="50" style="edgeStyle=none;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;strokeWidth=2;" edge="1" parent="1" source="31" target="48">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="42" value="&lt;span style=&quot;font-size: 17px;&quot;&gt;Timescale API&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-                    <mxGeometry x="260" y="1220" width="150" height="90" as="geometry"/>
+                <mxCell id="51" value="&lt;ul&gt;&lt;li&gt;&lt;font style=&quot;font-size: 13px;&quot;&gt;Topic: sales&lt;/font&gt;&lt;/li&gt;&lt;/ul&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                    <mxGeometry x="275" y="1063" width="130" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="43" value="&lt;span style=&quot;font-size: 17px;&quot;&gt;Lineage Consumer&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-                    <mxGeometry x="460" y="1060" width="150" height="90" as="geometry"/>
+                <mxCell id="52" value="&lt;span style=&quot;font-size: 17px;&quot;&gt;Sales API&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;font-size: 17px;&quot;&gt;(Persistence)&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 17px;&quot;&gt;[Kafka Streams]&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="480" y="1010" width="150" height="90" as="geometry"/>
                 </mxCell>
-                <mxCell id="44" style="edgeStyle=none;html=1;strokeWidth=2;" edge="1" parent="1" source="43">
-                    <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="335" y="1010" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="45" style="edgeStyle=none;html=1;strokeWidth=2;" edge="1" parent="1" source="31">
-                    <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="335" y="1218" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="46" style="edgeStyle=none;html=1;entryX=0.748;entryY=0.025;entryDx=0;entryDy=0;entryPerimeter=0;strokeWidth=2;" edge="1" parent="1" source="43" target="42">
+                <mxCell id="53" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;strokeWidth=2;" edge="1" parent="1" source="52" target="48">
                     <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="54" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;strokeWidth=2;" edge="1" parent="1" source="52" target="33">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="555" y="1130"/>
+                            <mxPoint x="355" y="1130"/>
+                        </Array>
+                    </mxGeometry>
                 </mxCell>
             </root>
         </mxGraphModel>
