@@ -1,7 +1,7 @@
 {
-  "name": "soap-service",
+  "name": "electromart-timescale-api",
   "version": "1.0.0",
-  "description": "Mock SOAP sales service with generated data",
+  "description": "Node.js API for writing and querying sales data in TimescaleDB",
   "main": "src/index.js",
   "engines": {
     "node": "25.x"
@@ -10,6 +10,7 @@
     "start": "node src/index.js"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^5.1.0",
+    "pg": "^8.16.3"
   }
 }

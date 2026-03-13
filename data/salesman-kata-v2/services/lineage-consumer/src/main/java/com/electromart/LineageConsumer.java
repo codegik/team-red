@@ -1,7 +1,5 @@
 package com.electromart;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -9,9 +7,11 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
-import java.sql.*;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -19,30 +19,21 @@ import java.util.Properties;
 
 public class LineageConsumer {
 
-    private static final ObjectMapper mapper = new ObjectMapper();
     private static String lineageTopic;
-
-    private static Connection dbConnection;
-    private static String dbUrl;
-    private static String dbUser;
-    private static String dbPassword;
-
-    private static final String INSERT_SQL = """
-        INSERT INTO lineage (trace_id, sale_id, stage, component, event_type, 
-            source_topic, target_topic, latency_ms, metadata, event_timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?)
-        """;
+    private static String timescaleApiUrl;
+    private static HttpClient timescaleApiClient;
 
     public static void main(String[] args) throws Exception {
         String broker = env("KAFKA_BROKER", "kafka:9092");
         lineageTopic = env("TOPIC_LINEAGE", "lineage");
+        timescaleApiUrl = env("TIMESCALE_API_URL", "http://timescale-api:8090");
         validateTopicConfig(Map.of("TOPIC_LINEAGE", lineageTopic));
-        dbUrl = env("TIMESCALEDB_URL", "jdbc:postgresql://timescaledb:5432/salesdb");
-        dbUser = env("TIMESCALEDB_USER", "sales");
-        dbPassword = env("TIMESCALEDB_PASSWORD", "sales123");
+        timescaleApiClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
 
         waitForKafka(broker);
-        waitForTimescaleDB();
+        waitForTimescaleApi();
         ensureTopic(broker, lineageTopic);
 
         Properties props = new Properties();
@@ -56,10 +47,7 @@ public class LineageConsumer {
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
         consumer.subscribe(List.of(lineageTopic));
 
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            consumer.close();
-            closeDb();
-        }));
+        Runtime.getRuntime().addShutdownHook(new Thread(consumer::close));
 
         System.out.println("Lineage Consumer started - listening to topic: " + lineageTopic);
 
@@ -71,47 +59,10 @@ public class LineageConsumer {
 
     private static void insertLineage(String json) {
         try {
-            JsonNode node = mapper.readTree(json);
-
-            Connection conn = getConnection();
-            try (PreparedStatement ps = conn.prepareStatement(INSERT_SQL)) {
-                ps.setString(1, node.path("trace_id").asText());
-                ps.setString(2, node.path("sale_id").asText(null));
-                ps.setString(3, node.path("stage").asText());
-                ps.setString(4, node.path("component").asText());
-                ps.setString(5, node.path("event_type").asText());
-                ps.setString(6, node.path("source_topic").asText(null));
-                ps.setString(7, node.path("target_topic").asText(null));
-                ps.setLong(8, node.path("latency_ms").asLong(0));
-                ps.setString(9, node.has("metadata") ? node.get("metadata").toString() : null);
-
-                String timestamp = node.path("timestamp").asText();
-                if (timestamp != null && !timestamp.isEmpty()) {
-                    ps.setTimestamp(10, Timestamp.from(Instant.parse(timestamp)));
-                } else {
-                    ps.setTimestamp(10, Timestamp.from(Instant.now()));
-                }
-
-                ps.executeUpdate();
-            }
+            postJson("/api/lineage", json);
         } catch (Exception e) {
             System.err.println("Lineage insert error: " + e.getMessage());
-            closeDb();
         }
-    }
-
-    private static Connection getConnection() throws SQLException {
-        if (dbConnection == null || dbConnection.isClosed()) {
-            dbConnection = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
-        }
-        return dbConnection;
-    }
-
-    private static void closeDb() {
-        try {
-            if (dbConnection != null && !dbConnection.isClosed()) dbConnection.close();
-        } catch (Exception ignored) {}
-        dbConnection = null;
     }
 
     private static void waitForKafka(String broker) {
@@ -129,16 +80,37 @@ public class LineageConsumer {
         }
     }
 
-    private static void waitForTimescaleDB() {
-        System.out.println("Waiting for TimescaleDB...");
+    private static void waitForTimescaleApi() {
+        System.out.println("Waiting for Timescale API...");
         while (true) {
             try {
-                dbConnection = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
-                System.out.println("TimescaleDB is ready");
-                return;
-            } catch (Exception e) {
-                sleep(3000);
+                HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(timescaleApiUrl + "/health"))
+                    .timeout(Duration.ofSeconds(5))
+                    .GET()
+                    .build();
+                HttpResponse<String> response = timescaleApiClient.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                    System.out.println("Timescale API is ready");
+                    return;
+                }
+            } catch (Exception ignored) {
             }
+            sleep(3000);
+        }
+    }
+
+    private static void postJson(String path, String body) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(timescaleApiUrl + path))
+            .timeout(Duration.ofSeconds(10))
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(body))
+            .build();
+
+        HttpResponse<String> response = timescaleApiClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new IllegalStateException("Timescale API returned " + response.statusCode() + ": " + response.body());
         }
     }
 
@@ -147,11 +119,13 @@ public class LineageConsumer {
             if (!admin.listTopics().names().get().contains(topic)) {
                 admin.createTopics(List.of(new NewTopic(topic, 1, (short) 1))).all().get();
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private static String env(String key, String def) {
-        return System.getenv().getOrDefault(key, def);
+        String value = System.getenv(key);
+        return value == null || value.isBlank() ? def : value;
     }
 
     private static void validateTopicConfig(Map<String, String> topics) {
@@ -170,6 +144,10 @@ public class LineageConsumer {
     }
 
     private static void sleep(long ms) {
-        try { Thread.sleep(ms); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }

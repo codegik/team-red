@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "CSV legacy sales file generator - uploads to MinIO",
   "main": "src/index.js",
+  "engines": {
+    "node": "25.x"
+  },
   "scripts": {
     "start": "node src/index.js"
   },
