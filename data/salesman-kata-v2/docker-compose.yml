@@ -398,6 +398,7 @@ services:
       dockerfile: Dockerfile
     container_name: electromart-sales-consumer
     environment:
+      PORT: "8090"
       KAFKA_BROKER: kafka:9092
       KAFKA_TOPIC_SALES: sales
       KAFKA_GROUP_ID: timescale-sales-writer
@@ -415,6 +416,7 @@ services:
       OTEL_LOGS_EXPORTER: none
       JAVA_OPTS: "-javaagent:/app/opentelemetry-javaagent.jar -Xms32M -Xmx64M"
     ports:
+      - "8090:8090"
       - "8086:8086"
     depends_on:
       timescaledb:
@@ -425,27 +427,6 @@ services:
         condition: service_healthy
       otel-collector:
         condition: service_started
-    networks:
-      - electromart-network
-
-  timescale-api:
-    build:
-      context: ./services/timescale-api
-      dockerfile: Dockerfile
-    container_name: electromart-timescale-api
-    environment:
-      PORT: "8090"
-      TIMESCALEDB_HOST: timescaledb
-      TIMESCALEDB_PORT: 5432
-      TIMESCALEDB_USER: sales
-      TIMESCALEDB_PASSWORD: sales123
-      TIMESCALEDB_DATABASE: salesdb
-      DB_POOL_MAX: "10"
-    ports:
-      - "8090:8090"
-    depends_on:
-      timescaledb:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8090/health"]
       interval: 5s

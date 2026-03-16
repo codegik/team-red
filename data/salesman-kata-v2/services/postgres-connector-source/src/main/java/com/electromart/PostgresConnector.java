@@ -50,34 +50,8 @@ public class PostgresConnector {
     }
 
     private static void registerConnector(String connectUrl, String connectorName) throws Exception {
-        ObjectNode config = mapper.createObjectNode();
-        config.put("name", connectorName);
-
-        ObjectNode connectorConfig = config.putObject("config");
-        connectorConfig.put("connector.class", "io.debezium.connector.postgresql.PostgresConnector");
-        connectorConfig.put("database.hostname", env("DB_HOST", "postgres"));
-        connectorConfig.put("database.port", env("DB_PORT", "5432"));
-        connectorConfig.put("database.user", env("DB_USER", "electromart"));
-        connectorConfig.put("database.password", env("DB_PASSWORD", "electromart123"));
-        connectorConfig.put("database.dbname", env("DB_NAME", "electromart"));
-        connectorConfig.put("topic.prefix", "electromart");
-        connectorConfig.put("table.include.list", "public.sales,public.products,public.salesmen,public.stores");
-        connectorConfig.put("plugin.name", "pgoutput");
-        connectorConfig.put("slot.name", "sales_slot");
-        connectorConfig.put("publication.name", "sales_publication");
-        connectorConfig.put("publication.autocreate.mode", "filtered");
-        connectorConfig.put("snapshot.mode", "initial");
-        connectorConfig.put("decimal.handling.mode", "double");
-        connectorConfig.put("time.precision.mode", "connect");
-        connectorConfig.put("tombstones.on.delete", "false");
-        connectorConfig.put("transforms", "unwrap");
-        connectorConfig.put("transforms.unwrap.type", "io.debezium.transforms.ExtractNewRecordState");
-        connectorConfig.put("transforms.unwrap.drop.tombstones", "true");
-        connectorConfig.put("transforms.unwrap.delete.handling.mode", "drop");
-        connectorConfig.put("key.converter", "org.apache.kafka.connect.json.JsonConverter");
-        connectorConfig.put("key.converter.schemas.enable", "false");
-        connectorConfig.put("value.converter", "org.apache.kafka.connect.json.JsonConverter");
-        connectorConfig.put("value.converter.schemas.enable", "false");
+        ObjectNode config = buildConnectorRegistration(connectorName);
+        ObjectNode connectorConfig = (ObjectNode) config.get("config");
 
         String body = mapper.writeValueAsString(config);
 
@@ -110,5 +84,41 @@ public class PostgresConnector {
             .build();
         HttpResponse<String> statusResponse = client.send(statusRequest, HttpResponse.BodyHandlers.ofString());
         System.out.printf("Connector status: %s%n", statusResponse.body());
+    }
+
+    static ObjectNode buildConnectorRegistration(String connectorName) {
+        ObjectNode config = mapper.createObjectNode();
+        config.put("name", connectorName);
+        config.set("config", buildConnectorConfig());
+        return config;
+    }
+
+    static ObjectNode buildConnectorConfig() {
+        ObjectNode connectorConfig = mapper.createObjectNode();
+        connectorConfig.put("connector.class", "io.debezium.connector.postgresql.PostgresConnector");
+        connectorConfig.put("database.hostname", env("DB_HOST", "postgres"));
+        connectorConfig.put("database.port", env("DB_PORT", "5432"));
+        connectorConfig.put("database.user", env("DB_USER", "electromart"));
+        connectorConfig.put("database.password", env("DB_PASSWORD", "electromart123"));
+        connectorConfig.put("database.dbname", env("DB_NAME", "electromart"));
+        connectorConfig.put("topic.prefix", "electromart");
+        connectorConfig.put("table.include.list", "public.sales,public.products,public.salesmen,public.stores");
+        connectorConfig.put("plugin.name", "pgoutput");
+        connectorConfig.put("slot.name", "sales_slot");
+        connectorConfig.put("publication.name", "sales_publication");
+        connectorConfig.put("publication.autocreate.mode", "filtered");
+        connectorConfig.put("snapshot.mode", "initial");
+        connectorConfig.put("decimal.handling.mode", "double");
+        connectorConfig.put("time.precision.mode", "connect");
+        connectorConfig.put("tombstones.on.delete", "false");
+        connectorConfig.put("transforms", "unwrap");
+        connectorConfig.put("transforms.unwrap.type", "io.debezium.transforms.ExtractNewRecordState");
+        connectorConfig.put("transforms.unwrap.drop.tombstones", "true");
+        connectorConfig.put("transforms.unwrap.delete.handling.mode", "drop");
+        connectorConfig.put("key.converter", "org.apache.kafka.connect.json.JsonConverter");
+        connectorConfig.put("key.converter.schemas.enable", "false");
+        connectorConfig.put("value.converter", "org.apache.kafka.connect.json.JsonConverter");
+        connectorConfig.put("value.converter.schemas.enable", "false");
+        return connectorConfig;
     }
 }

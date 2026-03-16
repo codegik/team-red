@@ -65,7 +65,7 @@ Java 17 Kafka Streams application (v3.7.0) that enriches raw CDC events from Pos
 
 #### 2) Sales Aggregator
 
-Java 17 Kafka Streams application (v3.7.0) that acts as the pipeline's normalizer and gatekeeper. It consumes from three source-specific topics (`raw_csv`, `raw_soap`, `raw_postgres`), adds normalization metadata (`trace_id`, `source`, `source_version`, `ingested_at`) to CSV and SOAP records, validates each record against the canonical schema (required fields: `sale_id`, `source`, `sale_timestamp`, `total_amount`), and branches valid records to the `sales` topic while routing invalid ones to `sales-dlq` (dead letter queue). Valid records are also inserted into TimescaleDB's `sales` hypertable via the Timescale API.
+Java 17 Kafka Streams application (v3.7.0) that acts as the pipeline's normalizer and gatekeeper. It consumes from three source-specific topics (`raw_csv`, `raw_soap`, `raw_postgres`), adds normalization metadata (`trace_id`, `source`, `source_version`, `ingested_at`) to CSV and SOAP records, validates each record against the canonical schema (required fields: `sale_id`, `source`, `sale_timestamp`, `total_amount`), and branches valid records to the `sales` topic while routing invalid ones to `sales-dlq` (dead letter queue). Valid records are then consumed by `sales-consumer`, which persists them in TimescaleDB.
 
 ### Kafka
 

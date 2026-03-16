@@ -147,7 +147,7 @@ docker compose down -v
 Wait until the main services are healthy, then test:
 
 ```bash
-# Timescale API
+# Sales Consumer API
 curl http://localhost:8090/health
 
 # SOAP service
@@ -178,7 +178,7 @@ curl "http://localhost:8090/api/aggregates/summary?from=2026-03-13T00:00:00Z&to=
 
 | Service | URL / Port | Purpose | Credentials |
 | ------- | ---------- | ------- | ----------- |
-| Timescale API | http://localhost:8090 | Single entrypoint for writes and reads against TimescaleDB | - |
+| Sales Consumer API | http://localhost:8090 | Kafka consumer that writes to TimescaleDB and exposes aggregated query endpoints | - |
 | Grafana | http://localhost:3000 | Dashboards and observability | `admin / admin` |
 | Kafka UI | http://localhost:8888 | Browse topics, messages, and Kafka Connect | - |
 | Kafka Connect | http://localhost:8083 | Debezium/connectors API | - |
@@ -201,7 +201,8 @@ These services run inside Docker and are part of the pipeline even when they do 
 | `csv-files` | Generates CSV sales files |
 | `csv-connector-source` | Receives MinIO webhook events and publishes CSV sales to Kafka |
 | `soap-connector-source` | Polls the SOAP service and publishes sales to Kafka |
-| `sales-api` | Consumes `raw_csv`, `raw_soap`, `raw_postgres`, normalizes and writes to TimescaleDB (via own consumer) |
+| `sales-aggregator` | Consumes `raw_csv`, `raw_soap`, `raw_postgres`, normalizes records and publishes canonical sales events |
+| `sales-consumer` | Consumes `sales`, writes to TimescaleDB, and exposes the aggregate query API on port `8090` |
 
 ## Results
 
