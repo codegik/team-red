@@ -65,7 +65,10 @@ public final class SalesWriter {
             return new SalesWriteResult(
                 rows > 0,
                 timestampFallbackUsed,
+                node.path("sale_id").asText("unknown"),
                 node.path("source").asText("unknown"),
+                node.path("status").asText("unknown"),
+                node.path("total_amount").asDouble(0),
                 textOrNull(node, "picked_up_at")
             );
         }

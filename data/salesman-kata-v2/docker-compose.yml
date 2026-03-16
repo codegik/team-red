@@ -414,6 +414,7 @@ services:
       OTEL_TRACES_EXPORTER: otlp
       OTEL_METRICS_EXPORTER: otlp
       OTEL_LOGS_EXPORTER: none
+      OTEL_INSTRUMENTATION_MESSAGING_EXPERIMENTAL_RECEIVE_TELEMETRY_ENABLED: "false"
       JAVA_OPTS: "-javaagent:/app/opentelemetry-javaagent.jar -Xms32M -Xmx64M"
     ports:
       - "8090:8090"

@@ -3,6 +3,12 @@ package com.electromart;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.LongCounter;
+import io.opentelemetry.api.metrics.Meter;
+import io.opentelemetry.api.trace.Span;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.serialization.Serdes;
@@ -19,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.UUID;
 
 public class SalesAggregator {
 
@@ -34,6 +39,9 @@ public class SalesAggregator {
     private static final Set<String> REQUIRED_FIELDS = Set.of(
         "sale_id", "source", "sale_timestamp", "total_amount"
     );
+
+    private static LongCounter recordsProcessedCounter;
+    private static LongCounter recordsRejectedCounter;
 
     public static void main(String[] args) throws Exception {
         String broker = env("KAFKA_BROKER", "kafka:9092");
@@ -59,6 +67,16 @@ public class SalesAggregator {
         waitForTopics(broker);
         ensureTopic(broker, DLQ_TOPIC);
 
+        Meter meter = GlobalOpenTelemetry.getMeter("sales-aggregator");
+        recordsProcessedCounter = meter
+            .counterBuilder("sales.records.processed")
+            .setDescription("Records that passed validation and were forwarded to the sales topic")
+            .build();
+        recordsRejectedCounter = meter
+            .counterBuilder("sales.records.rejected")
+            .setDescription("Records that failed validation and were routed to the DLQ")
+            .build();
+
         StreamsBuilder builder = new StreamsBuilder();
 
         KStream<String, String> csvStream = builder.<String, String>stream(TOPIC_RAW_CSV)
@@ -82,11 +100,19 @@ public class SalesAggregator {
         KStream<String, String> valid = branches.get("branch-valid");
         KStream<String, String> invalid = branches.get("branch-invalid");
 
-        valid.to(OUTPUT_TOPIC);
+        valid
+            .peek((key, value) -> {
+                String source = extractSource(value);
+                recordsProcessedCounter.add(1, Attributes.of(AttributeKey.stringKey("source"), source));
+            })
+            .to(OUTPUT_TOPIC);
 
         invalid
-            .peek((key, value) -> System.err.printf(
-                "[DLQ] Schema violation - key=%s missing required fields. Routing to %s%n", key, DLQ_TOPIC))
+            .peek((key, value) -> {
+                String source = extractSource(value);
+                recordsRejectedCounter.add(1, Attributes.of(AttributeKey.stringKey("source"), source));
+                System.err.printf("[DLQ] Schema violation - key=%s missing required fields. Routing to %s%n", key, DLQ_TOPIC);
+            })
             .to(DLQ_TOPIC);
 
         KafkaStreams streams = new KafkaStreams(builder.build(), props);
@@ -101,7 +127,7 @@ public class SalesAggregator {
         try {
             ObjectNode node = (ObjectNode) mapper.readTree(json);
             if (!node.has("trace_id")) {
-                node.put("trace_id", UUID.randomUUID().toString().substring(0, 8));
+                node.put("trace_id", Span.current().getSpanContext().getTraceId());
             }
             if (!node.has("source")) {
                 node.put("source", source);
@@ -112,6 +138,8 @@ public class SalesAggregator {
             if (!node.has("ingested_at")) {
                 node.put("ingested_at", Instant.now().toString());
             }
+            Span.current().setAttribute(AttributeKey.stringKey("sale.id"), node.path("sale_id").asText("unknown"));
+            Span.current().setAttribute(AttributeKey.stringKey("sale.source"), source);
             return mapper.writeValueAsString(node);
         } catch (Exception e) {
             return json;
@@ -174,6 +202,14 @@ public class SalesAggregator {
             Thread.sleep(ms);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+    }
+
+    private static String extractSource(String json) {
+        try {
+            return mapper.readTree(json).path("source").asText("unknown");
+        } catch (Exception e) {
+            return "unknown";
         }
     }
 

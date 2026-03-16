@@ -14,6 +14,9 @@ import org.apache.kafka.streams.kstream.GlobalKTable;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Named;
 
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.trace.Span;
+
 import java.time.Instant;
 import java.util.*;
 import java.util.ArrayList;
@@ -123,11 +126,13 @@ public class SalesEnricher {
         try {
             ObjectNode node = (ObjectNode) mapper.readTree(json);
             if (!node.has("trace_id")) {
-                node.put("trace_id", UUID.randomUUID().toString().substring(0, 8));
+                node.put("trace_id", Span.current().getSpanContext().getTraceId());
             }
             node.put("source", "postgres");
             node.put("source_version", "v1");
             node.put("ingested_at", Instant.now().toString());
+            Span.current().setAttribute(AttributeKey.stringKey("sale.id"), node.path("sale_id").asText("unknown"));
+            Span.current().setAttribute(AttributeKey.stringKey("sale.source"), "postgres");
             return mapper.writeValueAsString(node);
         } catch (Exception e) {
             return json;
