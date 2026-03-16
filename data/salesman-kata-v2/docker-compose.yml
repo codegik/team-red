@@ -234,7 +234,17 @@ services:
       DB_USER: electromart
       DB_PASSWORD: electromart123
       DB_NAME: electromart
-      JAVA_OPTS: "-Xms16M -Xmx32M"
+      OTEL_SERVICE_NAME: postgres-connector-source
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_PROPAGATORS: tracecontext,baggage
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      JAVA_OPTS: "-javaagent:/app/opentelemetry-javaagent.jar -Xms16M -Xmx32M"
+    depends_on:
+      otel-collector:
+        condition: service_started
     networks:
       - electromart-network
 
@@ -249,10 +259,19 @@ services:
       TOPIC_OUTPUT: raw_postgres
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
       SCHEMA_REGISTRY_VERSION: "1"
-      JAVA_OPTS: "-Xms32M -Xmx64M"
+      OTEL_SERVICE_NAME: postgres-enricher
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_PROPAGATORS: tracecontext,baggage
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      JAVA_OPTS: "-javaagent:/app/opentelemetry-javaagent.jar -Xms32M -Xmx64M"
     depends_on:
       schema-registry-init:
         condition: service_completed_successfully
+      otel-collector:
+        condition: service_started
     networks:
       - electromart-network
 
@@ -272,12 +291,21 @@ services:
       WEBHOOK_PORT: "8085"
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
       SCHEMA_REGISTRY_VERSION: "1"
-      JAVA_OPTS: "-Xms64M -Xmx128M"
+      OTEL_SERVICE_NAME: csv-connector-source
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_PROPAGATORS: tracecontext,baggage
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      JAVA_OPTS: "-javaagent:/app/opentelemetry-javaagent.jar -Xms64M -Xmx128M"
     ports:
       - "8085:8085"
     depends_on:
       schema-registry-init:
         condition: service_completed_successfully
+      otel-collector:
+        condition: service_started
     networks:
       - electromart-network
 
@@ -294,10 +322,19 @@ services:
       POLL_INTERVAL: "5000"
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
       SCHEMA_REGISTRY_VERSION: "1"
-      JAVA_OPTS: "-Xms32M -Xmx64M"
+      OTEL_SERVICE_NAME: soap-connector-source
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_PROPAGATORS: tracecontext,baggage
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      JAVA_OPTS: "-javaagent:/app/opentelemetry-javaagent.jar -Xms32M -Xmx64M"
     depends_on:
       schema-registry-init:
         condition: service_completed_successfully
+      otel-collector:
+        condition: service_started
     networks:
       - electromart-network
 
@@ -333,7 +370,20 @@ services:
       TOPIC_RAW_POSTGRES: raw_postgres
       TOPIC_SALES: sales
       TOPIC_DLQ: sales-dlq
-      JAVA_OPTS: "-Xms32M -Xmx64M"
+      SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      OTEL_SERVICE_NAME: sales-aggregator
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_PROPAGATORS: tracecontext,baggage
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      JAVA_OPTS: "-javaagent:/app/opentelemetry-javaagent.jar -Xms32M -Xmx64M"
+    depends_on:
+      schema-registry:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - electromart-network
 
@@ -351,12 +401,23 @@ services:
       TIMESCALEDB_USER: sales
       TIMESCALEDB_PASSWORD: sales123
       TIMESCALEDB_DATABASE: salesdb
-      JAVA_OPTS: "-Xms32M -Xmx64M"
+      OTEL_SERVICE_NAME: sales-consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_PROPAGATORS: tracecontext,baggage
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      JAVA_OPTS: "-javaagent:/app/opentelemetry-javaagent.jar -Xms32M -Xmx64M"
     depends_on:
       timescaledb:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - electromart-network
 
@@ -456,6 +517,32 @@ services:
     depends_on:
       timescaledb:
         condition: service_healthy
+    networks:
+      - electromart-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.54
+    container_name: electromart-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+      - "4317"
+    networks:
+      - electromart-network
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    container_name: electromart-otel-collector
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./services/otel-collector/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      jaeger:
+        condition: service_started
     networks:
       - electromart-network
 

@@ -8,5 +8,7 @@ RUN mvn package -DskipTests
 FROM eclipse-temurin:25-jre
 WORKDIR /app
 COPY --from=build /app/target/postgres-connector-1.0.0.jar app.jar
+COPY --from=build /app/target/lib/ lib/
+ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar
 ENV JAVA_OPTS="-Xms16M -Xmx32M"
 CMD java $JAVA_OPTS -jar app.jar
