@@ -18,6 +18,7 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
@@ -30,6 +31,7 @@ public class CsvConnector {
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final AtomicLong filesProcessed = new AtomicLong(0);
     private static final AtomicLong recordsProcessed = new AtomicLong(0);
+    private static final AtomicLong recordsSentToDlq = new AtomicLong(0);
     private static final String[] HEADERS = {
         "sale_id", "product_code", "product_name", "category", "brand",
         "salesman_name", "salesman_email", "region", "store_name", "city",
@@ -40,6 +42,7 @@ public class CsvConnector {
     private static KafkaProducer<String, String> producer;
     private static MinioClient minioClient;
     private static String kafkaTopic;
+    private static String dlqTopic;
     private static String sourceBucket;
     private static String processedBucket;
     private static SchemaValidator schemaValidator;
@@ -47,7 +50,8 @@ public class CsvConnector {
     public static void main(String[] args) throws Exception {
         String broker = env("KAFKA_BROKER", "kafka:9092");
         kafkaTopic = env("TOPIC_OUTPUT", "raw_csv");
-        validateTopicConfig(Map.of("TOPIC_OUTPUT", kafkaTopic));
+        dlqTopic = env("TOPIC_DLQ", "raw_csv-dlq");
+        validateTopicConfig(Map.of("TOPIC_OUTPUT", kafkaTopic, "TOPIC_DLQ", dlqTopic));
         String minioEndpoint = env("MINIO_ENDPOINT", "http://minio:9000");
         sourceBucket = env("MINIO_BUCKET", "sales-csv");
         processedBucket = env("MINIO_PROCESSED_BUCKET", "sales-csv-processed");
@@ -80,6 +84,7 @@ public class CsvConnector {
 
         long pollIntervalSec = Long.parseLong(env("POLL_INTERVAL_SECONDS", "10"));
 
+        ensureTopic(broker, dlqTopic);
         processExistingFiles();
         startWebhookServer(webhookPort);
         startPollingFallback(pollIntervalSec);
@@ -96,8 +101,9 @@ public class CsvConnector {
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         
         server.createContext("/health", ex -> {
-            String resp = String.format("{\"status\":\"healthy\",\"files\":%d,\"records\":%d}", 
-                filesProcessed.get(), recordsProcessed.get());
+            String resp = String.format(
+                "{\"status\":\"healthy\",\"files\":%d,\"records\":%d,\"records_sent_to_dlq\":%d,\"schema_validation_enabled\":%b}",
+                filesProcessed.get(), recordsProcessed.get(), recordsSentToDlq.get(), schemaValidator != null);
             ex.getResponseHeaders().add("Content-Type", "application/json");
             ex.sendResponseHeaders(200, resp.length());
             ex.getResponseBody().write(resp.getBytes());
@@ -199,10 +205,16 @@ public class CsvConnector {
     }
 
     private static String csvLineToJson(String line) {
-        try {
-            String[] values = line.split(",", -1);
-            if (values.length < HEADERS.length) return null;
+        String[] values = line.split(",", -1);
+        String saleId = values.length > 0 ? values[0].trim() : "unknown";
 
+        if (values.length < HEADERS.length) {
+            publishToDlq(saleId, line, "PARSE_ERROR",
+                "Expected " + HEADERS.length + " fields, got " + values.length);
+            return null;
+        }
+
+        try {
             ObjectNode node = mapper.createObjectNode();
             for (int i = 0; i < HEADERS.length; i++) {
                 String field = HEADERS[i], value = values[i].trim();
@@ -212,10 +224,33 @@ public class CsvConnector {
                     node.put(field, value);
                 }
             }
-            if (schemaValidator != null && !schemaValidator.isValid(node)) return null;
+            if (schemaValidator != null && !schemaValidator.isValid(node)) {
+                publishToDlq(saleId, line, "SCHEMA_VALIDATION", "Schema validation failed");
+                return null;
+            }
+            node.put("picked_up_at", Instant.now().toString());
             return mapper.writeValueAsString(node);
-        } catch (Exception e) {
+        } catch (NumberFormatException e) {
+            publishToDlq(saleId, line, "PARSE_ERROR", "Invalid numeric value: " + e.getMessage());
             return null;
+        } catch (Exception e) {
+            publishToDlq(saleId, line, "PARSE_ERROR", "Unexpected error: " + e.getMessage());
+            return null;
+        }
+    }
+
+    private static void publishToDlq(String key, String raw, String errorType, String errorMessage) {
+        try {
+            ObjectNode envelope = mapper.createObjectNode();
+            envelope.put("error", errorMessage);
+            envelope.put("error_type", errorType);
+            envelope.put("source", "csv");
+            envelope.put("picked_up_at", Instant.now().toString());
+            envelope.put("raw", raw);
+            producer.send(new ProducerRecord<>(dlqTopic, key, mapper.writeValueAsString(envelope)));
+            recordsSentToDlq.incrementAndGet();
+        } catch (Exception e) {
+            System.err.printf("Failed to publish to DLQ: %s%n", e.getMessage());
         }
     }
 

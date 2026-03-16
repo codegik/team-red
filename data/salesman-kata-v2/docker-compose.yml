@@ -239,7 +239,7 @@ services:
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_PROPAGATORS: tracecontext,baggage
       OTEL_TRACES_EXPORTER: otlp
-      OTEL_METRICS_EXPORTER: none
+      OTEL_METRICS_EXPORTER: otlp
       OTEL_LOGS_EXPORTER: none
       JAVA_OPTS: "-javaagent:/app/opentelemetry-javaagent.jar -Xms16M -Xmx32M"
     depends_on:
@@ -257,6 +257,7 @@ services:
       KAFKA_BROKER: kafka:9092
       DEBEZIUM_PREFIX: electromart.public
       TOPIC_OUTPUT: raw_postgres
+      TOPIC_DLQ: raw_postgres-dlq
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
       SCHEMA_REGISTRY_VERSION: "1"
       OTEL_SERVICE_NAME: postgres-enricher
@@ -264,7 +265,7 @@ services:
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_PROPAGATORS: tracecontext,baggage
       OTEL_TRACES_EXPORTER: otlp
-      OTEL_METRICS_EXPORTER: none
+      OTEL_METRICS_EXPORTER: otlp
       OTEL_LOGS_EXPORTER: none
       JAVA_OPTS: "-javaagent:/app/opentelemetry-javaagent.jar -Xms32M -Xmx64M"
     depends_on:
@@ -283,6 +284,7 @@ services:
     environment:
       KAFKA_BROKER: kafka:9092
       TOPIC_OUTPUT: raw_csv
+      TOPIC_DLQ: raw_csv-dlq
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin123
@@ -296,7 +298,7 @@ services:
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_PROPAGATORS: tracecontext,baggage
       OTEL_TRACES_EXPORTER: otlp
-      OTEL_METRICS_EXPORTER: none
+      OTEL_METRICS_EXPORTER: otlp
       OTEL_LOGS_EXPORTER: none
       JAVA_OPTS: "-javaagent:/app/opentelemetry-javaagent.jar -Xms64M -Xmx128M"
     ports:
@@ -317,6 +319,7 @@ services:
     environment:
       KAFKA_BROKER: kafka:9092
       TOPIC_OUTPUT: raw_soap
+      TOPIC_DLQ: raw_soap-dlq
       SOAP_URL: http://soap-service:8080/sales
       PAGE_SIZE: "100"
       POLL_INTERVAL: "5000"
@@ -327,9 +330,11 @@ services:
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_PROPAGATORS: tracecontext,baggage
       OTEL_TRACES_EXPORTER: otlp
-      OTEL_METRICS_EXPORTER: none
+      OTEL_METRICS_EXPORTER: otlp
       OTEL_LOGS_EXPORTER: none
       JAVA_OPTS: "-javaagent:/app/opentelemetry-javaagent.jar -Xms32M -Xmx64M"
+    ports:
+      - "8087:8087"
     depends_on:
       schema-registry-init:
         condition: service_completed_successfully
@@ -376,7 +381,7 @@ services:
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_PROPAGATORS: tracecontext,baggage
       OTEL_TRACES_EXPORTER: otlp
-      OTEL_METRICS_EXPORTER: none
+      OTEL_METRICS_EXPORTER: otlp
       OTEL_LOGS_EXPORTER: none
       JAVA_OPTS: "-javaagent:/app/opentelemetry-javaagent.jar -Xms32M -Xmx64M"
     depends_on:
@@ -406,9 +411,11 @@ services:
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_PROPAGATORS: tracecontext,baggage
       OTEL_TRACES_EXPORTER: otlp
-      OTEL_METRICS_EXPORTER: none
+      OTEL_METRICS_EXPORTER: otlp
       OTEL_LOGS_EXPORTER: none
       JAVA_OPTS: "-javaagent:/app/opentelemetry-javaagent.jar -Xms32M -Xmx64M"
+    ports:
+      - "8086:8086"
     depends_on:
       timescaledb:
         condition: service_healthy
@@ -540,6 +547,7 @@ services:
     ports:
       - "4317:4317"
       - "4318:4318"
+      - "8889:8889"
     depends_on:
       jaeger:
         condition: service_started

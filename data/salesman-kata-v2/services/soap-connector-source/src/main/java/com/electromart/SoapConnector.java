@@ -9,20 +9,32 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 
+import com.sun.net.httpserver.HttpServer;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import org.w3c.dom.*;
 import org.xml.sax.InputSource;
 import java.io.*;
 import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.*;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SoapConnector {
 
     private static final ObjectMapper mapper = new ObjectMapper();
     private static SchemaValidator schemaValidator;
+    private static KafkaProducer<String, String> producer;
+    private static String dlqTopic;
+    private static final AtomicLong recordsSentToDlq = new AtomicLong(0);
 
     public static void main(String[] args) throws Exception {
         String broker = System.getenv().getOrDefault("KAFKA_BROKER", "kafka:9092");
@@ -35,16 +47,19 @@ public class SoapConnector {
         System.out.println("SOAP Connector starting...");
         System.out.printf("Config: broker=%s | topic=%s%n", broker, topic);
 
+        dlqTopic = env("TOPIC_DLQ", "raw_soap-dlq");
         waitForKafka(broker);
         ensureTopic(broker, topic);
+        ensureTopic(broker, dlqTopic);
 
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, broker);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-        KafkaProducer<String, String> producer = new KafkaProducer<>(props);
+        producer = new KafkaProducer<>(props);
         Runtime.getRuntime().addShutdownHook(new Thread(producer::close));
+        startHealthServer(8087);
 
         schemaValidator = SchemaValidator.tryCreate(
             env("SCHEMA_REGISTRY_URL", "http://schema-registry:8081"),
@@ -57,7 +72,7 @@ public class SoapConnector {
 
         while (true) {
             try {
-                cursor = pollAndPublish(producer, topic, soapUrl, cursor, pageSize);
+                cursor = pollAndPublish(topic, soapUrl, cursor, pageSize);
             } catch (Exception e) {
                 System.err.println("Poll error: " + e.getMessage());
             }
@@ -65,7 +80,7 @@ public class SoapConnector {
         }
     }
 
-    private static String pollAndPublish(KafkaProducer<String, String> producer, String topic,
+    private static String pollAndPublish(String topic,
                                           String soapUrl, String cursor, int pageSize) throws Exception {
         String currentCursor = cursor;
         boolean hasMore = true;
@@ -174,22 +189,81 @@ public class SoapConnector {
     );
 
     private static String recordToJson(Element record) throws Exception {
-        ObjectNode node = mapper.createObjectNode();
-        for (var entry : FIELD_MAP.entrySet()) {
-            String value = getTagValue(record, entry.getKey());
-            if (value == null) continue;
+        String saleId = getTagValue(record, "sale:saleId");
+        if (saleId == null) saleId = "unknown";
 
-            String jsonField = entry.getValue();
-            if (jsonField.equals("quantity")) {
-                node.put(jsonField, Integer.parseInt(value));
-            } else if (jsonField.equals("unit_price") || jsonField.equals("total_amount")) {
-                node.put(jsonField, Double.parseDouble(value));
-            } else {
-                node.put(jsonField, value);
+        ObjectNode node = mapper.createObjectNode();
+        try {
+            for (var entry : FIELD_MAP.entrySet()) {
+                String value = getTagValue(record, entry.getKey());
+                if (value == null) continue;
+
+                String jsonField = entry.getValue();
+                if (jsonField.equals("quantity")) {
+                    node.put(jsonField, Integer.parseInt(value));
+                } else if (jsonField.equals("unit_price") || jsonField.equals("total_amount")) {
+                    node.put(jsonField, Double.parseDouble(value));
+                } else {
+                    node.put(jsonField, value);
+                }
             }
+        } catch (NumberFormatException e) {
+            publishToDlq(saleId, elementToXml(record), "PARSE_ERROR", "Invalid numeric value: " + e.getMessage());
+            return null;
         }
-        if (schemaValidator != null && !schemaValidator.isValid(node)) return null;
+
+        if (schemaValidator != null && !schemaValidator.isValid(node)) {
+            publishToDlq(saleId, elementToXml(record), "SCHEMA_VALIDATION", "Schema validation failed");
+            return null;
+        }
+        node.put("picked_up_at", Instant.now().toString());
         return mapper.writeValueAsString(node);
+    }
+
+    private static String elementToXml(Element element) {
+        try {
+            StringWriter writer = new StringWriter();
+            Transformer transformer = TransformerFactory.newInstance().newTransformer();
+            transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+            transformer.transform(new DOMSource(element), new StreamResult(writer));
+            return writer.toString();
+        } catch (Exception e) {
+            return element.getTagName();
+        }
+    }
+
+    private static void publishToDlq(String key, String raw, String errorType, String errorMessage) {
+        try {
+            ObjectNode envelope = mapper.createObjectNode();
+            envelope.put("error", errorMessage);
+            envelope.put("error_type", errorType);
+            envelope.put("source", "soap");
+            envelope.put("picked_up_at", Instant.now().toString());
+            envelope.put("raw", raw);
+            producer.send(new ProducerRecord<>(dlqTopic, key, mapper.writeValueAsString(envelope)));
+            recordsSentToDlq.incrementAndGet();
+        } catch (Exception e) {
+            System.err.printf("Failed to publish to DLQ: %s%n", e.getMessage());
+        }
+    }
+
+    private static void startHealthServer(int port) {
+        try {
+            HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+            server.createContext("/health", ex -> {
+                String resp = String.format(
+                    "{\"status\":\"healthy\",\"records_sent_to_dlq\":%d,\"schema_validation_enabled\":%b}",
+                    recordsSentToDlq.get(), schemaValidator != null);
+                ex.getResponseHeaders().add("Content-Type", "application/json");
+                ex.sendResponseHeaders(200, resp.length());
+                ex.getResponseBody().write(resp.getBytes());
+                ex.getResponseBody().close();
+            });
+            server.start();
+            System.out.printf("Health endpoint started on port %d%n", port);
+        } catch (Exception e) {
+            System.err.printf("Failed to start health server: %s%n", e.getMessage());
+        }
     }
 
     private static void validateTopicConfig(Map<String, String> topics) {

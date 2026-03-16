@@ -2,6 +2,13 @@ package com.electromart;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpServer;
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.LongCounter;
+import io.opentelemetry.api.metrics.LongHistogram;
+import io.opentelemetry.api.metrics.Meter;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -9,6 +16,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
+import java.net.InetSocketAddress;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -18,10 +26,16 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SalesConsumer {
 
     private static final ObjectMapper mapper = new ObjectMapper();
+    private static final AtomicLong duplicatesSkipped = new AtomicLong(0);
+    private static final AtomicLong timestampFallbacks = new AtomicLong(0);
+    private static LongHistogram pipelineLatency;
+    private static LongCounter duplicatesCounter;
+    private static LongCounter timestampFallbackCounter;
 
     private static final String INSERT_SQL = """
         INSERT INTO sales (
@@ -44,6 +58,24 @@ public class SalesConsumer {
         String dbPassword = env("TIMESCALEDB_PASSWORD", "sales123");
         String dbName = env("TIMESCALEDB_DATABASE", "salesdb");
         String jdbcUrl = String.format("jdbc:postgresql://%s:%s/%s", dbHost, dbPort, dbName);
+
+        Meter meter = GlobalOpenTelemetry.getMeter("sales-consumer");
+        pipelineLatency = meter
+            .histogramBuilder("pipeline.processing.duration")
+            .setDescription("End-to-end latency from connector pickup to TimescaleDB insert")
+            .setUnit("ms")
+            .ofLongs()
+            .build();
+        duplicatesCounter = meter
+            .counterBuilder("pipeline.duplicate.inserts")
+            .setDescription("Records skipped due to ON CONFLICT (duplicate sale_id + sale_timestamp)")
+            .build();
+        timestampFallbackCounter = meter
+            .counterBuilder("pipeline.timestamp.fallbacks")
+            .setDescription("Records where sale_timestamp failed to parse and fell back to current time")
+            .build();
+
+        startHealthServer(8086);
 
         Connection conn = waitForDatabase(jdbcUrl, dbUser, dbPassword);
 
@@ -129,6 +161,18 @@ public class SalesConsumer {
             int rows = stmt.executeUpdate();
             if (rows > 0) {
                 System.out.printf("Inserted sale %s%n", node.path("sale_id").asText());
+                String pickedUpAt = node.path("picked_up_at").asText(null);
+                if (pickedUpAt != null && !pickedUpAt.isBlank()) {
+                    try {
+                        long latencyMs = Instant.now().toEpochMilli() - Instant.parse(pickedUpAt).toEpochMilli();
+                        pipelineLatency.record(latencyMs, Attributes.of(
+                            AttributeKey.stringKey("source"), node.path("source").asText("unknown")
+                        ));
+                    } catch (Exception ignored) {}
+                }
+            } else {
+                duplicatesSkipped.incrementAndGet();
+                duplicatesCounter.add(1);
             }
         }
     }
@@ -137,6 +181,8 @@ public class SalesConsumer {
         try {
             return Timestamp.from(Instant.parse(value));
         } catch (Exception e) {
+            timestampFallbacks.incrementAndGet();
+            timestampFallbackCounter.add(1);
             return Timestamp.from(Instant.now());
         }
     }
@@ -158,6 +204,25 @@ public class SalesConsumer {
                 System.out.printf("Waiting for TimescaleDB at %s ...%n", jdbcUrl);
                 sleep(3000);
             }
+        }
+    }
+
+    private static void startHealthServer(int port) {
+        try {
+            HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+            server.createContext("/health", ex -> {
+                String resp = String.format(
+                    "{\"status\":\"healthy\",\"duplicates_skipped\":%d,\"timestamp_fallbacks\":%d}",
+                    duplicatesSkipped.get(), timestampFallbacks.get());
+                ex.getResponseHeaders().add("Content-Type", "application/json");
+                ex.sendResponseHeaders(200, resp.length());
+                ex.getResponseBody().write(resp.getBytes());
+                ex.getResponseBody().close();
+            });
+            server.start();
+            System.out.printf("Health endpoint started on port %d%n", port);
+        } catch (Exception e) {
+            System.err.printf("Failed to start health server: %s%n", e.getMessage());
         }
     }
 
