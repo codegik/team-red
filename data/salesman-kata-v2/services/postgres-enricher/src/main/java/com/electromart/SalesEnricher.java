@@ -8,13 +8,17 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.streams.kstream.Branched;
 import org.apache.kafka.streams.kstream.GlobalKTable;
 import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Named;
 
 import java.time.Instant;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SalesEnricher {
 
@@ -26,6 +30,8 @@ public class SalesEnricher {
     private static String SALESMEN_TOPIC;
     private static String STORES_TOPIC;
     private static String OUTPUT_TOPIC;
+    private static String DLQ_TOPIC;
+    private static final AtomicLong dlqCount = new AtomicLong(0);
 
     public static void main(String[] args) throws Exception {
         String broker = System.getenv().getOrDefault("KAFKA_BROKER", "kafka:9092");
@@ -35,6 +41,7 @@ public class SalesEnricher {
         SALESMEN_TOPIC = System.getenv().getOrDefault("TOPIC_CDC_SALESMEN", debeziumPrefix + ".salesmen");
         STORES_TOPIC = System.getenv().getOrDefault("TOPIC_CDC_STORES", debeziumPrefix + ".stores");
         OUTPUT_TOPIC = System.getenv().getOrDefault("TOPIC_OUTPUT", "raw_postgres");
+        DLQ_TOPIC = System.getenv().getOrDefault("TOPIC_DLQ", "raw_postgres-dlq");
 
         validateTopicConfig(Map.of(
             "TOPIC_CDC_SALES", SALES_TOPIC, "TOPIC_CDC_PRODUCTS", PRODUCTS_TOPIC,
@@ -54,6 +61,7 @@ public class SalesEnricher {
             Integer.parseInt(System.getenv().getOrDefault("SCHEMA_REGISTRY_VERSION", "1")));
 
         waitForTopics(broker);
+        ensureTopic(broker, DLQ_TOPIC);
 
         StreamsBuilder builder = new StreamsBuilder();
 
@@ -77,27 +85,38 @@ public class SalesEnricher {
                 SalesEnricher::withStore)
             .mapValues(SalesEnricher::normalizeCanonical);
 
-        enriched
-            .filter((key, value) -> {
-                if (schemaValidator == null || value == null) return true;
-                try {
-                    JsonNode node = mapper.readTree(value);
-                    if (!schemaValidator.isValid(node)) {
-                        System.err.printf("[Schema] Dropping invalid enriched record key=%s%n", key);
-                        return false;
-                    }
-                    return true;
-                } catch (Exception e) {
-                    return true;
-                }
-            })
+        Map<String, KStream<String, String>> branches = enriched
+            .split(Named.as("branch-"))
+            .branch((key, value) -> isSchemaValid(value), Branched.as("valid"))
+            .defaultBranch(Branched.as("invalid"));
+
+        branches.get("branch-valid")
+            .mapValues(SalesEnricher::addPickedUpAt)
             .to(OUTPUT_TOPIC);
+
+        branches.get("branch-invalid")
+            .peek((key, value) -> {
+                dlqCount.incrementAndGet();
+                System.err.printf("[Schema] Routing invalid enriched record key=%s to %s%n", key, DLQ_TOPIC);
+            })
+            .mapValues(SalesEnricher::wrapDlqEnvelope)
+            .to(DLQ_TOPIC);
 
         KafkaStreams streams = new KafkaStreams(builder.build(), props);
         Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
 
         System.out.println("Starting Sales Enricher - output topic: " + OUTPUT_TOPIC);
         streams.start();
+    }
+
+    private static String addPickedUpAt(String json) {
+        try {
+            ObjectNode node = (ObjectNode) mapper.readTree(json);
+            node.put("picked_up_at", Instant.now().toString());
+            return mapper.writeValueAsString(node);
+        } catch (Exception e) {
+            return json;
+        }
     }
 
     private static String addTraceId(String json) {
@@ -211,6 +230,37 @@ public class SalesEnricher {
             throw new IllegalArgumentException("Invalid topic configuration: " + String.join(", ", errors));
         }
         System.out.println("Topic config validated: " + topics);
+    }
+
+    private static boolean isSchemaValid(String value) {
+        if (schemaValidator == null || value == null) return true;
+        try {
+            return schemaValidator.isValid(mapper.readTree(value));
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    private static String wrapDlqEnvelope(String value) {
+        try {
+            ObjectNode envelope = mapper.createObjectNode();
+            envelope.put("error", "Schema validation failed");
+            envelope.put("error_type", "SCHEMA_VALIDATION");
+            envelope.put("source", "postgres");
+            envelope.put("raw", value);
+            return mapper.writeValueAsString(envelope);
+        } catch (Exception e) {
+            return value;
+        }
+    }
+
+    private static void ensureTopic(String broker, String topic) {
+        try (AdminClient admin = AdminClient.create(Map.of("bootstrap.servers", broker))) {
+            if (!admin.listTopics().names().get().contains(topic)) {
+                admin.createTopics(List.of(new NewTopic(topic, 1, (short) 1))).all().get();
+                System.out.printf("Created topic: %s%n", topic);
+            }
+        } catch (Exception ignored) {}
     }
 
     private static void waitForTopics(String broker) throws InterruptedException, ExecutionException {

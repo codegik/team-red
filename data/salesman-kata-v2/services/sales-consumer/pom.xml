@@ -43,6 +43,11 @@
             <version>5.10.2</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api</artifactId>
+            <version>1.40.0</version>
+        </dependency>
     </dependencies>
 
     <build>

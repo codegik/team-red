@@ -25,8 +25,17 @@ public final class SalesWriter {
     private SalesWriter() {
     }
 
-    public static void insertSale(Connection conn, String json) throws Exception {
+    public static SalesWriteResult insertSale(Connection conn, String json) throws Exception {
         JsonNode node = MAPPER.readTree(json);
+        boolean timestampFallbackUsed = false;
+        Timestamp saleTimestamp;
+
+        try {
+            saleTimestamp = Timestamp.from(Instant.parse(node.path("sale_timestamp").asText()));
+        } catch (Exception e) {
+            saleTimestamp = Timestamp.from(Instant.now());
+            timestampFallbackUsed = true;
+        }
 
         try (PreparedStatement stmt = conn.prepareStatement(INSERT_SQL)) {
             stmt.setString(1, node.path("sale_id").asText());
@@ -45,21 +54,20 @@ public final class SalesWriter {
             stmt.setDouble(14, node.path("unit_price").asDouble(0));
             stmt.setDouble(15, node.path("total_amount").asDouble(0));
             stmt.setString(16, textOrNull(node, "status"));
-            stmt.setTimestamp(17, parseTimestamp(node.path("sale_timestamp").asText()));
+            stmt.setTimestamp(17, saleTimestamp);
             stmt.setString(18, textOrNull(node, "trace_id"));
 
             int rows = stmt.executeUpdate();
             if (rows > 0) {
                 System.out.printf("Inserted sale %s%n", node.path("sale_id").asText());
             }
-        }
-    }
 
-    private static Timestamp parseTimestamp(String value) {
-        try {
-            return Timestamp.from(Instant.parse(value));
-        } catch (Exception e) {
-            return Timestamp.from(Instant.now());
+            return new SalesWriteResult(
+                rows > 0,
+                timestampFallbackUsed,
+                node.path("source").asText("unknown"),
+                textOrNull(node, "picked_up_at")
+            );
         }
     }
 
