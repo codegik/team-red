@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RawSoapSale",
+  "description": "Raw sale record ingested from the legacy SOAP service",
+  "type": "object",
+  "required": ["sale_id", "sale_timestamp", "total_amount"],
+  "properties": {
+    "sale_id":        { "type": "string",  "minLength": 1 },
+    "product_code":   { "type": "string" },
+    "product_name":   { "type": "string" },
+    "category":       { "type": "string" },
+    "brand":          { "type": "string" },
+    "salesman_name":  { "type": "string" },
+    "salesman_email": { "type": "string" },
+    "region":         { "type": "string" },
+    "store_name":     { "type": "string" },
+    "city":           { "type": "string" },
+    "store_type":     { "type": "string" },
+    "quantity":       { "type": "integer" },
+    "unit_price":     { "type": "number" },
+    "total_amount":   { "type": "number" },
+    "status":         { "type": "string" },
+    "sale_timestamp": { "type": "string" }
+  },
+  "additionalProperties": false
+}

@@ -22,6 +22,7 @@ import java.util.ArrayList;
 public class SoapConnector {
 
     private static final ObjectMapper mapper = new ObjectMapper();
+    private static SchemaValidator schemaValidator;
 
     public static void main(String[] args) throws Exception {
         String broker = System.getenv().getOrDefault("KAFKA_BROKER", "kafka:9092");
@@ -44,6 +45,11 @@ public class SoapConnector {
 
         KafkaProducer<String, String> producer = new KafkaProducer<>(props);
         Runtime.getRuntime().addShutdownHook(new Thread(producer::close));
+
+        schemaValidator = SchemaValidator.tryCreate(
+            env("SCHEMA_REGISTRY_URL", "http://schema-registry:8081"),
+            "raw_soap-value",
+            Integer.parseInt(env("SCHEMA_REGISTRY_VERSION", "1")));
 
         waitForSoapService(soapUrl);
 
@@ -80,6 +86,7 @@ public class SoapConnector {
             for (int i = 0; i < records.getLength(); i++) {
                 Element record = (Element) records.item(i);
                 String json = recordToJson(record);
+                if (json == null) continue;
                 String saleId = getTagValue(record, "sale:saleId");
                 producer.send(new ProducerRecord<>(topic, saleId, json));
                 totalPublished++;
@@ -181,6 +188,7 @@ public class SoapConnector {
                 node.put(jsonField, value);
             }
         }
+        if (schemaValidator != null && !schemaValidator.isValid(node)) return null;
         return mapper.writeValueAsString(node);
     }
 

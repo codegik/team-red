@@ -42,6 +42,7 @@ public class CsvConnector {
     private static String kafkaTopic;
     private static String sourceBucket;
     private static String processedBucket;
+    private static SchemaValidator schemaValidator;
 
     public static void main(String[] args) throws Exception {
         String broker = env("KAFKA_BROKER", "kafka:9092");
@@ -71,6 +72,11 @@ public class CsvConnector {
 
         producer = new KafkaProducer<>(props);
         Runtime.getRuntime().addShutdownHook(new Thread(producer::close));
+
+        schemaValidator = SchemaValidator.tryCreate(
+            env("SCHEMA_REGISTRY_URL", "http://schema-registry:8081"),
+            "raw_csv-value",
+            Integer.parseInt(env("SCHEMA_REGISTRY_VERSION", "1")));
 
         long pollIntervalSec = Long.parseLong(env("POLL_INTERVAL_SECONDS", "10"));
 
@@ -206,6 +212,7 @@ public class CsvConnector {
                     node.put(field, value);
                 }
             }
+            if (schemaValidator != null && !schemaValidator.isValid(node)) return null;
             return mapper.writeValueAsString(node);
         } catch (Exception e) {
             return null;
