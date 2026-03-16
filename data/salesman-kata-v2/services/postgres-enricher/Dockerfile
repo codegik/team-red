@@ -10,6 +10,8 @@ FROM eclipse-temurin:25-jre
 
 WORKDIR /app
 COPY --from=build /app/target/postgres-enricher-1.0.0.jar app.jar
+COPY --from=build /app/target/lib/ lib/
+ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar
 
 ENV JAVA_OPTS="-Xms32M -Xmx64M"
 CMD java $JAVA_OPTS -jar app.jar
