@@ -19,6 +19,7 @@ import java.util.concurrent.ExecutionException;
 public class SalesEnricher {
 
     private static final ObjectMapper mapper = new ObjectMapper();
+    private static SchemaValidator schemaValidator;
 
     private static String SALES_TOPIC;
     private static String PRODUCTS_TOPIC;
@@ -47,6 +48,11 @@ public class SalesEnricher {
         props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.StringSerde.class);
         props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.StringSerde.class);
 
+        schemaValidator = SchemaValidator.tryCreate(
+            System.getenv().getOrDefault("SCHEMA_REGISTRY_URL", "http://schema-registry:8081"),
+            "raw_postgres-value",
+            Integer.parseInt(System.getenv().getOrDefault("SCHEMA_REGISTRY_VERSION", "1")));
+
         waitForTopics(broker);
 
         StreamsBuilder builder = new StreamsBuilder();
@@ -71,7 +77,21 @@ public class SalesEnricher {
                 SalesEnricher::withStore)
             .mapValues(SalesEnricher::normalizeCanonical);
 
-        enriched.to(OUTPUT_TOPIC);
+        enriched
+            .filter((key, value) -> {
+                if (schemaValidator == null || value == null) return true;
+                try {
+                    JsonNode node = mapper.readTree(value);
+                    if (!schemaValidator.isValid(node)) {
+                        System.err.printf("[Schema] Dropping invalid enriched record key=%s%n", key);
+                        return false;
+                    }
+                    return true;
+                } catch (Exception e) {
+                    return true;
+                }
+            })
+            .to(OUTPUT_TOPIC);
 
         KafkaStreams streams = new KafkaStreams(builder.build(), props);
         Runtime.getRuntime().addShutdownHook(new Thread(streams::close));

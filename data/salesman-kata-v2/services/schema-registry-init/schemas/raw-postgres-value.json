@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RawPostgresSale",
+  "description": "Enriched sale record from PostgreSQL CDC via Debezium — joined with product, salesman, and store lookups",
+  "type": "object",
+  "required": ["sale_id", "source", "sale_timestamp", "total_amount"],
+  "properties": {
+    "sale_id":        { "type": "string",  "minLength": 1, "pattern": "^PG-[0-9]+$" },
+    "source":         { "type": "string",  "const": "postgres" },
+    "source_version": { "type": "string" },
+    "ingested_at":    { "type": "string",  "format": "date-time" },
+    "trace_id":       { "type": "string" },
+    "sale_timestamp": { "type": "string",  "format": "date-time" },
+    "total_amount":   { "type": "number",  "minimum": 0 },
+    "product_code":   { "type": "string" },
+    "product_name":   { "type": "string" },
+    "category":       { "type": "string" },
+    "brand":          { "type": "string" },
+    "salesman_name":  { "type": "string" },
+    "salesman_email": { "type": "string" },
+    "region":         { "type": "string" },
+    "store_name":     { "type": "string" },
+    "city":           { "type": "string" },
+    "country":        { "type": "string" },
+    "store_type":     { "type": "string" },
+    "quantity":       { "type": "integer" },
+    "unit_price":     { "type": "number" },
+    "status":         { "type": "string" }
+  },
+  "additionalProperties": false
+}

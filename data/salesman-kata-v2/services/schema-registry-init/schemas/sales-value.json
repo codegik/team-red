@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Sale",
+  "description": "Canonical normalized sale record written to TimescaleDB",
+  "type": "object",
+  "required": ["sale_id", "source", "sale_timestamp", "total_amount"],
+  "properties": {
+    "sale_id":        { "type": "string",  "minLength": 1 },
+    "source":         { "type": "string",  "enum": ["csv", "soap", "postgres"] },
+    "sale_timestamp": { "type": "string",  "format": "date-time" },
+    "total_amount":   { "type": "number",  "minimum": 0 },
+    "product_code":   { "type": ["string", "null"] },
+    "product_name":   { "type": ["string", "null"] },
+    "category":       { "type": ["string", "null"] },
+    "brand":          { "type": ["string", "null"] },
+    "salesman_name":  { "type": ["string", "null"] },
+    "salesman_email": { "type": ["string", "null"] },
+    "region":         { "type": ["string", "null"] },
+    "store_name":     { "type": ["string", "null"] },
+    "city":           { "type": ["string", "null"] },
+    "store_type":     { "type": ["string", "null"] },
+    "quantity":       { "type": "integer", "minimum": 0 },
+    "unit_price":     { "type": "number",  "minimum": 0 },
+    "status":         { "type": ["string", "null"] },
+    "trace_id":       { "type": ["string", "null"] },
+    "source_version": { "type": ["string", "null"] },
+    "ingested_at":    { "type": ["string", "null"], "format": "date-time" }
+  },
+  "additionalProperties": false
+}

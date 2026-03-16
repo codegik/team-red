@@ -142,6 +142,40 @@ services:
     networks:
       - electromart-network
 
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.6.0
+    container_name: electromart-schema-registry
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_HEAP_OPTS: "-Xms64M -Xmx128M"
+    ports:
+      - "8081:8081"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/subjects"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - electromart-network
+
+  schema-registry-init:
+    build:
+      context: ./services/schema-registry-init
+      dockerfile: Dockerfile
+    container_name: electromart-schema-registry-init
+    environment:
+      SCHEMA_REGISTRY_URL: http://schema-registry:8081
+    depends_on:
+      schema-registry:
+        condition: service_healthy
+    networks:
+      - electromart-network
+
   kafka-ui:
     image: provectuslabs/kafka-ui:v0.7.2
     container_name: electromart-kafka-ui
@@ -150,11 +184,14 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: debezium
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
       JAVA_OPTS: "-Xms64M -Xmx128M"
     ports:
       - "8888:8080"
     depends_on:
       kafka:
+        condition: service_healthy
+      schema-registry:
         condition: service_healthy
     networks:
       - electromart-network
@@ -210,7 +247,12 @@ services:
       KAFKA_BROKER: kafka:9092
       DEBEZIUM_PREFIX: electromart.public
       TOPIC_OUTPUT: raw_postgres
+      SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      SCHEMA_REGISTRY_VERSION: "1"
       JAVA_OPTS: "-Xms32M -Xmx64M"
+    depends_on:
+      schema-registry-init:
+        condition: service_completed_successfully
     networks:
       - electromart-network
 
@@ -228,9 +270,14 @@ services:
       MINIO_BUCKET: sales-csv
       MINIO_PROCESSED_BUCKET: sales-csv-processed
       WEBHOOK_PORT: "8085"
+      SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      SCHEMA_REGISTRY_VERSION: "1"
       JAVA_OPTS: "-Xms64M -Xmx128M"
     ports:
       - "8085:8085"
+    depends_on:
+      schema-registry-init:
+        condition: service_completed_successfully
     networks:
       - electromart-network
 
@@ -245,7 +292,12 @@ services:
       SOAP_URL: http://soap-service:8080/sales
       PAGE_SIZE: "100"
       POLL_INTERVAL: "5000"
+      SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      SCHEMA_REGISTRY_VERSION: "1"
       JAVA_OPTS: "-Xms32M -Xmx64M"
+    depends_on:
+      schema-registry-init:
+        condition: service_completed_successfully
     networks:
       - electromart-network
 
