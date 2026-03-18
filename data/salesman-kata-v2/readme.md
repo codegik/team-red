@@ -15,7 +15,7 @@ Schema is initialized automatically via `init.sql` mounted into the PostgreSQL c
 
 **Tables:** `products`, `salesmen`, `stores`, `sales`
 
-![PostgreSQL Schema](./data-sources/postgresql/schema-erd.png)
+![PostgreSQL Schema](./data-sources/postgresql/erd.mermaid)  
 
 #### CSV Files (via MinIO S3)
 
