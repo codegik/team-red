@@ -21,13 +21,9 @@ class SoapConnectorTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Test
-    void buildRequestIncludesCursorWhenPresent() throws Exception {
-        Method method = SoapConnector.class.getDeclaredMethod("buildRequest", String.class, int.class);
-        method.setAccessible(true);
+    void buildRequestContainsPageSize() {
+        String xml = SoapConnector.buildRequest(50);
 
-        String xml = (String) method.invoke(null, "cursor-1", 50);
-
-        assertTrue(xml.contains("<cursor>cursor-1</cursor>"));
         assertTrue(xml.contains("<pageSize>50</pageSize>"));
     }
 

@@ -68,11 +68,9 @@ public class SoapConnector {
 
         waitForSoapService(soapUrl);
 
-        String cursor = null;
-
         while (true) {
             try {
-                cursor = pollAndPublish(topic, soapUrl, cursor, pageSize);
+                pollAndPublish(topic, soapUrl, pageSize);
             } catch (Exception e) {
                 System.err.println("Poll error: " + e.getMessage());
             }
@@ -80,58 +78,46 @@ public class SoapConnector {
         }
     }
 
-    private static String pollAndPublish(String topic,
-                                          String soapUrl, String cursor, int pageSize) throws Exception {
-        String currentCursor = cursor;
-        boolean hasMore = true;
+    private static void pollAndPublish(String topic,
+                                          String soapUrl, int pageSize) throws Exception {
+        String requestXml = buildRequest(pageSize);
+        String responseXml = postSoap(soapUrl, requestXml);
+
+        Document doc = parseXml(responseXml);
+
+        NodeList records = doc.getElementsByTagName("sale:record");
+        if (records.getLength() == 0) return;
 
         int totalPublished = 0;
 
-        while (hasMore) {
-            String requestXml = buildRequest(currentCursor, pageSize);
-            String responseXml = postSoap(soapUrl, requestXml);
-
-            Document doc = parseXml(responseXml);
-            String nextCursor = getTagValue(doc, "sale:nextCursor");
-            hasMore = "true".equals(getTagValue(doc, "sale:hasMore"));
-
-            NodeList records = doc.getElementsByTagName("sale:record");
-            if (records.getLength() == 0) break;
-
-            for (int i = 0; i < records.getLength(); i++) {
-                Element record = (Element) records.item(i);
-                String json = recordToJson(record);
-                if (json == null) continue;
-                String saleId = getTagValue(record, "sale:saleId");
-                producer.send(new ProducerRecord<>(topic, saleId, json));
-                totalPublished++;
-            }
-
-            producer.flush();
-            currentCursor = nextCursor;
+        for (int i = 0; i < records.getLength(); i++) {
+            Element record = (Element) records.item(i);
+            String json = recordToJson(record);
+            if (json == null) continue;
+            String saleId = getTagValue(record, "sale:saleId");
+            producer.send(new ProducerRecord<>(topic, saleId, json));
+            totalPublished++;
         }
+
+        producer.flush();
 
         if (totalPublished > 0) {
-            System.out.printf("[%s] Published to topic \"%s\" | %d records | cursor: %s%n",
-                java.time.Instant.now(), topic, totalPublished, currentCursor);
+            System.out.printf("[%s] Published to topic \"%s\" | %d records%n",
+                java.time.Instant.now(), topic, totalPublished);
         }
-
-        return currentCursor;
     }
 
-    private static String buildRequest(String cursor, int pageSize) {
-        String cursorXml = cursor != null ? "<cursor>" + cursor + "</cursor>" : "";
+    static String buildRequest(int pageSize) {
         return String.format("""
             <?xml version="1.0" encoding="UTF-8"?>
             <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                               xmlns:sale="http://electromart.com/sales">
               <soapenv:Body>
                 <sale:GetSalesRequest>
-                  %s
                   <pageSize>%d</pageSize>
                 </sale:GetSalesRequest>
               </soapenv:Body>
-            </soapenv:Envelope>""", cursorXml, pageSize);
+            </soapenv:Envelope>""", pageSize);
     }
 
     private static String postSoap(String url, String xml) throws Exception {

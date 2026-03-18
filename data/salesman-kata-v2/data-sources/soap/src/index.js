@@ -24,28 +24,17 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-function parseCursorFromXml(xml) {
-  let pageSize = DEFAULT_PAGE_SIZE;
-
+function parsePageSize(xml) {
   const pageSizeMatch = xml.match(/<pageSize>(\d+)<\/pageSize>/);
-  if (pageSizeMatch) pageSize = Math.min(parseInt(pageSizeMatch[1]), 1000);
-
-  return { pageSize };
+  return pageSizeMatch ? Math.min(parseInt(pageSizeMatch[1]), 1000) : DEFAULT_PAGE_SIZE;
 }
 
 app.post('/sales', (req, res) => {
-  const { pageSize } = parseCursorFromXml(req.body || '');
+  const pageSize = parsePageSize(req.body || '');
 
   // Generate a small batch of sales (1-5 records per request)
   const count = randomInt(1, 5);
   const sales = generateSales(count);
-
-  const nextCursor = sales.length > 0
-    ? sales[sales.length - 1].saleId
-    : '';
-
-  // Most of the time there's no more data (simulate sparse incoming sales)
-  const hasMore = Math.random() > 0.8;
 
   const salesXml = sales.map(s => `        <sale:record>
           <sale:saleId>${s.saleId}</sale:saleId>
@@ -72,8 +61,6 @@ app.post('/sales', (req, res) => {
   <soapenv:Body>
     <sale:GetSalesResponse>
       <sale:totalRecords>${sales.length}</sale:totalRecords>
-      <sale:nextCursor>${nextCursor}</sale:nextCursor>
-      <sale:hasMore>${hasMore}</sale:hasMore>
       <sale:sales>
 ${salesXml}
       </sale:sales>
