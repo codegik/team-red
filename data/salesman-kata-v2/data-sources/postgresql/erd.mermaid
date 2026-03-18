@@ -1,0 +1,51 @@
+erDiagram
+    Sales {
+        int sale_id PK
+        int product_id FK
+        int salesman_id FK
+        int store_id FK
+        int quantity
+        decimal unit_price
+        decimal total_amount
+        varchar status
+        timestamp sale_timestamp
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    Salesman {
+        int id PK
+        varchar name
+        varchar email
+        varchar phone
+        varchar region
+        date hire_date
+        boolean is_active
+        timestamp created_at
+    }
+
+    Stores {
+        int id PK
+        varchar name
+        varchar city
+        varchar country
+        varchar address
+        varchar store_type
+        boolean is_active
+        timestamp created_at
+    }
+
+    Products {
+        int id PK
+        varchar name
+        varchar code
+        varchar category
+        varchar brand
+        decimal base_price
+        boolean is_active
+        timestamp created_at
+    }
+
+    Salesman ||--o{ Sales : "makes"
+    Stores ||--o{ Sales : "occurs at"
+    Products ||--o{ Sales : "sold in"

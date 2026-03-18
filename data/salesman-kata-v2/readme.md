@@ -15,20 +15,7 @@ Schema is initialized automatically via `init.sql` mounted into the PostgreSQL c
 
 **Tables:** `products`, `salesmen`, `stores`, `sales`
 
-```sql
--- Sales table structure ---- TODO: REMOVE
-sale_id     BIGSERIAL PRIMARY KEY
-product_id  INTEGER  (FK → products)
-salesman_id INTEGER  (FK → salesmen)
-store_id    INTEGER  (FK → stores)
-quantity    INTEGER
-unit_price  DECIMAL(10,2)
-total_amount DECIMAL(12,2)
-status      VARCHAR(20)  -- PENDING | CONFIRMED | CANCELLED
-sale_timestamp TIMESTAMP
-```
-
-<img src="./data-sources/postgresql/Postgresql.drawio.png" alt="postgresql"/>
+![PostgreSQL Schema](./data-sources/postgresql/schema-erd.png)
 
 #### CSV Files (via MinIO S3)
 
