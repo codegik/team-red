@@ -124,11 +124,6 @@ docker compose down
 docker compose down -v
 ```
 
-### Prerequisites
-
-- Docker Engine with Docker Compose plugin
-- Ports available on the host: `3000`, `5432`, `5433`, `8080`, `8083`, `8085`, `8090`, `8888`, `9000`, `9001`, `9090`, `19092`
-
 ### First Checks
 
 Wait until the main services are healthy, then test:
