@@ -196,3 +196,6 @@ These services run inside Docker and are part of the pipeline even when they do 
 
 **Observability on Grafana**
 <img src="screenshots/graphana-observability.png" alt="observability"/>
+
+**Observability on OpenTelemetry**
+<img src="screenshots/open-telemetry.png" alt="open-telemetry"/>
