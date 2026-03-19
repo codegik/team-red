@@ -1,5 +1,5 @@
 #!/bin/bash
 echo "Stopping and removing containers, networks, volumes..."
-docker compose down -v --rmi local
+docker-compose down -v --rmi local
 
 echo "Done."

@@ -5,7 +5,6 @@ public record SalesWriteResult(
     boolean timestampFallbackUsed,
     String saleId,
     String source,
-    String status,
     double totalAmount,
     String pickedUpAt
 ) {

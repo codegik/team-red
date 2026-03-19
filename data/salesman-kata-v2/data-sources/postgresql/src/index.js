@@ -16,13 +16,6 @@ function randomElement(array) {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-function randomStatus() {
-  const rand = Math.random();
-  if (rand < 0.7) return "PENDING";
-  if (rand < 0.95) return "CONFIRMED";
-  return "CANCELLED";
-}
-
 async function generateSale(client) {
   const products = await client.query("SELECT id, base_price FROM products");
   const salesmen = await client.query("SELECT id FROM salesmen");
@@ -35,12 +28,11 @@ async function generateSale(client) {
   const quantity = randomInt(1, 5);
   const unitPrice = parseFloat(product.base_price);
   const totalAmount = quantity * unitPrice;
-  const status = randomStatus();
 
   const result = await client.query(
-    `INSERT INTO sales (product_id, salesman_id, store_id, quantity, unit_price, total_amount, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     RETURNING sale_id, total_amount, status`,
+    `INSERT INTO sales (product_id, salesman_id, store_id, quantity, unit_price, total_amount)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING sale_id, total_amount`,
     [
       product.id,
       salesman.id,
@@ -48,7 +40,6 @@ async function generateSale(client) {
       quantity,
       unitPrice,
       totalAmount,
-      status,
     ],
   );
 

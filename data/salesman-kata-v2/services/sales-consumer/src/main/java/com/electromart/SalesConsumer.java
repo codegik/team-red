@@ -34,7 +34,6 @@ public class SalesConsumer {
     private static LongHistogram pipelineLatency;
     private static LongCounter duplicatesCounter;
     private static LongCounter timestampFallbackCounter;
-    private static LongCounter insertsByStatusCounter;
     private static DoubleCounter revenueTotalCounter;
 
     public static void main(String[] args) {
@@ -142,10 +141,6 @@ public class SalesConsumer {
             .counterBuilder("pipeline.timestamp.fallbacks")
             .setDescription("Records where sale_timestamp failed to parse and fell back to current time")
             .build();
-        insertsByStatusCounter = meter
-            .counterBuilder("sales.inserts.by.status")
-            .setDescription("Successful inserts broken down by source and sale status")
-            .build();
         revenueTotalCounter = meter
             .counterBuilder("sales.revenue.total")
             .ofDoubles()
@@ -168,16 +163,10 @@ public class SalesConsumer {
 
         String source = result.source() == null ? "unknown" : result.source();
         String saleId = result.saleId() == null ? "unknown" : result.saleId();
-        String status = result.status() == null ? "unknown" : result.status();
 
         Span.current().setAttribute(AttributeKey.stringKey("sale.id"), saleId);
         Span.current().setAttribute(AttributeKey.stringKey("sale.source"), source);
-        Span.current().setAttribute(AttributeKey.stringKey("sale.status"), status);
 
-        insertsByStatusCounter.add(1, Attributes.of(
-            AttributeKey.stringKey("source"), source,
-            AttributeKey.stringKey("status"), status
-        ));
         revenueTotalCounter.add(result.totalAmount(), Attributes.of(AttributeKey.stringKey("source"), source));
 
         if (result.pickedUpAt() == null || result.pickedUpAt().isBlank()) {

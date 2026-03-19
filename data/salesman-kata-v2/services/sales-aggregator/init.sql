@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS sales (
     quantity INTEGER,
     unit_price DOUBLE PRECISION,
     total_amount DOUBLE PRECISION,
-    status TEXT,
     sale_timestamp TIMESTAMPTZ NOT NULL,
     trace_id TEXT
 );
@@ -35,7 +34,6 @@ SELECT
     SUM(quantity) AS total_quantity,
     COUNT(*) AS total_sales
 FROM sales
-WHERE status != 'CANCELLED'
 GROUP BY bucket, product_name, product_code, category, brand;
 
 CREATE MATERIALIZED VIEW top_cities
@@ -48,7 +46,6 @@ SELECT
     SUM(quantity) AS total_quantity,
     COUNT(*) AS total_sales
 FROM sales
-WHERE status != 'CANCELLED'
 GROUP BY bucket, city, region;
 
 CREATE MATERIALIZED VIEW top_salesmen
@@ -62,7 +59,6 @@ SELECT
     SUM(quantity) AS total_quantity,
     COUNT(*) AS total_sales
 FROM sales
-WHERE status != 'CANCELLED'
 GROUP BY bucket, salesman_name, salesman_email, region;
 
 SELECT add_continuous_aggregate_policy('top_products',

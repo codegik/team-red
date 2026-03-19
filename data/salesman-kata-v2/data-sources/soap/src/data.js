@@ -49,13 +49,6 @@ function randomElement(array) {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-function randomStatus() {
-  const rand = Math.random();
-  if (rand < 0.7) return 'PENDING';
-  if (rand < 0.95) return 'CONFIRMED';
-  return 'CANCELLED';
-}
-
 let saleCounter = 0;
 
 function generateSaleId() {
@@ -88,7 +81,6 @@ function generateSale() {
     quantity,
     unitPrice: unitPrice.toFixed(2),
     totalAmount,
-    status: randomStatus(),
     saleTimestamp: new Date().toISOString()
   };
 }

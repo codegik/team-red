@@ -35,7 +35,7 @@ public class CsvConnector {
     private static final String[] HEADERS = {
         "sale_id", "product_code", "product_name", "category", "brand",
         "salesman_name", "salesman_email", "region", "store_name", "city",
-        "store_type", "quantity", "unit_price", "total_amount", "status", "sale_timestamp"
+        "store_type", "quantity", "unit_price", "total_amount", "sale_timestamp"
     };
     private static final Set<String> NUMERIC_FIELDS = Set.of("quantity", "unit_price", "total_amount");
 

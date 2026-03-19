@@ -41,7 +41,6 @@ public class SoapConnector {
         String topic = env("TOPIC_OUTPUT", "raw_soap");
         validateTopicConfig(Map.of("TOPIC_OUTPUT", topic));
         String soapUrl = System.getenv().getOrDefault("SOAP_URL", "http://soap-service:8080/sales");
-        int pageSize = Integer.parseInt(System.getenv().getOrDefault("PAGE_SIZE", "100"));
         long pollInterval = Long.parseLong(System.getenv().getOrDefault("POLL_INTERVAL", "5000"));
 
         System.out.println("SOAP Connector starting...");
@@ -70,7 +69,7 @@ public class SoapConnector {
 
         while (true) {
             try {
-                pollAndPublish(topic, soapUrl, pageSize);
+                pollAndPublish(topic, soapUrl);
             } catch (Exception e) {
                 System.err.println("Poll error: " + e.getMessage());
             }
@@ -78,9 +77,8 @@ public class SoapConnector {
         }
     }
 
-    private static void pollAndPublish(String topic,
-                                          String soapUrl, int pageSize) throws Exception {
-        String requestXml = buildRequest(pageSize);
+    private static void pollAndPublish(String topic, String soapUrl) throws Exception {
+        String requestXml = buildRequest();
         String responseXml = postSoap(soapUrl, requestXml);
 
         Document doc = parseXml(responseXml);
@@ -107,17 +105,15 @@ public class SoapConnector {
         }
     }
 
-    static String buildRequest(int pageSize) {
-        return String.format("""
+    static String buildRequest() {
+        return """
             <?xml version="1.0" encoding="UTF-8"?>
             <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                               xmlns:sale="http://electromart.com/sales">
               <soapenv:Body>
-                <sale:GetSalesRequest>
-                  <pageSize>%d</pageSize>
-                </sale:GetSalesRequest>
+                <sale:GetSalesRequest/>
               </soapenv:Body>
-            </soapenv:Envelope>""", pageSize);
+            </soapenv:Envelope>""";
     }
 
     private static String postSoap(String url, String xml) throws Exception {
@@ -170,7 +166,6 @@ public class SoapConnector {
         Map.entry("sale:quantity", "quantity"),
         Map.entry("sale:unitPrice", "unit_price"),
         Map.entry("sale:totalAmount", "total_amount"),
-        Map.entry("sale:status", "status"),
         Map.entry("sale:saleTimestamp", "sale_timestamp")
     );
 

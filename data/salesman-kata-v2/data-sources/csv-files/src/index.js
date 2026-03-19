@@ -26,13 +26,6 @@ function randomElement(array) {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-function randomStatus() {
-  const rand = Math.random();
-  if (rand < 0.7) return "PENDING";
-  if (rand < 0.95) return "CONFIRMED";
-  return "CANCELLED";
-}
-
 function generateSaleId() {
   const date = new Date();
   const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
@@ -73,17 +66,16 @@ function generateRecord() {
     quantity: quantity,
     unit_price: formatAmount(unitPrice),
     total_amount: formatAmount(totalAmount),
-    status: randomStatus(),
     sale_date: formatDate(date),
   };
 }
 
 function generateCSVContent(records) {
   const header =
-    "sale_id,product_code,product_name,category,brand,salesman_name,salesman_email,region,store_name,city,store_type,quantity,unit_price,total_amount,status,sale_date";
+    "sale_id,product_code,product_name,category,brand,salesman_name,salesman_email,region,store_name,city,store_type,quantity,unit_price,total_amount,sale_date";
   const rows = records.map(
     (r) =>
-      `${r.sale_id},${r.product_code},${r.product_name},${r.category},${r.brand},${r.salesman_name},${r.salesman_email},${r.region},${r.store_name},${r.city},${r.store_type},${r.quantity},${r.unit_price},${r.total_amount},${r.status},${r.sale_date}`,
+      `${r.sale_id},${r.product_code},${r.product_name},${r.category},${r.brand},${r.salesman_name},${r.salesman_email},${r.region},${r.store_name},${r.city},${r.store_type},${r.quantity},${r.unit_price},${r.total_amount},${r.sale_date}`,
   );
   return [header, ...rows].join("\n");
 }

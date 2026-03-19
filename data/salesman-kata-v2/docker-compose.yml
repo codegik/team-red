@@ -321,7 +321,6 @@ services:
       TOPIC_OUTPUT: raw_soap
       TOPIC_DLQ: raw_soap-dlq
       SOAP_URL: http://soap-service:8080/sales
-      PAGE_SIZE: "100"
       POLL_INTERVAL: "5000"
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
       SCHEMA_REGISTRY_VERSION: "1"

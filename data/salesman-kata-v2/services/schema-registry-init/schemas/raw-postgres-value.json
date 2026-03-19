@@ -24,8 +24,7 @@
     "country":        { "type": "string" },
     "store_type":     { "type": "string" },
     "quantity":       { "type": "integer" },
-    "unit_price":     { "type": "number" },
-    "status":         { "type": "string" }
+    "unit_price":     { "type": "number" }
   },
   "additionalProperties": false
 }

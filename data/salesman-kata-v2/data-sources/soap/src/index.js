@@ -3,7 +3,6 @@ const { generateSale } = require('./data');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-const DEFAULT_PAGE_SIZE = 100;
 
 app.use(express.json());
 app.use(express.text({ type: 'text/xml' }));
@@ -24,13 +23,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-function parsePageSize(xml) {
-  const pageSizeMatch = xml.match(/<pageSize>(\d+)<\/pageSize>/);
-  return pageSizeMatch ? Math.min(parseInt(pageSizeMatch[1]), 1000) : DEFAULT_PAGE_SIZE;
-}
-
 app.post('/sales', (req, res) => {
-  const pageSize = parsePageSize(req.body || '');
 
   // Generate a small batch of sales (1-5 records per request)
   const count = randomInt(1, 5);
@@ -51,7 +44,6 @@ app.post('/sales', (req, res) => {
           <sale:quantity>${s.quantity}</sale:quantity>
           <sale:unitPrice>${s.unitPrice}</sale:unitPrice>
           <sale:totalAmount>${s.totalAmount}</sale:totalAmount>
-          <sale:status>${s.status}</sale:status>
           <sale:saleTimestamp>${s.saleTimestamp}</sale:saleTimestamp>
         </sale:record>`).join('\n');
 

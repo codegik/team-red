@@ -39,14 +39,12 @@ CREATE TABLE IF NOT EXISTS sales (
   quantity INTEGER NOT NULL,
   unit_price DECIMAL(10,2) NOT NULL,
   total_amount DECIMAL(12,2) NOT NULL,
-  status VARCHAR(20) DEFAULT 'PENDING',
   sale_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_sales_timestamp ON sales(sale_timestamp);
-CREATE INDEX IF NOT EXISTS idx_sales_status ON sales(status);
 CREATE INDEX IF NOT EXISTS idx_sales_salesman ON sales(salesman_id);
 CREATE INDEX IF NOT EXISTS idx_sales_store ON sales(store_id);
 

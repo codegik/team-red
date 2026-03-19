@@ -21,7 +21,6 @@
     "store_type":     { "type": ["string", "null"] },
     "quantity":       { "type": "integer", "minimum": 0 },
     "unit_price":     { "type": "number",  "minimum": 0 },
-    "status":         { "type": ["string", "null"] },
     "trace_id":       { "type": ["string", "null"] },
     "source_version": { "type": ["string", "null"] },
     "ingested_at":    { "type": ["string", "null"], "format": "date-time" }

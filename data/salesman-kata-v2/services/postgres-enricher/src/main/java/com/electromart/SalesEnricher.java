@@ -215,6 +215,7 @@ public class SalesEnricher {
 
             node.remove("created_at");
             node.remove("updated_at");
+            node.remove("status");
 
             return mapper.writeValueAsString(node);
         } catch (Exception e) {

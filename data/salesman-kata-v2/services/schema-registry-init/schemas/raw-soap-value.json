@@ -19,7 +19,6 @@
     "quantity":       { "type": "integer" },
     "unit_price":     { "type": "number" },
     "total_amount":   { "type": "number" },
-    "status":         { "type": "string" },
     "sale_timestamp": { "type": "string" }
   },
   "additionalProperties": false

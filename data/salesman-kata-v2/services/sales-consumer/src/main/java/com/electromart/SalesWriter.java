@@ -16,9 +16,9 @@ public final class SalesWriter {
         INSERT INTO sales (
             sale_id, source, product_code, product_name, category, brand,
             salesman_name, salesman_email, region, store_name, city, store_type,
-            quantity, unit_price, total_amount, status, sale_timestamp, trace_id
+            quantity, unit_price, total_amount, sale_timestamp, trace_id
         ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         ) ON CONFLICT (sale_id, sale_timestamp) DO NOTHING
         """;
 
@@ -53,9 +53,8 @@ public final class SalesWriter {
             stmt.setInt(13, node.path("quantity").asInt(0));
             stmt.setDouble(14, node.path("unit_price").asDouble(0));
             stmt.setDouble(15, node.path("total_amount").asDouble(0));
-            stmt.setString(16, textOrNull(node, "status"));
-            stmt.setTimestamp(17, saleTimestamp);
-            stmt.setString(18, textOrNull(node, "trace_id"));
+            stmt.setTimestamp(16, saleTimestamp);
+            stmt.setString(17, textOrNull(node, "trace_id"));
 
             int rows = stmt.executeUpdate();
             if (rows > 0) {
@@ -67,7 +66,6 @@ public final class SalesWriter {
                 timestampFallbackUsed,
                 node.path("sale_id").asText("unknown"),
                 node.path("source").asText("unknown"),
-                node.path("status").asText("unknown"),
                 node.path("total_amount").asDouble(0),
                 textOrNull(node, "picked_up_at")
             );

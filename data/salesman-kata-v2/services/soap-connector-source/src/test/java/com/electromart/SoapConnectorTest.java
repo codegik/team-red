@@ -21,10 +21,10 @@ class SoapConnectorTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Test
-    void buildRequestContainsPageSize() {
-        String xml = SoapConnector.buildRequest(50);
+    void buildRequestIsWellFormed() {
+        String xml = SoapConnector.buildRequest();
 
-        assertTrue(xml.contains("<pageSize>50</pageSize>"));
+        assertTrue(xml.contains("<sale:GetSalesRequest/>"));
     }
 
     @Test
@@ -45,7 +45,6 @@ class SoapConnectorTest {
               <sale:quantity>2</sale:quantity>
               <sale:unitPrice>10.5</sale:unitPrice>
               <sale:totalAmount>21.0</sale:totalAmount>
-              <sale:status>paid</sale:status>
               <sale:saleTimestamp>2026-03-13T10:15:30Z</sale:saleTimestamp>
             </sale:record>
             """);
