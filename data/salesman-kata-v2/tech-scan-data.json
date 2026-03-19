@@ -1,0 +1,819 @@
+{
+  "projectName": "salesman-kata-v2",
+  "scannedAt": "2026-03-19T12:00:00.000Z",
+  "technologies": [
+    {
+      "name": "Java",
+      "category": "language",
+      "version": "25",
+      "purpose": "A strongly-typed, object-oriented programming language designed for building robust, portable applications on the JVM.",
+      "usedFor": "Primary language for all six microservices in the data pipeline: CSV connector, SOAP connector, Postgres connector, Postgres enricher, Sales aggregator, and Sales consumer.",
+      "sourceFiles": ["services/csv-connector-source/pom.xml", "services/sales-aggregator/pom.xml", "services/sales-consumer/pom.xml"],
+      "features": [
+        {
+          "name": "Java 25 with Eclipse Temurin",
+          "description": "All services target Java 25 (maven.compiler.source=25) and use the Eclipse Temurin 25 JRE in Docker images. The run_tests.sh script validates Java 25 availability and can fall back to running tests in a Docker container with the maven:3.9-eclipse-temurin-25 image.",
+          "why": "Java 25 is the latest LTS-track release, providing virtual threads, pattern matching, and modern language features for the stream processing workloads.",
+          "codeExample": "<properties>\n    <maven.compiler.source>25</maven.compiler.source>\n    <maven.compiler.target>25</maven.compiler.target>\n</properties>"
+        },
+        {
+          "name": "Built-in HTTP server",
+          "description": "The sales-consumer service uses com.sun.net.httpserver.HttpServer (built into the JDK) to expose REST endpoints like /health, /api/aggregates/top-sales-per-city, and /api/aggregates/summary rather than pulling in an external web framework.",
+          "why": "Avoids adding a full web framework dependency (like Spring Boot) for what is a lightweight API surface with only a few endpoints, keeping the service footprint minimal.",
+          "codeExample": "HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);\nserver.createContext(\"/health\", new HealthHandler());\nserver.createContext(\"/api/aggregates/top-sales-per-city\", new TopSalesCityHandler(dataSource));\nserver.start();"
+        },
+        {
+          "name": "Functional stream processing patterns",
+          "description": "Services use Java's functional interfaces and lambdas extensively for Kafka record processing, JSON transformation, and data enrichment pipelines. The SalesAggregator uses KStream.merge(), .filter(), .mapValues(), and .to() in a functional chain.",
+          "why": "Functional style aligns naturally with Kafka Streams' DSL and makes the data transformation pipelines readable and composable.",
+          "codeExample": "KStream<String, String> merged = csvStream.merge(soapStream).merge(postgresStream);\nmerged.filter((key, value) -> isValid(value))\n     .mapValues(value -> normalize(value))\n     .to(outputTopic);"
+        }
+      ]
+    },
+    {
+      "name": "JavaScript",
+      "category": "language",
+      "version": null,
+      "purpose": "A dynamic, interpreted programming language primarily used for server-side and client-side application development.",
+      "usedFor": "Used for three data source generators (CSV file generator, PostgreSQL data generator, SOAP mock service) that produce simulated sales data for the pipeline to ingest.",
+      "sourceFiles": ["data-sources/csv-files/src/index.js", "data-sources/postgresql/src/index.js", "data-sources/soap/src/index.js"],
+      "features": [
+        {
+          "name": "Node.js 25 runtime",
+          "description": "All three data source generators specify Node.js 25 in their package.json engines field and use node:25-alpine Docker images. The code uses modern JS features like async/await, template literals, and destructuring.",
+          "why": "Node.js is lightweight and fast to start, making it ideal for simple data generators that run alongside the heavier Java pipeline services.",
+          "codeExample": "\"engines\": {\n  \"node\": \"25.x\"\n}"
+        },
+        {
+          "name": "Interval-based data generation",
+          "description": "Each data source uses setInterval() to continuously generate mock sales records at configurable intervals (e.g., GENERATION_INTERVAL env var). The CSV generator creates CSV files and uploads to MinIO, the PostgreSQL generator inserts rows, and the SOAP service serves data on-demand.",
+          "why": "Simulates real-world continuous data flows from legacy systems, providing a steady stream of records for the Kafka pipeline to process.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "SQL",
+      "category": "language",
+      "version": null,
+      "purpose": "Structured Query Language for defining database schemas, querying data, and managing relational databases.",
+      "usedFor": "Defines schemas for both the source PostgreSQL database (products, salesmen, stores, sales tables) and the TimescaleDB analytics database (hypertable with continuous aggregation materialized views).",
+      "sourceFiles": ["data-sources/postgresql/init.sql", "services/sales-aggregator/init.sql"],
+      "features": [
+        {
+          "name": "Source database schema with referential integrity",
+          "description": "The PostgreSQL init.sql creates four tables (products, salesmen, stores, sales) with foreign key constraints linking sales to products, salesmen, and stores. Indexes are created on sale_timestamp, salesman_id, and store_id for query performance.",
+          "why": "Models the domain of an electronics retailer's sales system, with proper relational constraints to ensure data integrity in the source system that Debezium captures via CDC.",
+          "codeExample": "CREATE TABLE sales (\n  sale_id SERIAL PRIMARY KEY,\n  product_id INT REFERENCES products(product_id),\n  salesman_id INT REFERENCES salesmen(salesman_id),\n  store_id INT REFERENCES stores(store_id),\n  quantity INT NOT NULL,\n  total_amount DECIMAL(12,2) NOT NULL,\n  sale_timestamp TIMESTAMPTZ DEFAULT NOW()\n);"
+        },
+        {
+          "name": "TimescaleDB hypertable with continuous aggregation",
+          "description": "The analytics init.sql creates a sales hypertable partitioned by sale_timestamp with 1-hour chunks, and defines three continuous aggregate materialized views: top_products, top_cities, and top_salesmen. Each aggregates revenue, quantity, and count by dimension per hour.",
+          "why": "Continuous aggregation pre-computes rollups as data arrives, enabling instant dashboard queries on Grafana without scanning raw rows each time.",
+          "codeExample": "SELECT create_hypertable('sales', 'sale_timestamp',\n  chunk_time_interval => INTERVAL '1 hour');\n\nCREATE MATERIALIZED VIEW top_products\nWITH (timescaledb.continuous) AS\nSELECT time_bucket('1 hour', sale_timestamp) AS bucket,\n  product_name, SUM(total_amount) AS revenue\nFROM sales GROUP BY bucket, product_name;"
+        }
+      ]
+    },
+    {
+      "name": "Bash",
+      "category": "language",
+      "version": null,
+      "purpose": "Unix shell scripting language for automating system tasks, build processes, and development workflows.",
+      "usedFor": "Provides project-level automation scripts: run_tests.sh (smart test runner with auto/local/docker modes) and clean.sh (Docker cleanup).",
+      "sourceFiles": ["run_tests.sh", "clean.sh"],
+      "features": [
+        {
+          "name": "Smart test runner with SDKMAN integration",
+          "description": "run_tests.sh detects the local Java version, initializes SDKMAN if available, and chooses between running Maven tests locally (if Java 25 is found) or inside a Docker container (maven:3.9-eclipse-temurin-25). Supports auto, local, and docker modes via CLI argument.",
+          "why": "Ensures tests can run consistently regardless of whether the developer has Java 25 installed locally, lowering the barrier to contribution.",
+          "codeExample": "case \"$MODE\" in\n  auto)\n    if [[ \"$(current_java_major)\" == \"$EXPECTED_JAVA_MAJOR\" ]]; then\n      run_local_tests\n    else\n      run_docker_tests\n    fi\n    ;;"
+        }
+      ]
+    },
+    {
+      "name": "Kafka Streams",
+      "category": "framework",
+      "version": "3.7.0",
+      "purpose": "A client library for building real-time stream processing applications on top of Apache Kafka, providing a high-level DSL for transformations, joins, and aggregations.",
+      "usedFor": "Powers the Sales Aggregator service (merging three raw topics into a unified sales stream with validation) and the Postgres Enricher service (enriching CDC events with lookup data).",
+      "sourceFiles": ["services/sales-aggregator/pom.xml", "services/postgres-enricher/pom.xml"],
+      "features": [
+        {
+          "name": "Multi-topic stream merge",
+          "description": "The SalesAggregator creates three KStream instances from raw_csv, raw_soap, and raw_postgres topics, then merges them into a single stream using KStream.merge(). Each source stream first maps values to normalize the format before merging.",
+          "why": "The three data sources produce records in slightly different formats; merging them into a single stream with a unified schema enables downstream consumers to process all sales data uniformly.",
+          "codeExample": "KStream<String, String> csvStream = builder.stream(topicCsv);\nKStream<String, String> soapStream = builder.stream(topicSoap);\nKStream<String, String> pgStream = builder.stream(topicPostgres);\nKStream<String, String> merged = csvStream.merge(soapStream).merge(pgStream);"
+        },
+        {
+          "name": "Dead letter queue routing",
+          "description": "After merging, the stream branches into valid and invalid records. Invalid records (missing required fields like sale_id, source, sale_timestamp, or total_amount) are routed to a DLQ topic (sales-dlq) while valid records proceed to the output sales topic.",
+          "why": "Prevents bad records from blocking the pipeline while retaining them for investigation, enabling operators to diagnose data quality issues from specific sources.",
+          "codeExample": null
+        },
+        {
+          "name": "Debezium CDC event enrichment",
+          "description": "The Postgres Enricher uses Kafka Streams to consume Debezium CDC topics (electromart.public.*), extract the 'after' payload from change events, and enrich sale records with product names, salesman details, and store information by joining with reference data topics.",
+          "why": "Debezium produces raw CDC envelopes with foreign key IDs; the enricher resolves these to human-readable fields before publishing to the normalized raw_postgres topic.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "Express.js",
+      "category": "framework",
+      "version": "4.18.2",
+      "purpose": "A minimal, flexible Node.js web application framework for building HTTP servers and APIs.",
+      "usedFor": "Powers the mock SOAP service that generates and serves simulated sales data as XML responses over HTTP.",
+      "sourceFiles": ["data-sources/soap/package.json", "data-sources/soap/src/index.js"],
+      "features": [
+        {
+          "name": "SOAP/XML endpoint simulation",
+          "description": "Express serves a /sales POST endpoint that returns XML-formatted SOAP responses containing randomly generated sale records. It also exposes a /health GET endpoint for Docker health checks.",
+          "why": "Simulates a legacy SOAP-based sales system that the SOAP connector source polls, without needing to run a full SOAP stack like Apache CXF.",
+          "codeExample": "app.post('/sales', (req, res) => {\n  const sales = generateSales();\n  res.set('Content-Type', 'text/xml');\n  res.send(buildSoapResponse(sales));\n});\n\napp.get('/health', (req, res) => res.send('OK'));"
+        }
+      ]
+    },
+    {
+      "name": "Apache Kafka Clients",
+      "category": "library",
+      "version": "3.7.0",
+      "purpose": "The official Java client library for producing and consuming messages from Apache Kafka clusters.",
+      "usedFor": "Used by all Java services for publishing records to and consuming records from Kafka topics (raw_csv, raw_soap, raw_postgres, sales, DLQ topics).",
+      "sourceFiles": ["services/csv-connector-source/pom.xml", "services/soap-connector-source/pom.xml", "services/sales-consumer/pom.xml"],
+      "features": [
+        {
+          "name": "KafkaProducer with JSON serialization",
+          "description": "Source connectors (CSV, SOAP) create KafkaProducer instances with StringSerializer for both key and value, publishing JSON-serialized sale records to their respective raw topics. Producer configuration includes bootstrap.servers from environment variables.",
+          "why": "The producer API provides fine-grained control over partitioning and acknowledgment semantics, important for ensuring exactly-once delivery of sales records.",
+          "codeExample": "Properties props = new Properties();\nprops.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBroker);\nprops.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());\nprops.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());\nKafkaProducer<String, String> producer = new KafkaProducer<>(props);"
+        },
+        {
+          "name": "KafkaConsumer with group management",
+          "description": "The Sales Consumer uses KafkaConsumer with consumer group coordination to read from the unified 'sales' topic. It configures KAFKA_GROUP_ID (timescale-sales-writer) for offset management and uses auto-commit with poll loops.",
+          "why": "Consumer group coordination enables horizontal scaling of the consumer and provides automatic offset tracking so no sales records are lost on restart.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "Jackson Databind",
+      "category": "library",
+      "version": "2.16.1",
+      "purpose": "A high-performance JSON processing library for Java that provides data binding between JSON and Java objects via ObjectMapper.",
+      "usedFor": "Core JSON serialization/deserialization across all Java services — parsing incoming records, transforming data between pipeline stages, and constructing output payloads.",
+      "sourceFiles": ["services/csv-connector-source/pom.xml", "services/sales-aggregator/pom.xml", "services/sales-consumer/pom.xml"],
+      "features": [
+        {
+          "name": "ObjectMapper for record transformation",
+          "description": "Every Java service creates an ObjectMapper instance to parse JSON strings from Kafka into JsonNode trees, extract/modify fields, and serialize back to JSON strings. Used for normalizing records from CSV, SOAP, and PostgreSQL sources into a unified schema.",
+          "why": "Jackson's tree model (JsonNode) is ideal for dynamic JSON transformation where the schema varies by source, avoiding the need for rigid POJOs for every intermediate format.",
+          "codeExample": "ObjectMapper mapper = new ObjectMapper();\nJsonNode node = mapper.readTree(jsonString);\nString saleId = node.get(\"sale_id\").asText();\nObjectNode output = mapper.createObjectNode();\noutput.put(\"sale_id\", saleId);\noutput.put(\"source\", \"csv\");"
+        }
+      ]
+    },
+    {
+      "name": "MinIO Java SDK",
+      "category": "library",
+      "version": "8.5.7",
+      "purpose": "Java client library for interacting with MinIO and S3-compatible object storage services.",
+      "usedFor": "Used by the CSV connector source to download CSV files from MinIO buckets when webhook notifications arrive, and to move processed files to a separate bucket.",
+      "sourceFiles": ["services/csv-connector-source/pom.xml"],
+      "features": [
+        {
+          "name": "Webhook-driven file processing",
+          "description": "The CSV connector exposes an HTTP endpoint on port 8085 that receives MinIO webhook notifications when new CSV files are uploaded to the sales-csv bucket. Upon notification, it uses the MinIO Java SDK to download the file, parse records, and publish to Kafka.",
+          "why": "Push-based notifications via webhooks eliminate the need for polling, reducing latency between file upload and ingestion into the Kafka pipeline.",
+          "codeExample": null
+        },
+        {
+          "name": "Bucket-to-bucket file archival",
+          "description": "After successfully processing a CSV file, the connector moves it from the sales-csv bucket to sales-csv-processed using MinIO's copyObject and removeObject operations, preventing reprocessing.",
+          "why": "Provides an idempotent processing guarantee — each file is only ingested once, and the processed bucket serves as an audit trail.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "MinIO Node.js SDK",
+      "category": "library",
+      "version": "8.0.0",
+      "purpose": "Node.js client library for interacting with MinIO and S3-compatible object storage.",
+      "usedFor": "Used by the CSV file generator to upload generated CSV sales files to the MinIO sales-csv bucket at regular intervals.",
+      "sourceFiles": ["data-sources/csv-files/package.json", "data-sources/csv-files/src/index.js"],
+      "features": [
+        {
+          "name": "Automated CSV file upload",
+          "description": "The generator creates CSV content with random sales data, converts it to a Buffer, and uploads to MinIO using putObject(). File names include timestamps for uniqueness. Uploads repeat on a configurable interval (GENERATION_INTERVAL, default 5000ms).",
+          "why": "Simulates a legacy system that periodically dumps sales reports as CSV files to object storage, a common pattern in enterprise data integration.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "node-postgres (pg)",
+      "category": "library",
+      "version": "8.13.0",
+      "purpose": "A non-blocking PostgreSQL client for Node.js, providing connection pooling and query execution.",
+      "usedFor": "Used by the PostgreSQL data generator to insert randomly generated sales records into the source PostgreSQL database at regular intervals.",
+      "sourceFiles": ["data-sources/postgresql/package.json", "data-sources/postgresql/src/index.js"],
+      "features": [
+        {
+          "name": "Parameterized insert queries",
+          "description": "The generator uses parameterized queries ($1, $2, ...) with the pg Client to safely insert generated sales records into the sales table, selecting random products, salesmen, and stores from the reference tables.",
+          "why": "Parameterized queries prevent SQL injection and handle type coercion automatically, important even in a generator since it establishes the pattern for safe database interaction.",
+          "codeExample": "await client.query(\n  'INSERT INTO sales (product_id, salesman_id, store_id, quantity, total_amount) VALUES ($1, $2, $3, $4, $5)',\n  [productId, salesmanId, storeId, quantity, totalAmount]\n);"
+        }
+      ]
+    },
+    {
+      "name": "SLF4J Simple",
+      "category": "library",
+      "version": "2.0.12",
+      "purpose": "A simple implementation of the SLF4J logging facade that outputs log messages to System.err with a configurable log level.",
+      "usedFor": "Provides logging output for all Java services in the pipeline, writing structured log messages for record processing, errors, and lifecycle events.",
+      "sourceFiles": ["services/csv-connector-source/pom.xml", "services/sales-aggregator/pom.xml", "services/postgres-enricher/pom.xml"],
+      "features": [
+        {
+          "name": "Lightweight console logging",
+          "description": "All Java services use SLF4J Simple as their sole logging implementation, directing all log output to stderr. This is captured by Docker's logging driver and visible via docker-compose logs.",
+          "why": "SLF4J Simple adds minimal overhead and no configuration files, appropriate for containerized services where logs are collected by the container runtime rather than written to files.",
+          "codeExample": "private static final Logger logger = LoggerFactory.getLogger(CsvConnector.class);\nlogger.info(\"Published {} records to topic {}\", count, topic);"
+        }
+      ]
+    },
+    {
+      "name": "JSON Schema Validator",
+      "category": "library",
+      "version": "1.3.3",
+      "purpose": "A Java library (networknt) for validating JSON documents against JSON Schema specifications, supporting draft-04 through draft-2019-09.",
+      "usedFor": "Validates incoming sale records at each source connector against schemas registered in the Confluent Schema Registry, rejecting non-conformant records to DLQ topics.",
+      "sourceFiles": ["services/csv-connector-source/pom.xml", "services/postgres-enricher/pom.xml", "services/soap-connector-source/pom.xml"],
+      "features": [
+        {
+          "name": "Schema Registry integration for validation",
+          "description": "Source connectors fetch JSON schemas from the Confluent Schema Registry at startup (e.g., raw-csv-value, raw-soap-value) and use them to validate every record before publishing to Kafka. Invalid records are routed to the corresponding DLQ topic with error details.",
+          "why": "Enforcing schema validation at ingestion prevents malformed data from propagating through the pipeline, catching issues at the earliest possible stage.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "JUnit Jupiter",
+      "category": "tool",
+      "version": "5.10.2",
+      "purpose": "The next-generation testing framework for Java (JUnit 5), providing annotations, assertions, and lifecycle hooks for writing unit and integration tests.",
+      "usedFor": "Unit testing framework for all six Java services, with test classes covering connector logic, enrichment, aggregation, consumer writing, and HTTP API handling.",
+      "sourceFiles": ["services/csv-connector-source/pom.xml", "services/sales-consumer/pom.xml", "services/postgres-connector-source/pom.xml"],
+      "features": [
+        {
+          "name": "Service-level unit tests",
+          "description": "Each service has test classes under src/test/java/com/electromart/ covering core logic: CsvConnectorTest, PostgresConnectorTest, SalesEnricherTest, SalesAggregatorTest, HttpApiServerTest, and SalesWriterTest. Tests use @Test annotations and JUnit assertions.",
+          "why": "Validates the data transformation, validation, and routing logic of each pipeline stage independently, runnable via mvn test or the run_tests.sh wrapper.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "OpenTelemetry API",
+      "category": "library",
+      "version": "1.50.0",
+      "purpose": "The OpenTelemetry Java API for creating spans, metrics, and propagating distributed trace context across service boundaries.",
+      "usedFor": "Used by postgres-enricher, sales-aggregator, and sales-consumer to create custom spans and record business metrics (processing latency, record counts, DLQ routing) that complement the auto-instrumentation from the Java agent.",
+      "sourceFiles": ["services/postgres-enricher/pom.xml", "services/sales-aggregator/pom.xml", "services/sales-consumer/pom.xml"],
+      "features": [
+        {
+          "name": "Custom metric instrumentation",
+          "description": "Services create custom OpenTelemetry meters and record business-level metrics: processing duration histograms (by source), sales_processed/sales_rejected counters, duplicate_inserts_suppressed counters, and timestamp_fallback counters for observability beyond basic JVM/Kafka metrics.",
+          "why": "Custom metrics enable pipeline-specific monitoring in Prometheus/Grafana dashboards, such as tracking DLQ depth per source and identifying which data sources produce the most invalid records.",
+          "codeExample": "Meter meter = GlobalOpenTelemetry.getMeter(\"sales-aggregator\");\nLongCounter processedCounter = meter.counterBuilder(\"sales_processed\")\n    .setDescription(\"Number of valid sales records processed\")\n    .build();\nprocessedCounter.add(1, Attributes.of(AttributeKey.stringKey(\"source\"), source));"
+        },
+        {
+          "name": "Distributed trace context propagation",
+          "description": "All services are configured with OTEL_PROPAGATORS=tracecontext,baggage, enabling W3C Trace Context headers to flow through Kafka record headers. This creates end-to-end traces from data ingestion through enrichment, aggregation, and storage.",
+          "why": "Enables operators to trace a single sale record's journey across all pipeline stages in Jaeger, critical for diagnosing latency bottlenecks or data loss in specific stages.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "PostgreSQL JDBC Driver",
+      "category": "library",
+      "version": "42.7.1",
+      "purpose": "The official JDBC driver for connecting Java applications to PostgreSQL databases.",
+      "usedFor": "Used by the sales-aggregator (connecting to TimescaleDB for reference data) and sales-consumer (writing processed sale records to the TimescaleDB analytics database).",
+      "sourceFiles": ["services/sales-aggregator/pom.xml", "services/sales-consumer/pom.xml"],
+      "features": [
+        {
+          "name": "Batch inserts to TimescaleDB",
+          "description": "The SalesConsumer uses JDBC PreparedStatement with batch operations to write consumed sale records from Kafka into the TimescaleDB sales hypertable. It handles duplicate detection via ON CONFLICT DO NOTHING to suppress re-inserts.",
+          "why": "Batch inserts reduce round-trip overhead when writing high volumes of sales records, and conflict handling ensures idempotent consumption even with at-least-once Kafka delivery.",
+          "codeExample": "PreparedStatement ps = conn.prepareStatement(\n  \"INSERT INTO sales (sale_id, source, product_name, salesman_name, city, quantity, total_amount, sale_timestamp) \" +\n  \"VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (sale_id) DO NOTHING\"\n);\nps.setString(1, saleId);\nps.addBatch();\nps.executeBatch();"
+        }
+      ]
+    },
+    {
+      "name": "PostgreSQL",
+      "category": "database",
+      "version": "18",
+      "purpose": "An advanced open-source relational database system with strong ACID compliance, extensibility, and SQL standards support.",
+      "usedFor": "Source database for the CDC (Change Data Capture) pipeline — stores the electromart sales domain model (products, salesmen, stores, sales) with logical WAL replication enabled for Debezium.",
+      "sourceFiles": ["docker-compose.yml", "data-sources/postgresql/init.sql"],
+      "features": [
+        {
+          "name": "Logical WAL replication for CDC",
+          "description": "PostgreSQL is started with wal_level=logical via command-line argument in docker-compose.yml, enabling Debezium to read the write-ahead log and capture row-level changes as they occur in real-time.",
+          "why": "Logical replication allows Debezium to stream every INSERT/UPDATE/DELETE to Kafka without polling or triggers, providing low-latency change capture with minimal impact on the source database.",
+          "codeExample": "command: [\"postgres\", \"-c\", \"wal_level=logical\"]"
+        },
+        {
+          "name": "Relational domain model with referential integrity",
+          "description": "Four tables model the electromart sales domain: products (15 electronics items), salesmen (10 employees), stores (5 locations with cities), and sales (with foreign keys to all three). Indexes on sale_timestamp, salesman_id, and store_id optimize query patterns.",
+          "why": "The relational model with foreign keys ensures every sale references valid products, salesmen, and stores, which is critical since Debezium captures these references for downstream enrichment.",
+          "codeExample": null
+        },
+        {
+          "name": "Seed data with realistic product catalog",
+          "description": "The init.sql populates products (laptops, phones, tablets at various price points), salesmen (across countries), and stores (in different cities with regions), providing a realistic demo dataset for the pipeline.",
+          "why": "Pre-populated reference data enables immediate testing without manual setup and provides diverse data for demonstrating aggregation by city, product, and salesman.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "TimescaleDB",
+      "category": "database",
+      "version": "latest-pg15",
+      "purpose": "A PostgreSQL extension optimized for time-series data, providing hypertables, continuous aggregation, and compression for efficient time-based queries.",
+      "usedFor": "Analytics sink database where all processed sales records are stored as time-series data, with continuous aggregate materialized views powering the Grafana dashboards.",
+      "sourceFiles": ["docker-compose.yml", "services/sales-aggregator/init.sql"],
+      "features": [
+        {
+          "name": "Hypertable with hourly chunking",
+          "description": "The sales table is converted to a hypertable partitioned by sale_timestamp with 1-hour chunk intervals using create_hypertable(). This automatically partitions the data by time, enabling efficient time-range queries and data lifecycle management.",
+          "why": "Hourly chunks align with the continuous aggregation bucket size and the dashboard refresh intervals, balancing query performance against chunk management overhead for the expected data volume.",
+          "codeExample": "SELECT create_hypertable('sales', 'sale_timestamp',\n  chunk_time_interval => INTERVAL '1 hour');"
+        },
+        {
+          "name": "Continuous aggregate materialized views",
+          "description": "Three continuous aggregate views (top_products, top_cities, top_salesmen) pre-compute hourly rollups of revenue, quantity, and transaction count grouped by dimension. These are defined WITH (timescaledb.continuous) and refresh automatically as new data arrives.",
+          "why": "Powers instant dashboard queries on Grafana — instead of scanning millions of raw sales rows, the dashboard queries pre-aggregated hourly buckets, enabling sub-second response times.",
+          "codeExample": "CREATE MATERIALIZED VIEW top_salesmen\nWITH (timescaledb.continuous) AS\nSELECT time_bucket('1 hour', sale_timestamp) AS bucket,\n  salesman_name, country,\n  SUM(total_amount) AS revenue,\n  SUM(quantity) AS total_quantity,\n  COUNT(*) AS sale_count\nFROM sales\nGROUP BY bucket, salesman_name, country;"
+        }
+      ]
+    },
+    {
+      "name": "Apache Kafka",
+      "category": "service",
+      "version": "3.7.1",
+      "purpose": "A distributed event streaming platform for high-throughput, fault-tolerant publish-subscribe messaging and stream processing.",
+      "usedFor": "Central message backbone connecting all pipeline stages — source connectors publish to raw topics, enricher and aggregator transform streams, and the consumer reads the final unified sales topic.",
+      "sourceFiles": ["docker-compose.yml"],
+      "features": [
+        {
+          "name": "KRaft mode (no ZooKeeper)",
+          "description": "Kafka runs in KRaft (Kafka Raft) mode with combined broker and controller roles (KAFKA_PROCESS_ROLES=broker,controller), eliminating the ZooKeeper dependency. The cluster uses a single node with CLUSTER_ID=electromart-kafka-cluster-01.",
+          "why": "KRaft simplifies the deployment by removing ZooKeeper as a separate service, reducing container count and operational complexity for this single-broker demo environment.",
+          "codeExample": "KAFKA_NODE_ID: 1\nKAFKA_PROCESS_ROLES: broker,controller\nKAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093"
+        },
+        {
+          "name": "Multi-listener configuration",
+          "description": "Kafka is configured with three listeners: PLAINTEXT (internal on 9092), CONTROLLER (Raft protocol on 9093), and EXTERNAL (host access on 19092). The EXTERNAL listener is advertised as localhost:19092 for local development access.",
+          "why": "Separating internal and external listeners allows services within Docker to use the kafka:9092 hostname while developers can connect from the host machine via localhost:19092.",
+          "codeExample": "KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:19092\nKAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:19092"
+        },
+        {
+          "name": "Topic-per-source architecture",
+          "description": "The pipeline uses dedicated topics for each data source (raw_csv, raw_soap, raw_postgres) plus a unified output topic (sales) and per-stage DLQ topics (raw_csv-dlq, raw_soap-dlq, sales-dlq) for error isolation.",
+          "why": "Separate raw topics allow independent scaling and monitoring of each source, while DLQ topics enable targeted investigation of failures without blocking the main pipeline.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "MinIO",
+      "category": "service",
+      "version": "latest",
+      "purpose": "An S3-compatible, high-performance object storage system designed for large-scale data infrastructure.",
+      "usedFor": "Stores CSV sales files uploaded by the data generator. Configured with webhook notifications to trigger the CSV connector when new files arrive in the sales-csv bucket.",
+      "sourceFiles": ["docker-compose.yml"],
+      "features": [
+        {
+          "name": "Webhook event notifications",
+          "description": "MinIO is configured with MINIO_NOTIFY_WEBHOOK_ENABLE_csv=on and MINIO_NOTIFY_WEBHOOK_ENDPOINT_csv pointing to the CSV connector's HTTP endpoint. The minio-init container uses mc (MinIO Client) to set up event subscriptions for PUT events with .csv suffix on the sales-csv bucket.",
+          "why": "Push-based notifications enable near-real-time ingestion of CSV files — as soon as the generator uploads a file, the connector is notified and begins processing, achieving sub-second ingestion latency.",
+          "codeExample": "mc event add myminio/sales-csv arn:minio:sqs::csv:webhook --event put --suffix .csv"
+        },
+        {
+          "name": "Dual-bucket file lifecycle",
+          "description": "Two buckets are created: sales-csv (incoming files) and sales-csv-processed (archived files). The CSV connector moves files between buckets after successful processing, providing a clear audit trail.",
+          "why": "Separating incoming and processed files prevents duplicate processing and allows operators to verify which files have been successfully ingested into the pipeline.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "Confluent Schema Registry",
+      "category": "service",
+      "version": "7.6.0",
+      "purpose": "A centralized schema management service for Kafka that stores and validates Avro, JSON Schema, and Protobuf schemas for Kafka topics.",
+      "usedFor": "Stores JSON schemas for all pipeline topics (raw-csv-value, raw-soap-value, raw-postgres-value, sales-value) that source connectors fetch at startup to validate incoming records.",
+      "sourceFiles": ["docker-compose.yml", "services/schema-registry-init/Dockerfile"],
+      "features": [
+        {
+          "name": "Schema initialization container",
+          "description": "A dedicated schema-registry-init container runs at startup, waits for the Schema Registry to be healthy, then registers all four JSON schemas (raw-csv-value, raw-soap-value, raw-postgres-value, sales-value) via the REST API. The schemas define required fields like sale_id, sale_timestamp, and total_amount.",
+          "why": "Automating schema registration ensures the pipeline is immediately ready after docker-compose up, without manual schema setup steps.",
+          "codeExample": null
+        },
+        {
+          "name": "JSON Schema with required field validation",
+          "description": "Schemas define required fields (e.g., sale_id, source, sale_timestamp, total_amount for the sales-value subject) and data types. Source connectors fetch these schemas by subject name and version to validate records before publishing.",
+          "why": "Schema enforcement at the registry level provides a contract between producers and consumers, catching data quality issues before records enter the pipeline.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "Debezium",
+      "category": "service",
+      "version": "2.5",
+      "purpose": "An open-source distributed platform for change data capture (CDC) that streams database changes to Kafka in real-time.",
+      "usedFor": "Captures INSERT/UPDATE/DELETE events from the source PostgreSQL database via Kafka Connect, publishing change events to Debezium topics that the Postgres Enricher consumes.",
+      "sourceFiles": ["docker-compose.yml", "services/postgres-connector-source/pom.xml"],
+      "features": [
+        {
+          "name": "PostgreSQL CDC connector registration",
+          "description": "The postgres-connector-source Java service registers a Debezium PostgreSQL connector with Kafka Connect via its REST API. The connector is configured with the electromart database credentials, table include list, and topic routing prefix (electromart.public).",
+          "why": "Programmatic connector registration (rather than manual REST calls) ensures the CDC pipeline starts automatically as part of the docker-compose deployment, making the system fully self-bootstrapping.",
+          "codeExample": null
+        },
+        {
+          "name": "Logical decoding with pgoutput plugin",
+          "description": "Debezium uses PostgreSQL's built-in pgoutput logical decoding plugin (enabled by wal_level=logical) to read the WAL stream. Change events include before/after row states, operation type, and transaction metadata.",
+          "why": "The pgoutput plugin is built into PostgreSQL (no additional plugin installation needed), simplifying the Docker image and reducing operational risk.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "Grafana",
+      "category": "service",
+      "version": "10.3.1",
+      "purpose": "An open-source analytics and monitoring platform for visualizing metrics, logs, and traces from multiple data sources.",
+      "usedFor": "Provides two pre-configured dashboards: a Sales Dashboard (business metrics from TimescaleDB) and a Pipeline Observability Dashboard (operational metrics from Prometheus) with auto-provisioned data sources.",
+      "sourceFiles": ["docker-compose.yml", "services/grafana/provisioning", "services/grafana/dashboards"],
+      "features": [
+        {
+          "name": "Auto-provisioned data sources and dashboards",
+          "description": "Grafana is configured with provisioning YAML files that automatically register TimescaleDB (PostgreSQL) and Prometheus as data sources, and load two dashboard JSON files from /var/lib/grafana/dashboards/ on startup. Anonymous admin access is enabled for demo purposes.",
+          "why": "Auto-provisioning eliminates manual dashboard setup — the complete monitoring experience is available immediately after docker-compose up with no clicks required.",
+          "codeExample": "GF_AUTH_ANONYMOUS_ENABLED: \"true\"\nGF_AUTH_ANONYMOUS_ORG_ROLE: Admin\nGF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/sales-dashboard.json"
+        },
+        {
+          "name": "Sales analytics dashboard",
+          "description": "The Sales Dashboard queries TimescaleDB continuous aggregates to display top salesmen by revenue, top cities, top products, revenue breakdown by source (CSV/SOAP/PostgreSQL), and revenue trends over time with configurable time ranges.",
+          "why": "Provides real-time business intelligence on the aggregated sales data, demonstrating the end-to-end value of the data pipeline from source to visualization.",
+          "codeExample": null
+        },
+        {
+          "name": "Pipeline observability dashboard",
+          "description": "The Pipeline Observability Dashboard displays Prometheus metrics including processing latency percentiles (P50/P95/P99) by source, DLQ topic depth, valid vs rejected record rates, duplicate insert suppressions, and timestamp fallback counts.",
+          "why": "Enables operators to monitor pipeline health, identify bottlenecks, and detect data quality degradation in real-time without querying metrics manually.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "Prometheus",
+      "category": "service",
+      "version": "2.49.1",
+      "purpose": "An open-source systems monitoring and alerting toolkit that collects metrics via a pull model and stores them as time-series data.",
+      "usedFor": "Scrapes metrics from the OpenTelemetry Collector (pipeline business metrics), Kafka Exporter, PostgreSQL Exporter, and TimescaleDB Exporter at 15-second intervals with 7-day retention.",
+      "sourceFiles": ["docker-compose.yml", "services/prometheus/prometheus.yml"],
+      "features": [
+        {
+          "name": "Multi-target scrape configuration",
+          "description": "prometheus.yml defines scrape jobs for: otel-collector (port 8889, pipeline metrics), kafka-exporter (Kafka cluster metrics), postgres-exporter (source DB metrics), and timescaledb-exporter (analytics DB metrics). All scraped at 15s intervals.",
+          "why": "Centralizes metrics from all infrastructure components and custom application metrics into a single queryable store, enabling cross-component correlation in Grafana dashboards.",
+          "codeExample": "scrape_configs:\n  - job_name: 'otel-collector'\n    static_configs:\n      - targets: ['otel-collector:8889']\n  - job_name: 'kafka-exporter'\n    static_configs:\n      - targets: ['kafka-exporter:9308']"
+        },
+        {
+          "name": "7-day retention with TSDB",
+          "description": "Prometheus is configured with --storage.tsdb.retention.time=7d, storing metrics in its built-in TSDB. Data is persisted to a named Docker volume (prometheus_data) for survival across container restarts.",
+          "why": "7-day retention balances storage consumption with the ability to review historical pipeline behavior and investigate incidents that occurred within the past week.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "Jaeger",
+      "category": "service",
+      "version": "1.54",
+      "purpose": "An open-source distributed tracing system for monitoring and troubleshooting microservice-based architectures.",
+      "usedFor": "Receives distributed traces from all Java services via the OpenTelemetry Collector, providing a UI (port 16686) to visualize end-to-end request traces across the pipeline.",
+      "sourceFiles": ["docker-compose.yml"],
+      "features": [
+        {
+          "name": "OTLP trace collection",
+          "description": "Jaeger is deployed in all-in-one mode with COLLECTOR_OTLP_ENABLED=true, receiving traces from the OpenTelemetry Collector via OTLP/gRPC on port 4317. The Jaeger UI is exposed on port 16686 for trace visualization.",
+          "why": "OTLP is the standard protocol emitted by the OpenTelemetry Java Agent, so Jaeger's native OTLP support avoids needing protocol translation and provides direct trace ingestion.",
+          "codeExample": null
+        },
+        {
+          "name": "End-to-end pipeline trace visualization",
+          "description": "Traces span from source connector ingestion through enrichment, aggregation, and consumer write, showing the complete lifecycle of a sale record across all services with timing breakdowns per stage.",
+          "why": "Enables developers to identify latency bottlenecks and understand which pipeline stage is the slowest for records from each source (CSV, SOAP, PostgreSQL).",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "OpenTelemetry Collector",
+      "category": "service",
+      "version": "0.96.0",
+      "purpose": "A vendor-agnostic proxy that receives, processes, and exports telemetry data (traces, metrics, logs) to multiple backends.",
+      "usedFor": "Central telemetry hub that receives OTLP data from all Java services, exports traces to Jaeger, and exports metrics to Prometheus via a Prometheus exporter endpoint.",
+      "sourceFiles": ["docker-compose.yml", "services/otel-collector/otel-collector-config.yml"],
+      "features": [
+        {
+          "name": "Dual-protocol OTLP receivers",
+          "description": "The collector is configured with both gRPC (port 4317) and HTTP (port 4318) OTLP receivers, accepting telemetry from the OpenTelemetry Java Agent which uses HTTP/protobuf (OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf).",
+          "why": "Supporting both protocols provides flexibility — gRPC for high-throughput scenarios and HTTP for environments where gRPC might be restricted by firewalls or proxies.",
+          "codeExample": null
+        },
+        {
+          "name": "Fan-out to Jaeger and Prometheus",
+          "description": "The collector exports traces to Jaeger via OTLP/gRPC and exposes a Prometheus-compatible metrics endpoint on port 8889 that Prometheus scrapes. This separates trace and metric backends while using a single collection point.",
+          "why": "A single OTLP endpoint simplifies service configuration (all services point to otel-collector:4318) while enabling independent scaling and management of trace and metric storage backends.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "Kafka UI",
+      "category": "service",
+      "version": "0.7.2",
+      "purpose": "A web-based management interface for Apache Kafka clusters, providing topic browsing, consumer group monitoring, and message inspection.",
+      "usedFor": "Provides a visual dashboard (port 8888) for inspecting Kafka topics, browsing messages, monitoring consumer group lag, and managing the Debezium Kafka Connect connectors.",
+      "sourceFiles": ["docker-compose.yml"],
+      "features": [
+        {
+          "name": "Integrated cluster view with Schema Registry",
+          "description": "Kafka UI is configured to connect to the Kafka broker, the Debezium Kafka Connect instance, and the Schema Registry, providing a unified view of topics, schemas, connectors, and consumer groups in a single interface.",
+          "why": "Gives developers and operators a visual way to inspect the pipeline's message flow, verify schema registrations, and debug consumer lag without CLI tools.",
+          "codeExample": "KAFKA_CLUSTERS_0_NAME: electromart\nKAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092\nKAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083\nKAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081"
+        }
+      ]
+    },
+    {
+      "name": "Kafka Exporter",
+      "category": "tool",
+      "version": null,
+      "purpose": "A Prometheus exporter that collects and exposes Kafka broker, topic, and consumer group metrics in Prometheus format.",
+      "usedFor": "Exposes Kafka cluster metrics (topic sizes, consumer group lag, partition counts) to Prometheus for monitoring pipeline throughput and consumer lag on the Grafana dashboards.",
+      "sourceFiles": ["docker-compose.yml"],
+      "features": [
+        {
+          "name": "Topic and consumer group metrics",
+          "description": "Configured with --topic.filter=.* and --group.filter=.* to export metrics for all topics and consumer groups, providing visibility into message rates, partition offsets, and consumer lag across all pipeline stages.",
+          "why": "Consumer lag metrics are critical for detecting when pipeline stages fall behind, indicating capacity issues or processing errors.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "PostgreSQL Exporter",
+      "category": "tool",
+      "version": "0.15.0",
+      "purpose": "A Prometheus exporter that collects PostgreSQL database metrics (connections, queries, replication, table sizes) and exposes them in Prometheus format.",
+      "usedFor": "Two instances monitor both the source PostgreSQL database and the TimescaleDB analytics database, exporting database health metrics to Prometheus.",
+      "sourceFiles": ["docker-compose.yml"],
+      "features": [
+        {
+          "name": "Dual-database monitoring",
+          "description": "Two separate exporter instances are deployed: postgres-exporter (monitoring the source electromart database) and timescaledb-exporter (monitoring the salesdb analytics database), each with dedicated DATA_SOURCE_NAME connection strings.",
+          "why": "Monitoring both databases separately enables early detection of issues like connection pool exhaustion on the source database or disk growth on the analytics database.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "Docker",
+      "category": "tool",
+      "version": null,
+      "purpose": "A platform for building, shipping, and running applications in isolated containers using OS-level virtualization.",
+      "usedFor": "Every component of the pipeline runs as a Docker container — 10 custom-built services and 10+ infrastructure containers, all orchestrated via Docker Compose.",
+      "sourceFiles": ["docker-compose.yml", "services/csv-connector-source/Dockerfile", "services/sales-consumer/Dockerfile"],
+      "features": [
+        {
+          "name": "Multi-stage builds for Java services",
+          "description": "All Java service Dockerfiles use a two-stage build: a Maven 3.9 builder stage (eclipse-temurin:25-jdk) that compiles code and packages JARs, and a slim runtime stage (eclipse-temurin:25-jre-alpine) that copies only the built artifacts and dependencies.",
+          "why": "Multi-stage builds keep production images small (~150MB vs ~1GB) by excluding the JDK, Maven, and source code from the final image, reducing deployment time and attack surface.",
+          "codeExample": "FROM maven:3.9-eclipse-temurin-25 AS builder\nWORKDIR /app\nCOPY pom.xml .\nRUN mvn dependency:go-offline\nCOPY src ./src\nRUN mvn package -DskipTests\n\nFROM eclipse-temurin:25-jre-alpine\nCOPY --from=builder /app/target/*.jar /app/app.jar\nCOPY --from=builder /app/target/lib /app/lib"
+        },
+        {
+          "name": "OpenTelemetry Java Agent injection",
+          "description": "Each Java service Dockerfile downloads the OpenTelemetry Java Agent JAR and includes it in the runtime image. The JAVA_OPTS environment variable attaches it via -javaagent:/app/opentelemetry-javaagent.jar, enabling automatic instrumentation of Kafka, JDBC, and HTTP calls.",
+          "why": "Injecting the agent at the Docker level means application code doesn't need any OpenTelemetry SDK dependencies for basic instrumentation — it works transparently with zero code changes.",
+          "codeExample": "ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar\nENV JAVA_OPTS=\"-javaagent:/app/opentelemetry-javaagent.jar\""
+        },
+        {
+          "name": "Lightweight Alpine-based Node.js images",
+          "description": "Data source generators use node:25-alpine images with npm ci --omit=dev for minimal production installs. The images run as non-root users with only production dependencies.",
+          "why": "Alpine images are significantly smaller than full Debian-based Node.js images, reducing pull time and disk usage for these simple generator services.",
+          "codeExample": "FROM node:25-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci --omit=dev\nCOPY src ./src\nCMD [\"node\", \"src/index.js\"]"
+        }
+      ]
+    },
+    {
+      "name": "Docker Compose",
+      "category": "tool",
+      "version": null,
+      "purpose": "A tool for defining and running multi-container Docker applications using a declarative YAML configuration file.",
+      "usedFor": "Orchestrates the entire 20+ container pipeline in a single docker-compose.yml, managing service dependencies, health checks, networking, and persistent volumes.",
+      "sourceFiles": ["docker-compose.yml"],
+      "features": [
+        {
+          "name": "Health check dependency chains",
+          "description": "Services declare depends_on with condition: service_healthy or service_completed_successfully, creating a startup dependency graph: postgres → kafka → schema-registry → schema-registry-init → connectors → enricher → aggregator → consumer → grafana.",
+          "why": "Ensures services only start when their dependencies are truly ready (not just started), preventing connection failures and race conditions during pipeline bootstrap.",
+          "codeExample": "depends_on:\n  schema-registry-init:\n    condition: service_completed_successfully\n  otel-collector:\n    condition: service_started"
+        },
+        {
+          "name": "Named volumes for data persistence",
+          "description": "Six named volumes (postgres_data, timescaledb_data, minio_data, grafana_data, kafka_data, prometheus_data) persist state across docker-compose restarts, preventing data loss during development cycles.",
+          "why": "Without persistent volumes, stopping the pipeline would lose all ingested sales data, Kafka offsets, and Grafana dashboard customizations.",
+          "codeExample": "volumes:\n  postgres_data:\n  minio_data:\n  timescaledb_data:\n  grafana_data:\n  kafka_data:\n  prometheus_data:"
+        },
+        {
+          "name": "Bridge network isolation",
+          "description": "All services communicate via a single bridge network (electromart-network) with Docker DNS resolution. Services reference each other by container name (e.g., kafka:9092, schema-registry:8081).",
+          "why": "Network isolation prevents the pipeline from interfering with other Docker workloads on the host, while Docker DNS enables service discovery without hardcoded IPs.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "Apache Maven",
+      "category": "tool",
+      "version": "3.9",
+      "purpose": "A build automation and dependency management tool for Java projects, using POM (Project Object Model) XML configuration.",
+      "usedFor": "Builds all six Java services — manages dependencies, compiles source code, runs JUnit tests, and packages JAR artifacts with classpath manifests.",
+      "sourceFiles": ["services/csv-connector-source/pom.xml", "services/sales-aggregator/pom.xml"],
+      "features": [
+        {
+          "name": "Fat JAR with classpath manifest",
+          "description": "Each pom.xml configures maven-jar-plugin to set the Main-Class and addClasspath=true with classpathPrefix=lib/, combined with maven-dependency-plugin to copy all runtime dependencies to target/lib/. This creates a runnable JAR without shading.",
+          "why": "Classpath JARs (vs uber/fat JARs) keep the application JAR small and dependencies separate, making Docker layer caching more effective when only application code changes.",
+          "codeExample": "<configuration>\n  <archive>\n    <manifest>\n      <mainClass>com.electromart.SalesAggregator</mainClass>\n      <addClasspath>true</addClasspath>\n      <classpathPrefix>lib/</classpathPrefix>\n    </manifest>\n  </archive>\n</configuration>"
+        },
+        {
+          "name": "Dependency caching in Docker builds",
+          "description": "Dockerfiles copy pom.xml first and run mvn dependency:go-offline before copying source code, leveraging Docker layer caching to avoid re-downloading dependencies on every code change.",
+          "why": "Maven dependency downloads can take minutes; caching them in a Docker layer means only source code compilation happens on subsequent builds, dramatically speeding up the development cycle.",
+          "codeExample": "COPY pom.xml .\nRUN mvn dependency:go-offline\nCOPY src ./src\nRUN mvn package -DskipTests"
+        }
+      ]
+    },
+    {
+      "name": "OpenTelemetry Java Agent",
+      "category": "tool",
+      "version": null,
+      "purpose": "A zero-code instrumentation agent for Java that automatically captures traces, metrics, and logs from popular libraries and frameworks.",
+      "usedFor": "Attached to all Java services via -javaagent JVM flag, automatically instrumenting Kafka producer/consumer operations, JDBC queries, HTTP client/server calls, and JVM metrics without code changes.",
+      "sourceFiles": ["services/csv-connector-source/Dockerfile", "docker-compose.yml"],
+      "features": [
+        {
+          "name": "Automatic Kafka instrumentation",
+          "description": "The agent automatically creates spans for Kafka produce and consume operations, propagating trace context through Kafka record headers. This creates linked traces between producer services (connectors) and consumer services (enricher, aggregator, consumer).",
+          "why": "Without the agent, tracing Kafka-based pipelines would require manual span creation and header propagation in every service — the agent handles this transparently.",
+          "codeExample": "JAVA_OPTS: \"-javaagent:/app/opentelemetry-javaagent.jar -Xms32M -Xmx64M\"\nOTEL_SERVICE_NAME: sales-aggregator\nOTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318\nOTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf"
+        },
+        {
+          "name": "Configurable exporter and propagator settings",
+          "description": "Each service configures the agent via environment variables: OTEL_SERVICE_NAME for service identification, OTEL_EXPORTER_OTLP_ENDPOINT for the collector address, OTEL_TRACES_EXPORTER and OTEL_METRICS_EXPORTER set to otlp, and OTEL_LOGS_EXPORTER set to none (logs handled by SLF4J).",
+          "why": "Environment-based configuration keeps observability settings outside the code and allows per-service customization (e.g., different memory limits, selective exporter disabling).",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "SOAP",
+      "category": "protocol",
+      "version": null,
+      "purpose": "Simple Object Access Protocol — an XML-based messaging protocol for exchanging structured information in web service interactions.",
+      "usedFor": "The SOAP mock service serves sale records as XML SOAP responses, and the SOAP connector source parses these XML responses to extract sale records for the Kafka pipeline.",
+      "sourceFiles": ["data-sources/soap/src/index.js", "services/soap-connector-source/pom.xml"],
+      "features": [
+        {
+          "name": "XML SOAP response generation",
+          "description": "The mock SOAP service builds XML SOAP envelopes with sale elements containing sale_id, product_name, salesman_name, city, quantity, total_amount, and sale_timestamp fields. The Express.js service returns these with Content-Type: text/xml.",
+          "why": "Simulates a real-world legacy SOAP endpoint that many enterprises still use for sales data exchange, demonstrating the pipeline's ability to ingest from legacy protocols.",
+          "codeExample": null
+        },
+        {
+          "name": "XML parsing in Java connector",
+          "description": "The SOAP connector source uses Java's built-in javax.xml.parsers.DocumentBuilder to parse SOAP XML responses, extract sale elements from the SOAP body, and convert them to JSON objects for publishing to Kafka.",
+          "why": "Using the built-in Java XML parser avoids external dependencies while handling the well-structured SOAP responses that the mock service produces.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "REST",
+      "category": "protocol",
+      "version": null,
+      "purpose": "Representational State Transfer — an architectural style for building web APIs using HTTP methods and JSON payloads.",
+      "usedFor": "The Sales Consumer exposes REST API endpoints for querying aggregated sales data, and multiple services expose /health endpoints for Docker health checks.",
+      "sourceFiles": ["services/sales-consumer/pom.xml"],
+      "features": [
+        {
+          "name": "Aggregation query API endpoints",
+          "description": "The Sales Consumer's HTTP server exposes REST endpoints: /api/aggregates/top-sales-per-city, /api/aggregates/top-salesman-country, and /api/aggregates/summary. These query TimescaleDB continuous aggregates with optional time_start, time_end, and limit query parameters.",
+          "why": "Provides a programmatic interface to the pipeline's output data, enabling external dashboards, reports, or applications to consume aggregated sales analytics.",
+          "codeExample": null
+        },
+        {
+          "name": "Health check endpoints",
+          "description": "All custom services expose /health HTTP endpoints returning simple OK responses. Docker Compose health checks use wget --spider or curl to poll these endpoints, gating dependent service startup.",
+          "why": "Health endpoints enable Docker Compose to verify that a service is not just running but actually ready to handle requests before starting dependent services.",
+          "codeExample": "healthcheck:\n  test: [\"CMD\", \"wget\", \"--spider\", \"-q\", \"http://localhost:8090/health\"]\n  interval: 5s\n  timeout: 5s\n  retries: 5"
+        }
+      ]
+    },
+    {
+      "name": "Change Data Capture (CDC)",
+      "category": "protocol",
+      "version": null,
+      "purpose": "A pattern for identifying and capturing changes (inserts, updates, deletes) in a database and delivering them as events to downstream systems.",
+      "usedFor": "Debezium reads PostgreSQL's WAL to capture all changes to the sales, products, salesmen, and stores tables, streaming them as JSON events to Kafka topics for the enricher to process.",
+      "sourceFiles": ["docker-compose.yml", "services/postgres-connector-source/pom.xml"],
+      "features": [
+        {
+          "name": "WAL-based change streaming",
+          "description": "PostgreSQL is configured with wal_level=logical, enabling Debezium to create a logical replication slot and stream row-level changes as structured events (with before/after states, operation type, and source metadata) to per-table Kafka topics.",
+          "why": "WAL-based CDC is non-intrusive — it reads the existing replication stream without adding triggers or polling queries, minimizing impact on the source database's performance.",
+          "codeExample": null
+        },
+        {
+          "name": "Multi-table CDC with enrichment pipeline",
+          "description": "Debezium captures changes from four tables (sales, products, salesmen, stores). The Postgres Enricher joins sale events with the latest product/salesman/store data to produce enriched records with denormalized fields (product_name, salesman_name, city, country).",
+          "why": "Raw CDC events contain only foreign key IDs; the enrichment step resolves these to meaningful fields so downstream consumers don't need access to the source database's reference tables.",
+          "codeExample": null
+        }
+      ]
+    },
+    {
+      "name": "JSON Schema",
+      "category": "protocol",
+      "version": null,
+      "purpose": "A vocabulary for annotating and validating JSON documents, specifying required properties, data types, and constraints.",
+      "usedFor": "Defines the contract for all Kafka topic payloads — four schemas (raw-csv-value, raw-soap-value, raw-postgres-value, sales-value) are registered in the Schema Registry and enforced at ingestion time.",
+      "sourceFiles": ["services/schema-registry-init/Dockerfile"],
+      "features": [
+        {
+          "name": "Required field enforcement",
+          "description": "Each schema specifies required fields (e.g., sale_id, source, sale_timestamp, total_amount for the sales-value schema) with type constraints. Source connectors validate every record against the appropriate schema before publishing, routing failures to DLQ topics.",
+          "why": "Schema validation at the source prevents garbage data from flowing through the pipeline, ensuring the aggregator and consumer can rely on the presence and type of key fields.",
+          "codeExample": null
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "totalTechnologies": 33,
+    "byCategory": {
+      "language": 4,
+      "framework": 2,
+      "library": 10,
+      "database": 2,
+      "service": 8,
+      "tool": 5,
+      "protocol": 4,
+      "platform": 0
+    },
+    "totalFeatures": 60,
+    "totalCodeExamples": 24,
+    "manifestDependencyCount": 36,
+    "filesScanned": 67
+  },
+  "review": {
+    "manifestsRead": [
+      "data-sources/csv-files/package.json",
+      "data-sources/postgresql/package.json",
+      "data-sources/soap/package.json",
+      "services/csv-connector-source/pom.xml",
+      "services/postgres-connector-source/pom.xml",
+      "services/postgres-enricher/pom.xml",
+      "services/sales-aggregator/pom.xml",
+      "services/soap-connector-source/pom.xml",
+      "services/sales-consumer/pom.xml"
+    ],
+    "declaredDepsCount": 36,
+    "capturedDepsCount": 36,
+    "missingDeps": [],
+    "categoriesWithZeroEntries": ["platform"],
+    "notes": "Multi-service project with 6 Java microservices (Maven) and 3 Node.js data generators. 36 total dependency declarations across 9 manifests (many shared: kafka-clients appears in 5 pom.xml files, jackson-databind in all 6). 12 unique library dependencies captured. 20+ Docker containers defined in docker-compose.yml including 10 custom-built services and 10+ infrastructure images. Platform category has 0 entries because the project runs entirely on Docker with no cloud-specific deployment targets."
+  }
+}
