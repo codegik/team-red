@@ -1,0 +1,59 @@
+---
+title: Sales Data Pipeline — From Source to Warehouse
+---
+flowchart LR
+
+  subgraph SRC["1. Data Origins"]
+    direction TB
+    PG_DB[("PostgreSQL DB<br/><br/>A sale is inserted<br/>with product_id,<br/>salesman_id, store_id")]
+    CSV_FILE["CSV File<br/><br/>A flat file with 15 fields<br/>is dropped into S3 bucket<br/>every 5 seconds"]
+    SOAP_SVC["SOAP Service<br/><br/>A legacy XML endpoint<br/>returns sale records<br/>on each request"]
+  end
+
+  subgraph PICKUP["2. Pickup"]
+    direction TB
+    CDC["DB write-ahead log<br/>is monitored<br/><br/>Every insert becomes<br/>4 Kafka messages:<br/>sale, product,<br/>salesman, store"]
+    CSV_HOOK["S3 fires a webhook<br/>on file upload<br/><br/>File is downloaded,<br/>each row parsed<br/>from CSV to JSON"]
+    SOAP_POLL["Service is polled<br/>every 5 seconds<br/><br/>XML response parsed,<br/>each record converted<br/>from XML to JSON"]
+  end
+
+  subgraph VALIDATE["3a. Schema Validation"]
+    direction TB
+    CSV_VAL["JSON checked against<br/>raw_csv schema<br/><br/>Valid goes to raw_csv topic<br/>Invalid goes to raw_csv-dlq"]
+    SOAP_VAL["JSON checked against<br/>raw_soap schema<br/><br/>Valid goes to raw_soap topic<br/>Invalid goes to raw_soap-dlq"]
+  end
+
+  subgraph ENRICH["3b. Enrichment"]
+    direction TB
+    PG_ENRICH["Sale joined with<br/>product + salesman + store<br/><br/>Foreign keys replaced<br/>with actual names and details<br/><br/>sale_id prefixed with PG-<br/>timestamps converted to ISO<br/>trace_id stamped<br/><br/>Valid goes to raw_postgres topic<br/>Invalid goes to raw_postgres-dlq"]
+  end
+
+  subgraph MERGE["4. Merge into One Stream"]
+    direction TB
+    AGG["3 topics combined<br/>into single sales topic<br/><br/>Each record must have:<br/>sale_id, source,<br/>sale_timestamp, total_amount<br/><br/>Missing fields go to sales-dlq"]
+  end
+
+  subgraph STORE["5. Store and Aggregate"]
+    direction TB
+    WRITE["Each sale written<br/>to TimescaleDB<br/><br/>Duplicates skipped<br/>via sale_id + timestamp"]
+    AGG_VIEWS["Rolling aggregates<br/>computed automatically<br/><br/>Top products by revenue<br/>Top cities by revenue<br/>Top salesmen by revenue<br/><br/>1-hour windows<br/>refreshed every 5 min"]
+  end
+
+  subgraph SERVE["6. Serve"]
+    direction TB
+    API["REST API exposes<br/>aggregated results<br/><br/>top-sales-per-city<br/>top-salesman-country<br/>summary"]
+    DASH["Grafana dashboards<br/>show real-time metrics<br/><br/>Throughput, revenue,<br/>errors, latency<br/><br/>Jaeger traces each<br/>record end-to-end"]
+  end
+
+  PG_DB --> CDC --> PG_ENRICH --> AGG
+  CSV_FILE --> CSV_HOOK --> CSV_VAL --> AGG
+  SOAP_SVC --> SOAP_POLL --> SOAP_VAL --> AGG
+  AGG --> WRITE --> AGG_VIEWS --> API & DASH
+
+  style SRC fill:#e8f4f8,stroke:#2980b9
+  style PICKUP fill:#fef9e7,stroke:#f39c12
+  style VALIDATE fill:#fef9e7,stroke:#f39c12
+  style ENRICH fill:#fef9e7,stroke:#f39c12
+  style MERGE fill:#fadbd8,stroke:#e74c3c
+  style STORE fill:#d5f5e3,stroke:#27ae60
+  style SERVE fill:#e8daef,stroke:#8e44ad
