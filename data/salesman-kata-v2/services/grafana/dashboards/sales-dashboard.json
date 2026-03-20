@@ -23,7 +23,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT salesman_name, SUM(total_amount) as revenue\nFROM sales\nWHERE sale_timestamp >= $__timeFrom() AND sale_timestamp <= $__timeTo()\n  AND status != 'CANCELLED'\nGROUP BY salesman_name\nORDER BY revenue DESC\nLIMIT 10;",
+          "rawSql": "SELECT salesman_name, SUM(total_amount) as revenue\nFROM sales\nWHERE sale_timestamp >= $__timeFrom() AND sale_timestamp <= $__timeTo()\nGROUP BY salesman_name\nORDER BY revenue DESC\nLIMIT 10;",
           "refId": "A"
         }
       ]
@@ -45,7 +45,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT city, SUM(total_amount) as revenue\nFROM sales\nWHERE sale_timestamp >= $__timeFrom() AND sale_timestamp <= $__timeTo()\n  AND status != 'CANCELLED'\nGROUP BY city\nORDER BY revenue DESC\nLIMIT 10;",
+          "rawSql": "SELECT city, SUM(total_amount) as revenue\nFROM sales\nWHERE sale_timestamp >= $__timeFrom() AND sale_timestamp <= $__timeTo()\nGROUP BY city\nORDER BY revenue DESC\nLIMIT 10;",
           "refId": "A"
         }
       ]
@@ -67,7 +67,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT product_name, SUM(total_amount) as revenue\nFROM sales\nWHERE sale_timestamp >= $__timeFrom() AND sale_timestamp <= $__timeTo()\n  AND status != 'CANCELLED'\nGROUP BY product_name\nORDER BY revenue DESC\nLIMIT 10;",
+          "rawSql": "SELECT product_name, SUM(total_amount) as revenue\nFROM sales\nWHERE sale_timestamp >= $__timeFrom() AND sale_timestamp <= $__timeTo()\nGROUP BY product_name\nORDER BY revenue DESC\nLIMIT 10;",
           "refId": "A"
         }
       ]
@@ -89,7 +89,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT source, SUM(total_amount) as revenue\nFROM sales\nWHERE sale_timestamp >= $__timeFrom() AND sale_timestamp <= $__timeTo()\n  AND status != 'CANCELLED'\nGROUP BY source\nORDER BY revenue DESC;",
+          "rawSql": "SELECT source, SUM(total_amount) as revenue\nFROM sales\nWHERE sale_timestamp >= $__timeFrom() AND sale_timestamp <= $__timeTo()\nGROUP BY source\nORDER BY revenue DESC;",
           "refId": "A"
         }
       ]
@@ -111,7 +111,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n  $__timeGroupAlias(sale_timestamp, $__interval),\n  source,\n  SUM(total_amount) as revenue\nFROM sales\nWHERE $__timeFilter(sale_timestamp)\n  AND status != 'CANCELLED'\nGROUP BY 1, source\nORDER BY 1;",
+          "rawSql": "SELECT\n  $__timeGroupAlias(sale_timestamp, $__interval),\n  source,\n  SUM(total_amount) as revenue\nFROM sales\nWHERE $__timeFilter(sale_timestamp)\nGROUP BY 1, source\nORDER BY 1;",
           "refId": "A"
         }
       ]
