@@ -199,3 +199,6 @@ These services run inside Docker and are part of the pipeline even when they do 
 
 **OpenTelemetry Trace**
 <img src="screenshots/open-telemetry.png" alt="open-telemetry"/>
+
+**Demo**
+* https://youtu.be/9x2s_bN0z1k
