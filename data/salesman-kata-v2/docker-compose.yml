@@ -526,7 +526,6 @@ services:
     volumes:
       - ./services/otel-collector/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
     ports:
-      - "4317:4317"
       - "4318:4318"
       - "8889:8889"
     depends_on:
