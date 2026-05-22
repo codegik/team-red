@@ -22,6 +22,10 @@
 // How to run tests:
 //   rustc --test loan-contracts.rs -o loan-contracts-test && ./loan-contracts-test
 
+// The API is exercised by the tests module; `main` is only a stub, so a
+// plain binary build would otherwise flag every item as dead code.
+#![allow(dead_code)]
+
 
 // ==========================================================
 // STRUCT SegmentTree<T>
@@ -150,13 +154,6 @@ impl LoanContract {
             days_remaining,
         }
     }
-
-    fn display(&self) {
-        println!(
-            "Contract #{} | {:<10} | R$ {:>10.2} | {} days remaining",
-            self.contract_id, self.borrower, self.amount, self.days_remaining
-        );
-    }
 }
 
 fn init_contracts() -> Vec<LoanContract> {
@@ -170,15 +167,6 @@ fn init_contracts() -> Vec<LoanContract> {
         LoanContract::new(7, "Grace",  6_700.00, 60),
         LoanContract::new(8, "Hank",   4_400.00,  9),
     ]
-}
-
-fn print_portfolio(portfolio: &[LoanContract]) {
-    println!("Portfolio:");
-    for c in portfolio {
-        print!("  ");
-        c.display();
-    }
-    println!();
 }
 
 
@@ -236,159 +224,13 @@ fn merge_f64_sum(a: &f64, b: &f64) -> f64 { a + b }
 
 
 // ==========================================================
-// main: runs the 5 demos
+// main
 // ==========================================================
+//
+// The behavior of every use case is verified in the tests module below.
+// Run them with: rustc --test loan-contracts.rs -o t && ./t
 fn main() {
-
-    // ------------------------------------------------------
-    // Use case 1: MOST URGENT (min by days)
-    // ------------------------------------------------------
-    let mut contracts = init_contracts();
-    let mut st = SegmentTree::new(contracts.clone(), neutral_urgent(), merge_urgent);
-
-    println!("==============================================");
-    println!("Use case 1: contrato MAIS URGENTE (min por dias)");
-    println!("==============================================");
-    print_portfolio(&contracts);
-
-    print!("Mais urgente da carteira toda: ");
-    st.root().display();
-    println!();
-
-    println!("Caso 1 - mais urgente entre contratos 1 e 4 (indices 0..3)");
-    let r = st.query(0, 3);
-    print!("  Segment tree responde: "); r.display();
-    let m = contracts[0..4].iter().min_by_key(|x| x.days_remaining).unwrap();
-    print!("  Conferindo na mao:     "); m.display();
-    println!();
-
-    println!("Caso 2 - mais urgente entre contratos 5 e 8 (indices 4..7)");
-    let r = st.query(4, 7);
-    print!("  Segment tree responde: "); r.display();
-    let m = contracts[4..8].iter().min_by_key(|x| x.days_remaining).unwrap();
-    print!("  Conferindo na mao:     "); m.display();
-    println!();
-
-    println!("Caso 3 - Eve renegociou: novo prazo = 90 dias");
-    let updated = LoanContract::new(5, "Eve", 1_500.00, 90);
-    contracts[4] = updated.clone();   // keep contracts in sync with the tree
-    st.update(4, updated);
-    let r = st.query(0, st.len() - 1);
-    print!("  Mais urgente agora:    "); r.display();
-    let m = contracts.iter().min_by_key(|x| x.days_remaining).unwrap();
-    print!("  Conferindo na mao:     "); m.display();
-
-
-    // ------------------------------------------------------
-    // Use case 2: MOST SLACK (max by days)
-    // ------------------------------------------------------
-    let contracts = init_contracts();
-    let st = SegmentTree::new(contracts.clone(), neutral_slack(), merge_slack);
-
-    println!();
-    println!();
-    println!("==============================================");
-    println!("Use case 2: contrato MAIS FOLGADO (max por dias)");
-    println!("==============================================");
-    print_portfolio(&contracts);
-
-    print!("Mais folgado da carteira toda: ");
-    st.root().display();
-    println!();
-
-    println!("Caso 1 - mais folgado entre contratos 1 e 4 (indices 0..3)");
-    let r = st.query(0, 3);
-    print!("  Segment tree responde: "); r.display();
-    let m = contracts[0..4].iter().max_by_key(|x| x.days_remaining).unwrap();
-    print!("  Conferindo na mao:     "); m.display();
-
-
-    // ------------------------------------------------------
-    // Use case 3: LOWEST BALANCE (min by amount)
-    // ------------------------------------------------------
-    let contracts = init_contracts();
-    let st = SegmentTree::new(contracts.clone(), neutral_lowest(), merge_lowest);
-
-    println!();
-    println!();
-    println!("==============================================");
-    println!("Use case 3: MENOR SALDO devedor (min por valor)");
-    println!("==============================================");
-    print_portfolio(&contracts);
-
-    print!("Menor saldo da carteira toda: ");
-    st.root().display();
-    println!();
-
-    println!("Caso 1 - menor saldo entre contratos 1 e 4 (indices 0..3)");
-    let r = st.query(0, 3);
-    print!("  Segment tree responde: "); r.display();
-    let m = contracts[0..4].iter()
-        .min_by(|a, b| a.amount.partial_cmp(&b.amount).unwrap()).unwrap();
-    print!("  Conferindo na mao:     "); m.display();
-
-
-    // ------------------------------------------------------
-    // Use case 4: HIGHEST EXPOSURE (max by amount)
-    // ------------------------------------------------------
-    let contracts = init_contracts();
-    let st = SegmentTree::new(contracts.clone(), neutral_highest(), merge_highest);
-
-    println!();
-    println!();
-    println!("==============================================");
-    println!("Use case 4: MAIOR EXPOSICAO individual (max por valor)");
-    println!("==============================================");
-    print_portfolio(&contracts);
-
-    print!("Maior exposicao da carteira toda: ");
-    st.root().display();
-    println!();
-
-    println!("Caso 1 - maior exposicao entre contratos 5 e 8 (indices 4..7)");
-    let r = st.query(4, 7);
-    print!("  Segment tree responde: "); r.display();
-    let m = contracts[4..8].iter()
-        .max_by(|a, b| a.amount.partial_cmp(&b.amount).unwrap()).unwrap();
-    print!("  Conferindo na mao:     "); m.display();
-
-
-    // ------------------------------------------------------
-    // Use case 5: TOTAL EXPOSURE (sum by amount)
-    // ------------------------------------------------------
-    //
-    // The sum of two contracts is a number (R$), not a contract.
-    // So the tree stores f64, not LoanContract.
-    // Contracts are kept in a separate Vec for manual verification and updates.
-
-    let mut contracts = init_contracts();
-    let amounts: Vec<f64> = contracts.iter().map(|c| c.amount).collect();
-    let mut st_sum = SegmentTree::new(amounts, 0.0, merge_f64_sum);
-
-    println!();
-    println!();
-    println!("==============================================");
-    println!("Use case 5: EXPOSICAO TOTAL (sum por valor)");
-    println!("==============================================");
-    print_portfolio(&contracts);
-
-    println!("Exposicao total da carteira: R$ {:.2}", st_sum.root());
-    println!();
-
-    println!("Caso 1 - exposicao total entre contratos 1 e 4 (indices 0..3)");
-    let total = st_sum.query(0, 3);
-    let manual: f64 = contracts[0..4].iter().map(|x| x.amount).sum();
-    println!("  Segment tree responde: R$ {:.2}", total);
-    println!("  Conferindo na mao:     R$ {:.2}", manual);
-    println!();
-
-    println!("Caso 2 - Eve quitou parcialmente, novo saldo = R$ 500,00");
-    let updated = LoanContract::new(5, "Eve", 500.00, 2);
-    contracts[4] = updated.clone();       // keep contracts in sync
-    st_sum.update(4, updated.amount);     // update tree with the scalar
-    let manual: f64 = contracts.iter().map(|x| x.amount).sum();
-    println!("  Exposicao total agora: R$ {:.2}", st_sum.root());
-    println!("  Conferindo na mao:     R$ {:.2}", manual);
+    println!("SegmentTree — run `rustc --test loan-contracts.rs` to verify all use cases.");
 }
 
 
@@ -554,5 +396,24 @@ mod tests {
         st.update(4, 500.00);
         // 51800 - 2100 + 500 = 50200
         assert!((st.root() - 50_200.0).abs() < 0.01);
+    }
+
+    // ----------------------------------------------------------
+    // Generic API: len and single-index query
+    // ----------------------------------------------------------
+
+    #[test]
+    fn len_reflects_element_count() {
+        let st = make_urgent_tree();
+        assert_eq!(st.len(), 8);
+    }
+
+    #[test]
+    fn query_single_index_returns_that_contract() {
+        let st = make_urgent_tree();
+        // query(i, i) must return exactly the contract at index i
+        let r = st.query(3, 3); // David
+        assert_eq!(r.contract_id, 4);
+        assert_eq!(r.days_remaining, 14);
     }
 }
