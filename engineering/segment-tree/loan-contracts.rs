@@ -6,13 +6,14 @@
 struct SegmentTree<T: Clone> {
     tree:    Vec<T>,
     n:       usize,
-    neutral: T,
+    neutral: T,                // identity for `merge`: combining with it leaves the result unchanged
     merge:   fn(&T, &T) -> T,
 }
 
 impl<T: Clone> SegmentTree<T> {
     fn new(data: Vec<T>, neutral: T, merge: fn(&T, &T) -> T) -> Self {
         let n = data.len();
+        // pre-fill with the neutral so any node never written by build stays harmless to merges
         let tree = vec![neutral.clone(); 4 * n];
         let mut st = SegmentTree { tree, n, neutral, merge };
         if n > 0 {
@@ -55,7 +56,7 @@ impl<T: Clone> SegmentTree<T> {
     }
 
     fn query_range(&self, node: usize, start: usize, end: usize, l: usize, r: usize) -> T {
-        if r < start || end < l { return self.neutral.clone(); }      // no overlap
+        if r < start || end < l { return self.neutral.clone(); }      // no overlap: return identity so this node doesn't affect the merge
         if l <= start && end <= r { return self.tree[node].clone(); } // fully covered
         let mid   = (start + end) / 2;                                // partial: split + merge
         let left  = self.query_range(2 * node,     start,   mid, l, r);
