@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<title>Segment Tree - Visualizador Interativo</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --edge: #f87171;
+    --idle: #44403c;
+    --visit: #fef08a;
+    --inside: #fbbf24;
+    --outside: #292524;
+    --partial: #ef4444;
+    --update: #e879f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  .controls {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 12px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  input, select, button {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  input[type="number"] { width: 60px; }
+  input[type="text"] { width: 180px; }
+  button {
+    cursor: pointer;
+    background: var(--accent);
+    color: #0c1220;
+    border: none;
+    font-weight: 600;
+    padding: 5px 12px;
+  }
+  button:hover { filter: brightness(1.1); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); font-weight: 400; }
+  output { font-size: 12px; color: var(--muted); min-width: 44px; display: inline-block; }
+  #error-msg {
+    display: none;
+    padding: 6px 20px;
+    background: #450a0a;
+    border-left: 3px solid #f87171;
+    color: #fca5a5;
+    font-size: 13px;
+  }
+  main {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0;
+    padding: 16px 20px;
+  }
+  #canvas-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+  }
+  svg { width: 100%; height: 640px; display: block; }
+  #log-panel {
+    width: 320px;
+    min-width: 0;
+    margin-left: 16px;
+    overflow: hidden;
+    transition: width 0.35s ease, margin-left 0.35s ease;
+  }
+  #log-panel.collapsed {
+    width: 0;
+    margin-left: 0;
+  }
+  #log {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    height: 640px;
+    overflow-y: auto;
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    width: 320px;
+    min-width: 320px;
+  }
+  #log-toggle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    background: var(--bg);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: inherit;
+    font-weight: 500;
+  }
+  #log-toggle:hover { color: var(--text); border-color: var(--accent); }
+  #log .entry { padding: 4px 6px; border-left: 3px solid transparent; margin-bottom: 2px; border-radius: 2px; }
+  #log .entry.current { background: #334155; border-left-color: var(--accent); }
+  #log .entry.build { border-left-color: var(--visit); }
+  #log .entry.query { border-left-color: var(--inside); }
+  #log .entry.update { border-left-color: var(--update); }
+  #log .entry.verify-ok   { border-left-color: #4ade80; color: #4ade80; }
+  #log .entry.verify-fail { border-left-color: #f87171; color: #f87171; font-weight: 700; }
+  .legend { display: flex; gap: 14px; margin-left: auto; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .node circle { stroke-width: 2; transition: stroke 0.3s, fill 0.3s; }
+  .node text.value { font-weight: 600; fill: var(--text); pointer-events: none; font-size: 13px; }
+  .node text.range { fill: var(--muted); font-size: 11px; pointer-events: none; }
+  .edge { stroke: var(--edge); stroke-width: 2; }
+  .array-cell rect { fill: #0c1220; stroke: var(--border); transition: stroke 0.3s, stroke-width 0.3s; }
+  .array-cell text.val { fill: var(--text); font-weight: 600; font-size: 13px; }
+  .array-cell text.idx { fill: var(--muted); font-size: 11px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Segment Tree - Visualizador Interativo</h1>
+  <div class="legend">
+    <span><i style="background:var(--idle)"></i>idle</span>
+    <span><i style="background:var(--visit)"></i>visitando</span>
+    <span><i style="background:var(--inside)"></i>dentro</span>
+    <span><i style="background:var(--outside)"></i>fora</span>
+    <span><i style="background:var(--partial)"></i>parcial</span>
+    <span><i style="background:var(--update)"></i>update</span>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="group">
+    <label>array <input type="text" id="arr" value="7,3,9,5,8,2,6,4"></label>
+    <label>op
+      <select id="op">
+        <option value="max">max</option>
+        <option value="sum">sum</option>
+        <option value="min">min</option>
+      </select>
+    </label>
+    <button id="btn-build">build</button>
+  </div>
+
+  <div class="group">
+    <label>query l <input type="number" id="ql" value="2" min="0"></label>
+    <label>r <input type="number" id="qr" value="5" min="0"></label>
+    <button id="btn-query">query</button>
+  </div>
+
+  <div class="group">
+    <label>update pos <input type="number" id="upos" value="4" min="0"></label>
+    <label>val <input type="number" id="uval" value="10"></label>
+    <button id="btn-update">update</button>
+  </div>
+
+  <div class="group">
+    <label>vel <input type="range" id="speed" min="80" max="1500" value="500" style="width:100px"> <output id="speed-val">500ms</output></label>
+    <button id="btn-pause" class="ghost" disabled>⏸ pausar</button>
+    <button id="btn-reset" class="ghost">reset</button>
+  </div>
+</div>
+<div id="error-msg"></div>
+
+<main>
+  <div id="canvas-wrap">
+    <button id="log-toggle">log ◀</button>
+    <svg id="canvas" viewBox="0 0 1200 640"></svg>
+  </div>
+  <div id="log-panel">
+    <div id="log"></div>
+  </div>
+</main>
+
+<script>
+// ============================================================
+// Estado
+// ============================================================
+let array = [];
+let tree = [];
+let op = "max";
+let animating = false;
+let paused = false;
+let resumeResolve = null;
+
+function waitIfPaused() {
+  if (!paused) return Promise.resolve();
+  return new Promise(resolve => { resumeResolve = resolve; });
+}
+let positions = {};  // node_idx -> {x, y}
+let ranges = {};     // node_idx -> [lo, hi]
+
+const svg = d3.select("#canvas");
+const W = 1200, H = 640;
+
+const OPS = {
+  max: { neutral: -Infinity, combine: (a, b) => Math.max(a, b), fmt: v => v === -Infinity ? "-inf" : v },
+  sum: { neutral: 0,         combine: (a, b) => a + b,          fmt: v => v },
+  min: { neutral:  Infinity, combine: (a, b) => Math.min(a, b), fmt: v => v ===  Infinity ? "+inf" : v },
+};
+
+// ============================================================
+// Build layout
+// ============================================================
+function computeLayout(n) {
+  const leafY = 560;
+  const rootY = 80;
+  const levels = Math.ceil(Math.log2(Math.max(n, 2))) + 1;
+  const stepY = (leafY - rootY) / (levels - 1);
+
+  const leafXs = [];
+  const pad = 60;
+  for (let i = 0; i < n; i++) leafXs.push(pad + i * ((W - 2 * pad) / (n - 1 || 1)));
+
+  positions = {};
+  ranges = {};
+
+  function rec(no, lo, hi, depth) {
+    ranges[no] = [lo, hi];
+    if (lo === hi) {
+      positions[no] = { x: leafXs[lo], y: rootY + depth * stepY };
+      return;
+    }
+    const mid = (lo + hi) >> 1;
+    rec(2 * no, lo, mid, depth + 1);
+    rec(2 * no + 1, mid + 1, hi, depth + 1);
+    positions[no] = {
+      x: (positions[2 * no].x + positions[2 * no + 1].x) / 2,
+      y: rootY + depth * stepY,
+    };
+  }
+  rec(1, 0, n - 1, 0);
+  return leafXs;
+}
+
+// ============================================================
+// Render inicial
+// ============================================================
+function render(leafXs) {
+  svg.selectAll("*").remove();
+
+  // array cells
+  const arrG = svg.append("g").attr("class", "array");
+  array.forEach((v, i) => {
+    const g = arrG.append("g")
+      .attr("class", "array-cell")
+      .attr("id", `cell-${i}`)
+      .attr("transform", `translate(${leafXs[i] - 20}, 10)`);
+    g.append("rect").attr("width", 40).attr("height", 30).attr("rx", 3);
+    g.append("text").attr("class", "val").attr("x", 20).attr("y", 20).attr("text-anchor", "middle").text(v);
+    g.append("text").attr("class", "idx").attr("x", 20).attr("y", 48).attr("text-anchor", "middle").text(i);
+  });
+
+  // edges
+  const edgeG = svg.append("g").attr("class", "edges");
+  Object.keys(positions).map(Number).forEach(no => {
+    [2 * no, 2 * no + 1].forEach(child => {
+      if (positions[child]) {
+        edgeG.append("line")
+          .attr("class", "edge")
+          .attr("id", `edge-${no}-${child}`)
+          .attr("x1", positions[no].x).attr("y1", positions[no].y + 20)
+          .attr("x2", positions[child].x).attr("y2", positions[child].y - 20);
+      }
+    });
+  });
+
+  // nodes
+  const nodeG = svg.append("g").attr("class", "nodes");
+  Object.keys(positions).map(Number).forEach(no => {
+    const { x, y } = positions[no];
+    const [lo, hi] = ranges[no];
+    const g = nodeG.append("g")
+      .attr("class", "node")
+      .attr("id", `node-${no}`)
+      .attr("transform", `translate(${x}, ${y})`);
+    g.append("circle").attr("r", 20).attr("fill", "#0c1220").attr("stroke", "var(--idle)");
+    g.append("text").attr("class", "value").attr("text-anchor", "middle").attr("dy", "0.35em").text("");
+    g.append("text").attr("class", "range").attr("text-anchor", "middle").attr("dy", "35").text(`[${lo},${hi}]`);
+  });
+}
+
+// ============================================================
+// Manipulacao da cena
+// ============================================================
+function setNode(no, { stroke = null, value = undefined } = {}) {
+  const g = svg.select(`#node-${no}`);
+  if (stroke) g.select("circle").transition().duration(200).attr("stroke", stroke).attr("stroke-width", 4);
+  if (value !== undefined) g.select("text.value").text(OPS[op].fmt(value));
+}
+
+function resetNode(no) {
+  svg.select(`#node-${no} circle`).transition().duration(200).attr("stroke", "var(--idle)").attr("stroke-width", 2);
+}
+
+function resetAllNodes() {
+  svg.selectAll(".node circle").transition().duration(200).attr("stroke", "var(--idle)").attr("stroke-width", 2);
+}
+
+function highlightCell(i, color) {
+  svg.select(`#cell-${i} rect`).transition().duration(200).attr("stroke", color).attr("stroke-width", 3);
+}
+function clearCells() {
+  svg.selectAll(".array-cell rect").transition().duration(200).attr("stroke", "var(--border)").attr("stroke-width", 1);
+}
+
+// ============================================================
+// Log
+// ============================================================
+function clearLog() { d3.select("#log").html(""); }
+function logEntry(msg, cls = "") {
+  d3.select("#log .entry.current").classed("current", false);
+  const el = d3.select("#log").append("div").attr("class", `entry current ${cls}`).text(msg);
+  const wrap = document.getElementById("log");
+  wrap.scrollTop = wrap.scrollHeight;
+  return el;
+}
+
+// ============================================================
+// Steps: transforma cada operacao num array de "passos" e toca
+// ============================================================
+function delay() { return +document.getElementById("speed").value; }
+
+async function play(steps) {
+  animating = true;
+  paused = false;
+  setButtonsDisabled(true);
+  for (const step of steps) {
+    await waitIfPaused();
+    if (step.kind === "log") {
+      logEntry(step.msg, step.cls || "");
+    } else if (step.kind === "mark") {
+      setNode(step.node, { stroke: step.color });
+      if (step.msg) logEntry(step.msg, step.cls || "");
+    } else if (step.kind === "value") {
+      setNode(step.node, { value: step.value });
+      if (step.stroke) setNode(step.node, { stroke: step.stroke });
+      if (step.msg) logEntry(step.msg, step.cls || "");
+    } else if (step.kind === "cell") {
+      if (step.clear) clearCells();
+      if (step.i !== undefined) highlightCell(step.i, step.color);
+      if (step.msg) logEntry(step.msg, step.cls || "");
+    } else if (step.kind === "reset") {
+      if (step.node !== undefined) resetNode(step.node);
+      else resetAllNodes();
+    }
+    await sleep(delay());
+  }
+  paused = false;
+  setButtonsDisabled(false);
+  animating = false;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function setButtonsDisabled(d) {
+  ["btn-build", "btn-query", "btn-update", "btn-reset"].forEach(id =>
+    document.getElementById(id).disabled = d
+  );
+  const pauseBtn = document.getElementById("btn-pause");
+  pauseBtn.disabled = !d;
+  if (!d) pauseBtn.textContent = "⏸ pausar";
+}
+
+// ============================================================
+// Build: monta lista de passos
+// ============================================================
+function buildSteps() {
+  const steps = [];
+  const { neutral, combine } = OPS[op];
+  tree = new Array(4 * array.length).fill(neutral);
+
+  steps.push({ kind: "log", msg: `=== build (${op}) ===`, cls: "build" });
+
+  function rec(no, lo, hi) {
+    steps.push({ kind: "mark", node: no, color: "var(--visit)",
+                 msg: `enter [${lo},${hi}]`, cls: "build" });
+    if (lo === hi) {
+      tree[no] = array[lo];
+      steps.push({ kind: "value", node: no, value: array[lo],
+                   stroke: "var(--inside)",
+                   msg: `folha [${lo}] = ${array[lo]}`, cls: "build" });
+      steps.push({ kind: "reset", node: no });
+      return;
+    }
+    const mid = (lo + hi) >> 1;
+    rec(2 * no, lo, mid);
+    rec(2 * no + 1, mid + 1, hi);
+    const v = combine(tree[2 * no], tree[2 * no + 1]);
+    tree[no] = v;
+    steps.push({ kind: "mark", node: no, color: "var(--partial)",
+                 msg: `[${lo},${hi}] ${op}(${tree[2*no]},${tree[2*no+1]}) = ${v}`,
+                 cls: "build" });
+    steps.push({ kind: "value", node: no, value: v });
+    steps.push({ kind: "reset", node: no });
+  }
+
+  rec(1, 0, array.length - 1);
+  steps.push({ kind: "log", msg: `ok. raiz = ${tree[1]}`, cls: "build" });
+  return steps;
+}
+
+// ============================================================
+// Verificacao linear ("conferindo na mao") — O(n) como ground truth
+// ============================================================
+function bruteForce(L, R) {
+  const { combine, neutral } = OPS[op];
+  return array.slice(L, R + 1).reduce((acc, v) => combine(acc, v), neutral);
+}
+
+function sameResult(a, b) { return Math.abs(a - b) < 0.01; }
+
+// ============================================================
+// Query
+// ============================================================
+function querySteps(L, R) {
+  const steps = [];
+  const { neutral, combine, fmt } = OPS[op];
+  steps.push({ kind: "cell", clear: true });
+  for (let i = L; i <= R; i++) steps.push({ kind: "cell", i, color: "var(--inside)" });
+  steps.push({ kind: "log", msg: `=== query [${L},${R}] (${op}) ===`, cls: "query" });
+
+  function rec(no, lo, hi) {
+    steps.push({ kind: "mark", node: no, color: "var(--visit)",
+                 msg: `visita [${lo},${hi}]`, cls: "query" });
+    if (R < lo || hi < L) {
+      steps.push({ kind: "mark", node: no, color: "var(--outside)",
+                   msg: `[${lo},${hi}] FORA -> neutro (${fmt(neutral)})`, cls: "query" });
+      return neutral;
+    }
+    if (L <= lo && hi <= R) {
+      steps.push({ kind: "mark", node: no, color: "var(--inside)",
+                   msg: `[${lo},${hi}] DENTRO -> ${tree[no]}`, cls: "query" });
+      return tree[no];
+    }
+    steps.push({ kind: "mark", node: no, color: "var(--partial)",
+                 msg: `[${lo},${hi}] PARCIAL -> desce`, cls: "query" });
+    const mid = (lo + hi) >> 1;
+    const e = rec(2 * no, lo, mid);
+    const d = rec(2 * no + 1, mid + 1, hi);
+    const v = combine(e, d);
+    steps.push({ kind: "log",
+                 msg: `[${lo},${hi}] combina: ${op}(${fmt(e)},${fmt(d)}) = ${fmt(v)}`,
+                 cls: "query" });
+    return v;
+  }
+
+  const resp = rec(1, 0, array.length - 1);
+  steps.push({ kind: "log", msg: `resposta: ${fmt(resp)}`, cls: "query" });
+  const bf = bruteForce(L, R);
+  const ok = sameResult(resp, bf);
+  steps.push({ kind: "log", msg: `conferindo: ${fmt(bf)}`, cls: "query" });
+  steps.push({ kind: "log", msg: ok ? "✓ correto" : "✗ divergência detectada", cls: ok ? "verify-ok" : "verify-fail" });
+  return steps;
+}
+
+// ============================================================
+// Update
+// ============================================================
+function updateSteps(pos, newVal) {
+  const steps = [];
+  const { combine } = OPS[op];
+  steps.push({ kind: "cell", clear: true });
+  steps.push({ kind: "cell", i: pos, color: "var(--update)" });
+  steps.push({ kind: "log", msg: `=== update pos=${pos} -> ${newVal} ===`, cls: "update" });
+
+  function rec(no, lo, hi) {
+    steps.push({ kind: "mark", node: no, color: "var(--update)",
+                 msg: `desce em [${lo},${hi}]`, cls: "update" });
+    if (lo === hi) {
+      const old = tree[no];
+      tree[no] = newVal;
+      array[pos] = newVal;
+      steps.push({ kind: "value", node: no, value: newVal,
+                   msg: `folha pos=${pos}: ${old} -> ${newVal}`, cls: "update" });
+      return;
+    }
+    const mid = (lo + hi) >> 1;
+    if (pos <= mid) rec(2 * no, lo, mid);
+    else rec(2 * no + 1, mid + 1, hi);
+    const v = combine(tree[2 * no], tree[2 * no + 1]);
+    const old = tree[no];
+    tree[no] = v;
+    steps.push({ kind: "value", node: no, value: v,
+                 msg: `[${lo},${hi}] recalcula: ${old} -> ${v}`, cls: "update" });
+    steps.push({ kind: "reset", node: no });
+  }
+
+  rec(1, 0, array.length - 1);
+  // atualiza visual da celula do array
+  steps.push({ kind: "log", msg: `ok. raiz = ${tree[1]}`, cls: "update" });
+  return steps;
+}
+
+// ============================================================
+// Event handlers
+// ============================================================
+let errorTimer = null;
+function showError(msg) {
+  const el = document.getElementById("error-msg");
+  el.textContent = msg;
+  el.style.display = "block";
+  clearTimeout(errorTimer);
+  errorTimer = setTimeout(() => { el.style.display = "none"; }, 3000);
+}
+
+function readArray() {
+  const raw = document.getElementById("arr").value;
+  const parts = raw.split(",").map(s => s.trim()).filter(Boolean).map(Number);
+  if (parts.some(isNaN) || parts.length < 2) {
+    showError("array invalido. use numeros separados por virgula, min 2 elementos.");
+    return null;
+  }
+  return parts;
+}
+
+function doBuild() {
+  if (animating) return;
+  const a = readArray();
+  if (!a) return;
+  array = a;
+  op = document.getElementById("op").value;
+  const leafXs = computeLayout(array.length);
+  render(leafXs);
+  clearLog();
+  // atualiza celulas do array no SVG quando update alterar array
+  play(buildSteps());
+}
+
+function doQuery() {
+  if (animating) return;
+  if (tree.length === 0) { showError("faz build primeiro."); return; }
+  const L = +document.getElementById("ql").value;
+  const R = +document.getElementById("qr").value;
+  if (L < 0 || R >= array.length || L > R) { showError("intervalo invalido."); return; }
+  resetAllNodes();
+  play(querySteps(L, R));
+}
+
+function doUpdate() {
+  if (animating) return;
+  if (tree.length === 0) { showError("faz build primeiro."); return; }
+  const pos = +document.getElementById("upos").value;
+  const val = +document.getElementById("uval").value;
+  if (pos < 0 || pos >= array.length) { showError("posicao invalida."); return; }
+  resetAllNodes();
+  play(updateSteps(pos, val)).then(() => {
+    // sincroniza celula do array
+    svg.select(`#cell-${pos} text.val`).text(val);
+  });
+}
+
+function doReset() {
+  if (animating) return;
+  resetAllNodes();
+  clearCells();
+  clearLog();
+}
+
+document.getElementById("btn-build").onclick = doBuild;
+document.getElementById("btn-query").onclick = doQuery;
+document.getElementById("btn-update").onclick = doUpdate;
+document.getElementById("btn-reset").onclick = doReset;
+document.getElementById("speed").addEventListener("input", e =>
+  document.getElementById("speed-val").value = e.target.value + "ms"
+);
+
+document.getElementById("btn-pause").addEventListener("click", () => {
+  paused = !paused;
+  const btn = document.getElementById("btn-pause");
+  if (paused) {
+    btn.textContent = "▶ retomar";
+  } else {
+    btn.textContent = "⏸ pausar";
+    if (resumeResolve) { resumeResolve(); resumeResolve = null; }
+  }
+});
+
+document.getElementById("log-toggle").addEventListener("click", () => {
+  const panel = document.getElementById("log-panel");
+  const btn = document.getElementById("log-toggle");
+  const collapsed = panel.classList.toggle("collapsed");
+  btn.textContent = collapsed ? "log ▶" : "log ◀";
+});
+
+// bootstrap
+doBuild();
+</script>
+</body>
+</html>

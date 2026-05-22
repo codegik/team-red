@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<title>Segment Tree - Contratos de Emprestimo (objetos ricos)</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --edge: #f87171;
+    --idle: #44403c;
+    --visit: #fef08a;
+    --inside: #fbbf24;
+    --outside: #292524;
+    --partial: #ef4444;
+    --update: #e879f9;
+    --field: #38bdf8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .subtitle { font-size: 12px; color: var(--muted); }
+  .controls {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 12px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  input, select, button {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  input[type="number"] { width: 64px; }
+  input[type="text"] { width: 110px; }
+  button {
+    cursor: pointer;
+    background: var(--accent);
+    color: #0c1220;
+    border: none;
+    font-weight: 600;
+    padding: 5px 12px;
+  }
+  button:hover { filter: brightness(1.1); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); font-weight: 400; }
+  output { font-size: 12px; color: var(--muted); min-width: 44px; display: inline-block; }
+  #error-msg {
+    display: none;
+    padding: 6px 20px;
+    background: #450a0a;
+    border-left: 3px solid #f87171;
+    color: #fca5a5;
+    font-size: 13px;
+  }
+  main {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0;
+    padding: 16px 20px;
+  }
+  #canvas-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+  }
+  svg { width: 100%; height: 720px; display: block; }
+  #log-panel {
+    width: 360px;
+    min-width: 0;
+    margin-left: 16px;
+    overflow: hidden;
+    transition: width 0.35s ease, margin-left 0.35s ease;
+  }
+  #log-panel.collapsed {
+    width: 0;
+    margin-left: 0;
+  }
+  #log {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    height: 720px;
+    overflow-y: auto;
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    width: 360px;
+    min-width: 360px;
+  }
+  #log-toggle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    background: var(--bg);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: inherit;
+    font-weight: 500;
+  }
+  #log-toggle:hover { color: var(--text); border-color: var(--accent); }
+  #log .entry { padding: 4px 6px; border-left: 3px solid transparent; margin-bottom: 2px; border-radius: 2px; white-space: pre-wrap; }
+  #log .entry.current { background: #334155; border-left-color: var(--accent); }
+  #log .entry.build { border-left-color: var(--visit); }
+  #log .entry.query { border-left-color: var(--inside); }
+  #log .entry.update { border-left-color: var(--update); }
+  #log .entry.verify-ok   { border-left-color: #4ade80; color: #4ade80; }
+  #log .entry.verify-fail { border-left-color: #f87171; color: #f87171; font-weight: 700; }
+  .legend { display: flex; gap: 14px; margin-left: auto; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  /* nodes: rounded rects com 3 linhas (name + amount + days) */
+  .node rect { fill: #0c1220; stroke-width: 2; transition: stroke 0.3s, fill 0.3s; }
+  .node text.name   { font-weight: 600; fill: var(--text);  pointer-events: none; font-size: 14px; }
+  .node text.amount { fill: var(--muted); pointer-events: none; font-size: 11px; }
+  .node text.days   { fill: var(--muted); pointer-events: none; font-size: 11px; }
+  .node text.amount.active { fill: var(--field); font-weight: 700; font-size: 12px; }
+  .node text.days.active   { fill: var(--field); font-weight: 700; font-size: 12px; }
+  .node text.range  { fill: var(--muted); font-size: 11px; pointer-events: none; }
+  .edge { stroke: var(--edge); stroke-width: 2; }
+
+  /* array cells: borrower + amount + days */
+  .array-cell rect { fill: #0c1220; stroke: var(--border); transition: stroke 0.3s, stroke-width 0.3s; }
+  .array-cell text.name   { fill: var(--text); font-weight: 600; font-size: 13px; }
+  .array-cell text.amount { fill: var(--muted); font-size: 11px; }
+  .array-cell text.days   { fill: var(--muted); font-size: 12px; }
+  .array-cell text.amount.active { fill: var(--field); font-weight: 700; }
+  .array-cell text.days.active   { fill: var(--field); font-weight: 700; }
+  .array-cell text.idx    { fill: var(--muted); font-size: 11px; }
+
+  /* sentinela neutro */
+  .node.neutro rect { stroke-dasharray: 3 2; opacity: 0.6; }
+  .node.neutro text.name { fill: var(--muted); }
+  .node.neutro text.amount, .node.neutro text.days { fill: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Segment Tree - Contratos de Emprestimo</h1>
+  <span class="subtitle">cada no guarda um CONTRATO inteiro (id, devedor, valor, dias) - o merge escolhe o vencedor pelo CAMPO selecionado</span>
+  <div class="legend">
+    <span><i style="background:var(--idle)"></i>idle</span>
+    <span><i style="background:var(--visit)"></i>visitando</span>
+    <span><i style="background:var(--inside)"></i>dentro</span>
+    <span><i style="background:var(--outside)"></i>fora</span>
+    <span><i style="background:var(--partial)"></i>parcial</span>
+    <span><i style="background:var(--update)"></i>update</span>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="group">
+    <label>op
+      <select id="op">
+        <option value="min" selected>min (menor)</option>
+        <option value="max">max (maior)</option>
+        <option value="sum">sum (soma)</option>
+      </select>
+    </label>
+    <label>campo
+      <select id="field">
+        <option value="days" selected>dias</option>
+        <option value="amount">valor</option>
+      </select>
+    </label>
+    <button id="btn-build">build</button>
+  </div>
+
+  <div class="group">
+    <label>query l <input type="number" id="ql" value="0" min="0" max="7"></label>
+    <label>r <input type="number" id="qr" value="3" min="0" max="7"></label>
+    <button id="btn-query">query</button>
+  </div>
+
+  <div class="group">
+    <label>update pos <input type="number" id="upos" value="4" min="0" max="7"></label>
+    <label>devedor <input type="text" id="uname" value="Eve"></label>
+    <label>valor <input type="number" id="uamount" value="1500" min="0"></label>
+    <label>dias <input type="number" id="udays" value="90"></label>
+    <button id="btn-update">update</button>
+  </div>
+
+  <div class="group">
+    <label>vel <input type="range" id="speed" min="80" max="1500" value="500" style="width:100px"> <output id="speed-val">500ms</output></label>
+    <button id="btn-pause" class="ghost" disabled>⏸ pausar</button>
+    <button id="btn-reset" class="ghost">reset</button>
+  </div>
+</div>
+<div id="error-msg"></div>
+
+<main>
+  <div id="canvas-wrap">
+    <button id="log-toggle">log ◀</button>
+    <svg id="canvas" viewBox="0 0 1280 720"></svg>
+  </div>
+  <div id="log-panel">
+    <div id="log"></div>
+  </div>
+</main>
+
+<script>
+// ============================================================
+// Estado: carteira de contratos (objetos com varios atributos)
+// ============================================================
+const INITIAL_CONTRATOS = [
+  { id: 1, name: "Alice",  amount: 5000,  days: 30 },
+  { id: 2, name: "Bob",    amount: 12000, days: 7  },
+  { id: 3, name: "Carol",  amount: 3200,  days: 45 },
+  { id: 4, name: "David",  amount: 8500,  days: 14 },
+  { id: 5, name: "Eve",    amount: 2100,  days: 2  },
+  { id: 6, name: "Frank",  amount: 9900,  days: 21 },
+  { id: 7, name: "Grace",  amount: 6700,  days: 60 },
+  { id: 8, name: "Hank",   amount: 4400,  days: 9  },
+];
+
+let contratos = [];
+let tree = [];
+let treeConfig = null; // { op, field } — snapshot da config usada no build; nunca muda entre builds
+let animating = false;
+let paused = false;
+let resumeResolve = null;
+
+function waitIfPaused() {
+  if (!paused) return Promise.resolve();
+  return new Promise(resolve => { resumeResolve = resolve; });
+}
+let positions = {};
+let ranges = {};
+
+const svg = d3.select("#canvas");
+const W = 1280, H = 720;           // dimensoes do viewBox SVG
+const NODE_W = 84, NODE_H = 56;    // dimensoes dos nos internos (rect arredondado)
+const CELL_W = 100, CELL_H = 60;   // dimensoes das celulas do array no topo
+
+// ============================================================
+// Formatadores e descritores
+// ============================================================
+function fmtAmount(v) {
+  if (v === Infinity)  return "+inf";
+  if (v === -Infinity) return "-inf";
+  return "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+function fmtDays(d) {
+  if (d === Infinity)  return "+inf";
+  if (d === -Infinity) return "-inf";
+  return `${d}d`;
+}
+function fmtField(v) {
+  return treeConfig.field === "amount" ? fmtAmount(v) : fmtDays(v);
+}
+function fmtContract(c) {
+  if (isNeutro(c)) return "(neutro)";
+  return `#${c.id} ${c.name} ${fmtAmount(c.amount)} ${fmtDays(c.days)}`;
+}
+function fmtTreeValue(v) {
+  if (typeof v === "number") return `soma=${fmtField(v)}`;
+  return fmtContract(v);
+}
+
+// ============================================================
+// Comportamento por operacao (min / max / sum)
+// ============================================================
+// id === 0 é o sentinel de neutro — mesma convenção do Rust (contract_id = 0)
+function isNeutro(v) { return typeof v === "object" && v !== null && v.id === 0; }
+
+function makeNeutro() {
+  if (treeConfig.op === "sum") return 0;
+  const ext = (treeConfig.op === "min") ? Infinity : -Infinity;
+  return { id: 0, name: "-", amount: ext, days: ext };
+}
+
+// merge depende de op+field. Em min/max guarda o contrato vencedor;
+// em sum guarda a soma escalar do campo.
+function merge(a, b) {
+  if (treeConfig.op === "sum") return a + b;
+  const af = a[treeConfig.field], bf = b[treeConfig.field];
+  if (treeConfig.op === "min") return af <= bf ? a : b;
+  return af >= bf ? a : b;
+}
+
+// Como uma FOLHA representa um contrato dentro da arvore:
+//   - min/max: a folha guarda o proprio contrato (objeto inteiro)
+//   - sum:     a folha guarda apenas o valor do campo (escalar)
+function leafFor(contract) {
+  if (treeConfig.op === "sum") return contract[treeConfig.field];
+  return contract;
+}
+
+// ============================================================
+// Layout: posicoes (x,y) de cada no
+// ============================================================
+function computeLayout(n) {
+  const leafY = 620;
+  const rootY = 110;
+  const levels = Math.ceil(Math.log2(Math.max(n, 2))) + 1;
+  const stepY = (leafY - rootY) / (levels - 1);
+
+  const leafXs = [];
+  const pad = 80;
+  for (let i = 0; i < n; i++) leafXs.push(pad + i * ((W - 2 * pad) / (n - 1 || 1)));
+
+  positions = {};
+  ranges = {};
+
+  function rec(no, lo, hi, depth) {
+    ranges[no] = [lo, hi];
+    if (lo === hi) {
+      positions[no] = { x: leafXs[lo], y: rootY + depth * stepY };
+      return;
+    }
+    const mid = (lo + hi) >> 1;
+    rec(2 * no, lo, mid, depth + 1);
+    rec(2 * no + 1, mid + 1, hi, depth + 1);
+    // no interno fica centrado horizontalmente entre seus dois filhos
+    positions[no] = {
+      x: (positions[2 * no].x + positions[2 * no + 1].x) / 2,
+      y: rootY + depth * stepY,
+    };
+  }
+  rec(1, 0, n - 1, 0);
+  return leafXs;
+}
+
+// ============================================================
+// Render inicial
+// ============================================================
+function render(leafXs) {
+  svg.selectAll("*").remove();
+
+  const amountActive = treeConfig.field === "amount" ? " active" : "";
+  const daysActive   = treeConfig.field === "days"   ? " active" : "";
+
+  // array cells (3 linhas: nome / valor / dias) + idx abaixo
+  const arrG = svg.append("g").attr("class", "array");
+  contratos.forEach((c, i) => {
+    const g = arrG.append("g")
+      .attr("class", "array-cell")
+      .attr("id", `cell-${i}`)
+      .attr("transform", `translate(${leafXs[i] - CELL_W / 2}, 12)`);
+    g.append("title").text(fmtContract(c));
+    g.append("rect").attr("width", CELL_W).attr("height", CELL_H).attr("rx", 4);
+    g.append("text").attr("class", "name")
+      .attr("x", CELL_W / 2).attr("y", 18).attr("text-anchor", "middle").text(c.name);
+    g.append("text").attr("class", `amount${amountActive}`)
+      .attr("x", CELL_W / 2).attr("y", 35).attr("text-anchor", "middle").text(fmtAmount(c.amount));
+    g.append("text").attr("class", `days${daysActive}`)
+      .attr("x", CELL_W / 2).attr("y", 51).attr("text-anchor", "middle").text(fmtDays(c.days));
+    g.append("text").attr("class", "idx")
+      .attr("x", CELL_W / 2).attr("y", CELL_H + 14).attr("text-anchor", "middle").text(`pos ${i}`);
+  });
+
+  // edges
+  const edgeG = svg.append("g").attr("class", "edges");
+  Object.keys(positions).map(Number).forEach(no => {
+    [2 * no, 2 * no + 1].forEach(child => {
+      if (positions[child]) {
+        edgeG.append("line")
+          .attr("class", "edge")
+          .attr("id", `edge-${no}-${child}`)
+          .attr("x1", positions[no].x).attr("y1", positions[no].y + NODE_H / 2)
+          .attr("x2", positions[child].x).attr("y2", positions[child].y - NODE_H / 2);
+      }
+    });
+  });
+
+  // nodes - 3 text lines: name / amount / days, range below
+  const nodeG = svg.append("g").attr("class", "nodes");
+  Object.keys(positions).map(Number).forEach(no => {
+    const { x, y } = positions[no];
+    const [lo, hi] = ranges[no];
+    const g = nodeG.append("g")
+      .attr("class", "node neutro")
+      .attr("id", `node-${no}`)
+      .attr("transform", `translate(${x}, ${y})`);
+    g.append("title").text("(vazio)");
+    g.append("rect").attr("x", -NODE_W / 2).attr("y", -NODE_H / 2)
+      .attr("width", NODE_W).attr("height", NODE_H).attr("rx", 8)
+      .attr("stroke", "var(--idle)");
+    g.append("text").attr("class", "name")
+      .attr("text-anchor", "middle").attr("y", -14).text("-");
+    g.append("text").attr("class", `amount${amountActive}`)
+      .attr("text-anchor", "middle").attr("y", 2).text("");
+    g.append("text").attr("class", `days${daysActive}`)
+      .attr("text-anchor", "middle").attr("y", 18).text("");
+    g.append("text").attr("class", "range")
+      .attr("text-anchor", "middle").attr("y", NODE_H / 2 + 14).text(`[${lo},${hi}]`);
+  });
+}
+
+// ============================================================
+// Manipulacao da cena
+// ============================================================
+// aplica cor de destaque na borda do no durante a animacao
+function setNodeStroke(no, color) {
+  svg.select(`#node-${no} rect`).transition().duration(200)
+    .attr("stroke", color).attr("stroke-width", 4);
+}
+
+function setNodeValue(no, value) {
+  const g = svg.select(`#node-${no}`);
+  const [lo, hi] = ranges[no];
+
+  // FOLHA: dado bruto - sempre mostra TODOS os campos do contrato real,
+  // independente da operacao escolhida. O campo ativo fica destacado.
+  if (lo === hi) {
+    const c = contratos[lo];
+    g.classed("neutro", false);
+    g.select("title").text(fmtContract(c));
+    g.select("text.name").text(c.name);
+    g.select("text.amount").text(fmtAmount(c.amount));
+    g.select("text.days").text(fmtDays(c.days));
+    return;
+  }
+
+  // NO INTERNO: mostra apenas o resultado da operacao no campo escolhido.
+  // A slot do campo nao-escolhido fica vazia porque la nao ha agregado.
+  if (typeof value === "number") {
+    // sum: escalar agregado (soma do campo no intervalo).
+    g.classed("neutro", false);
+    g.select("title").text(`soma (${treeConfig.field}) = ${fmtField(value)}`);
+    g.select("text.name").text("Σ");
+    g.select("text.amount").text(treeConfig.field === "amount" ? fmtAmount(value) : "");
+    g.select("text.days").text(treeConfig.field === "days" ? fmtDays(value) : "");
+  } else {
+    // min/max: contrato vencedor (so o campo ativo do vencedor).
+    const neutro = isNeutro(value);
+    g.classed("neutro", neutro);
+    g.select("title").text(fmtContract(value));
+    g.select("text.name").text(neutro ? "-" : value.name);
+    if (neutro) {
+      g.select("text.amount").text("");
+      g.select("text.days").text("");
+    } else {
+      g.select("text.amount").text(treeConfig.field === "amount" ? fmtAmount(value.amount) : "");
+      g.select("text.days").text(treeConfig.field === "days" ? fmtDays(value.days) : "");
+    }
+  }
+}
+
+// retorna o no para a cor padrao (idle)
+function resetNode(no) {
+  svg.select(`#node-${no} rect`).transition().duration(200)
+    .attr("stroke", "var(--idle)").attr("stroke-width", 2);
+}
+
+// retorna todos os nos para idle de uma vez (usado antes de query/update)
+function resetAllNodes() {
+  svg.selectAll(".node rect").transition().duration(200)
+    .attr("stroke", "var(--idle)").attr("stroke-width", 2);
+}
+
+// destaca a celula do array com a cor indicada
+function highlightCell(i, color) {
+  svg.select(`#cell-${i} rect`).transition().duration(200)
+    .attr("stroke", color).attr("stroke-width", 3);
+}
+// remove destaque de todas as celulas do array
+function clearCells() {
+  svg.selectAll(".array-cell rect").transition().duration(200)
+    .attr("stroke", "var(--border)").attr("stroke-width", 1);
+}
+
+// sincroniza o texto da celula de array apos update — a animacao atualiza tree[], nao o DOM
+function syncCell(i) {
+  const c = contratos[i];
+  const cell = svg.select(`#cell-${i}`);
+  cell.select("title").text(fmtContract(c));
+  cell.select("text.name").text(c.name);
+  cell.select("text.amount").text(fmtAmount(c.amount));
+  cell.select("text.days").text(fmtDays(c.days));
+}
+
+// ============================================================
+// Log
+// ============================================================
+function clearLog() { d3.select("#log").html(""); }
+// adiciona uma entrada no log; a entrada anterior perde o destaque "current"
+function logEntry(msg, cls = "") {
+  d3.select("#log .entry.current").classed("current", false);
+  d3.select("#log").append("div").attr("class", `entry current ${cls}`).text(msg);
+  const wrap = document.getElementById("log");
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+// ============================================================
+// Player de passos
+// ============================================================
+// intervalo entre passos em ms, lido do slider "vel"
+function delay() { return +document.getElementById("speed").value; }
+
+// executa a lista de passos animados em sequencia, aguardando delay() entre cada um
+async function play(steps) {
+  animating = true;
+  paused = false;
+  setButtonsDisabled(true);
+  for (const step of steps) {
+    await waitIfPaused();
+    if (step.kind === "log") {
+      logEntry(step.msg, step.cls || "");
+    } else if (step.kind === "mark") {
+      setNodeStroke(step.node, step.color);
+      if (step.msg) logEntry(step.msg, step.cls || "");
+    } else if (step.kind === "value") {
+      setNodeValue(step.node, step.value);
+      if (step.stroke) setNodeStroke(step.node, step.stroke);
+      if (step.msg) logEntry(step.msg, step.cls || "");
+    } else if (step.kind === "cell") {
+      if (step.clear) clearCells();
+      if (step.i !== undefined) highlightCell(step.i, step.color);
+      if (step.msg) logEntry(step.msg, step.cls || "");
+    } else if (step.kind === "reset") {
+      if (step.node !== undefined) resetNode(step.node);
+      else resetAllNodes();
+    } else if (step.kind === "sync") {
+      syncCell(step.i);
+    }
+    await sleep(delay());
+  }
+  paused = false;
+  setButtonsDisabled(false);
+  animating = false;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// trava/destrava os botoes durante a animacao para evitar cliques duplos
+function setButtonsDisabled(d) {
+  ["btn-build", "btn-query", "btn-update", "btn-reset"].forEach(id =>
+    document.getElementById(id).disabled = d
+  );
+  const pauseBtn = document.getElementById("btn-pause");
+  pauseBtn.disabled = !d;
+  if (!d) pauseBtn.textContent = "⏸ pausar";
+}
+
+// ============================================================
+// Descricao curta de um valor (contrato OU escalar)
+// ============================================================
+function shortValue(v) {
+  if (typeof v === "number") return fmtField(v);
+  if (isNeutro(v)) return `neutro(${fmtField(v[treeConfig.field])})`;
+  return `${v.name}:${fmtField(v[treeConfig.field])}`;
+}
+
+// ============================================================
+// Verificacao linear ("conferindo na mao")
+// Varre contratos[L..R] com a mesma op+field e devolve o resultado.
+// Complexidade O(n) — serve como ground truth para validar a arvore.
+// ============================================================
+function bruteForce(L, R) {
+  if (treeConfig.op === "sum") {
+    return contratos.slice(L, R + 1).reduce((acc, c) => acc + c[treeConfig.field], 0);
+  }
+  return contratos.slice(L, R + 1).reduce((winner, c) => {
+    if (winner === null) return c;
+    const wf = winner[treeConfig.field], cf = c[treeConfig.field];
+    if (treeConfig.op === "min") return wf <= cf ? winner : c;
+    return wf >= cf ? winner : c;
+  }, null);
+}
+
+function sameResult(treeVal, bfVal) {
+  if (typeof treeVal === "number") return Math.abs(treeVal - bfVal) < 0.01;
+  return treeVal[treeConfig.field] === bfVal[treeConfig.field];
+}
+
+// ============================================================
+// Build
+// ============================================================
+function buildSteps() {
+  const steps = [];
+  tree = new Array(4 * contratos.length).fill(makeNeutro());
+
+  steps.push({ kind: "log",
+               msg: `=== build (${treeConfig.op} by ${treeConfig.field}) ===`, cls: "build" });
+
+  // pos-ordem: desce ate as folhas, sobe calculando merge dos filhos ate a raiz
+  function rec(no, lo, hi) {
+    steps.push({ kind: "mark", node: no, color: "var(--visit)",
+                 msg: `enter [${lo},${hi}]`, cls: "build" });
+    if (lo === hi) {
+      const leaf = leafFor(contratos[lo]);
+      tree[no] = leaf;
+      steps.push({ kind: "value", node: no, value: leaf,
+                   stroke: "var(--inside)",
+                   msg: `folha [${lo}] = ${shortValue(leaf)}`, cls: "build" });
+      steps.push({ kind: "reset", node: no });
+      return;
+    }
+    const mid = (lo + hi) >> 1;
+    rec(2 * no, lo, mid);
+    rec(2 * no + 1, mid + 1, hi);
+    const e = tree[2 * no], d = tree[2 * no + 1];
+    const v = merge(e, d);
+    tree[no] = v;
+    steps.push({ kind: "mark", node: no, color: "var(--partial)",
+                 msg: `[${lo},${hi}] merge(${shortValue(e)}, ${shortValue(d)}) -> ${shortValue(v)}`,
+                 cls: "build" });
+    steps.push({ kind: "value", node: no, value: v });
+    steps.push({ kind: "reset", node: no });
+  }
+
+  rec(1, 0, contratos.length - 1);
+  steps.push({ kind: "log", msg: `ok. raiz = ${fmtTreeValue(tree[1])}`, cls: "build" });
+  return steps;
+}
+
+// ============================================================
+// Query
+// ============================================================
+function querySteps(L, R) {
+  const steps = [];
+  steps.push({ kind: "cell", clear: true });
+  for (let i = L; i <= R; i++) steps.push({ kind: "cell", i, color: "var(--inside)" });
+  steps.push({ kind: "log",
+               msg: `=== query [${L},${R}] (${treeConfig.op} by ${treeConfig.field}) ===`, cls: "query" });
+
+  // 3 casos: fora do intervalo (retorna neutro), totalmente dentro (retorna no), parcial (desce)
+  function rec(no, lo, hi) {
+    steps.push({ kind: "mark", node: no, color: "var(--visit)",
+                 msg: `visita [${lo},${hi}]`, cls: "query" });
+    if (R < lo || hi < L) {
+      const n = makeNeutro();
+      steps.push({ kind: "mark", node: no, color: "var(--outside)",
+                   msg: `[${lo},${hi}] FORA -> neutro (${shortValue(n)})`, cls: "query" });
+      return n;
+    }
+    if (L <= lo && hi <= R) {
+      steps.push({ kind: "mark", node: no, color: "var(--inside)",
+                   msg: `[${lo},${hi}] DENTRO -> ${shortValue(tree[no])}`, cls: "query" });
+      return tree[no];
+    }
+    steps.push({ kind: "mark", node: no, color: "var(--partial)",
+                 msg: `[${lo},${hi}] PARCIAL -> desce`, cls: "query" });
+    const mid = (lo + hi) >> 1;
+    const e = rec(2 * no, lo, mid);
+    const d = rec(2 * no + 1, mid + 1, hi);
+    const v = merge(e, d);
+    steps.push({ kind: "log",
+                 msg: `[${lo},${hi}] combina: ${treeConfig.op}(${shortValue(e)}, ${shortValue(d)}) = ${shortValue(v)}`,
+                 cls: "query" });
+    return v;
+  }
+
+  const resp = rec(1, 0, contratos.length - 1);
+  steps.push({ kind: "log", msg: `resposta: ${fmtTreeValue(resp)}`, cls: "query" });
+  const bf = bruteForce(L, R);
+  const ok = sameResult(resp, bf);
+  steps.push({ kind: "log", msg: `conferindo: ${shortValue(bf)}`, cls: "query" });
+  steps.push({ kind: "log", msg: ok ? "✓ correto" : "✗ divergência detectada", cls: ok ? "verify-ok" : "verify-fail" });
+  return steps;
+}
+
+// ============================================================
+// Update (substitui o contrato inteiro na posicao)
+// ============================================================
+function updateSteps(pos, novoContrato) {
+  const steps = [];
+  steps.push({ kind: "cell", clear: true });
+  steps.push({ kind: "cell", i: pos, color: "var(--update)" });
+  steps.push({ kind: "log",
+               msg: `=== update pos=${pos} -> ${fmtContract(novoContrato)} ===`,
+               cls: "update" });
+
+  // desce apenas pelo lado que contem pos; na subida recalcula cada no com merge dos filhos
+  function rec(no, lo, hi) {
+    steps.push({ kind: "mark", node: no, color: "var(--update)",
+                 msg: `desce em [${lo},${hi}]`, cls: "update" });
+    if (lo === hi) {
+      const old = tree[no];
+      contratos[pos] = novoContrato;
+      const newLeaf = leafFor(novoContrato);
+      tree[no] = newLeaf;
+      steps.push({ kind: "value", node: no, value: newLeaf,
+                   msg: `folha pos=${pos}: ${shortValue(old)} -> ${shortValue(newLeaf)}`,
+                   cls: "update" });
+      steps.push({ kind: "sync", i: pos });
+      return;
+    }
+    const mid = (lo + hi) >> 1;
+    if (pos <= mid) rec(2 * no, lo, mid);
+    else rec(2 * no + 1, mid + 1, hi);
+    const e = tree[2 * no], d = tree[2 * no + 1];
+    const v = merge(e, d);
+    const old = tree[no];
+    tree[no] = v;
+    steps.push({ kind: "value", node: no, value: v,
+                 msg: `[${lo},${hi}] recalcula: ${shortValue(old)} -> ${shortValue(v)}`,
+                 cls: "update" });
+    steps.push({ kind: "reset", node: no });
+  }
+
+  rec(1, 0, contratos.length - 1);
+  steps.push({ kind: "log", msg: `ok. raiz = ${fmtTreeValue(tree[1])}`, cls: "update" });
+  return steps;
+}
+
+// ============================================================
+// Event handlers
+// ============================================================
+let errorTimer = null;
+function showError(msg) {
+  const el = document.getElementById("error-msg");
+  el.textContent = msg;
+  el.style.display = "block";
+  clearTimeout(errorTimer);
+  errorTimer = setTimeout(() => { el.style.display = "none"; }, 3000);
+}
+
+function doBuild() {
+  if (animating) return;
+  treeConfig = {
+    op:    document.getElementById("op").value,
+    field: document.getElementById("field").value,
+  };
+  // clona a carteira inicial pra um update nao "vazar" entre builds
+  contratos = INITIAL_CONTRATOS.map(c => ({ ...c }));
+  const leafXs = computeLayout(contratos.length);
+  render(leafXs);
+  clearLog();
+  play(buildSteps());
+}
+
+function doQuery() {
+  if (animating) return;
+  if (tree.length === 0) { showError("faz build primeiro."); return; }
+  const L = +document.getElementById("ql").value;
+  const R = +document.getElementById("qr").value;
+  if (L < 0 || R >= contratos.length || L > R) { showError("intervalo invalido."); return; }
+  resetAllNodes();
+  play(querySteps(L, R));
+}
+
+function doUpdate() {
+  if (animating) return;
+  if (tree.length === 0) { showError("faz build primeiro."); return; }
+  const pos = +document.getElementById("upos").value;
+  const name = document.getElementById("uname").value.trim() || "?";
+  const amount = +document.getElementById("uamount").value;
+  const days = +document.getElementById("udays").value;
+  if (pos < 0 || pos >= contratos.length) { showError("posicao invalida."); return; }
+  if (isNaN(amount) || isNaN(days)) { showError("valor ou dias invalido."); return; }
+  // preserva o id original do contrato na posicao
+  const novo = { id: contratos[pos].id, name, amount, days };
+  resetAllNodes();
+  play(updateSteps(pos, novo));
+}
+
+// limpa apenas o visual — tree[] e contratos[] permanecem intactos
+function doReset() {
+  if (animating) return;
+  resetAllNodes();
+  clearCells();
+  clearLog();
+}
+
+document.getElementById("btn-build").onclick = doBuild;
+document.getElementById("btn-query").onclick = doQuery;
+document.getElementById("btn-update").onclick = doUpdate;
+document.getElementById("btn-reset").onclick = doReset;
+document.getElementById("speed").addEventListener("input", e =>
+  document.getElementById("speed-val").value = e.target.value + "ms"
+);
+
+document.getElementById("btn-pause").addEventListener("click", () => {
+  paused = !paused;
+  const btn = document.getElementById("btn-pause");
+  if (paused) {
+    btn.textContent = "▶ retomar";
+  } else {
+    btn.textContent = "⏸ pausar";
+    if (resumeResolve) { resumeResolve(); resumeResolve = null; }
+  }
+});
+
+// alterna a visibilidade da barra lateral de log
+document.getElementById("log-toggle").addEventListener("click", () => {
+  const panel = document.getElementById("log-panel");
+  const btn = document.getElementById("log-toggle");
+  const collapsed = panel.classList.toggle("collapsed");
+  btn.textContent = collapsed ? "log ▶" : "log ◀";
+});
+
+// executa build inicial para o usuario ver a arvore ao abrir a pagina
+doBuild();
+</script>
+</body>
+</html>
