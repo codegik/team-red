@@ -38,7 +38,6 @@
 //   right child = 2 * node + 1
 
 struct SegmentTree<T: Clone> {
-    data:    Vec<T>,           // original array
     tree:    Vec<T>,           // internal tree, 1-indexed
     n:       usize,            // number of elements
     neutral: T,                // neutral element for merge
@@ -52,9 +51,9 @@ impl<T: Clone> SegmentTree<T> {
     fn new(data: Vec<T>, neutral: T, merge: fn(&T, &T) -> T) -> Self {
         let n = data.len();
         let tree = vec![neutral.clone(); 4 * n];
-        let mut st = SegmentTree { data, tree, n, neutral, merge };
+        let mut st = SegmentTree { tree, n, neutral, merge };
         if n > 0 {
-            st.build(1, 0, n - 1);
+            st.build(&data, 1, 0, n - 1);
         }
         st
     }
@@ -84,14 +83,14 @@ impl<T: Clone> SegmentTree<T> {
 
     // ---- internal (recursive) methods ----
 
-    fn build(&mut self, node: usize, start: usize, end: usize) {
+    fn build(&mut self, data: &[T], node: usize, start: usize, end: usize) {
         if start == end {
-            self.tree[node] = self.data[start].clone();
+            self.tree[node] = data[start].clone();
             return;
         }
         let mid = (start + end) / 2;
-        self.build(2 * node,     start,   mid);
-        self.build(2 * node + 1, mid + 1, end);
+        self.build(data, 2 * node,     start,   mid);
+        self.build(data, 2 * node + 1, mid + 1, end);
         // clone before merging to avoid borrow conflict on self.tree
         let left  = self.tree[2 * node].clone();
         let right = self.tree[2 * node + 1].clone();
@@ -112,8 +111,7 @@ impl<T: Clone> SegmentTree<T> {
 
     fn update_range(&mut self, node: usize, start: usize, end: usize, pos: usize, value: T) {
         if start == end {
-            self.tree[node]  = value.clone();
-            self.data[start] = value;
+            self.tree[node] = value;
             return;
         }
         let mid = (start + end) / 2;
@@ -245,12 +243,13 @@ fn main() {
     // ------------------------------------------------------
     // Use case 1: MOST URGENT (min by days)
     // ------------------------------------------------------
-    let mut st = SegmentTree::new(init_contracts(), neutral_urgent(), merge_urgent);
+    let mut contracts = init_contracts();
+    let mut st = SegmentTree::new(contracts.clone(), neutral_urgent(), merge_urgent);
 
     println!("==============================================");
     println!("Use case 1: contrato MAIS URGENTE (min por dias)");
     println!("==============================================");
-    print_portfolio(&st.data);
+    print_portfolio(&contracts);
 
     print!("Mais urgente da carteira toda: ");
     st.root().display();
@@ -259,36 +258,39 @@ fn main() {
     println!("Caso 1 - mais urgente entre contratos 1 e 4 (indices 0..3)");
     let r = st.query(0, 3);
     print!("  Segment tree responde: "); r.display();
-    let m = st.data[0..4].iter().min_by_key(|x| x.days_remaining).unwrap();
+    let m = contracts[0..4].iter().min_by_key(|x| x.days_remaining).unwrap();
     print!("  Conferindo na mao:     "); m.display();
     println!();
 
     println!("Caso 2 - mais urgente entre contratos 5 e 8 (indices 4..7)");
     let r = st.query(4, 7);
     print!("  Segment tree responde: "); r.display();
-    let m = st.data[4..8].iter().min_by_key(|x| x.days_remaining).unwrap();
+    let m = contracts[4..8].iter().min_by_key(|x| x.days_remaining).unwrap();
     print!("  Conferindo na mao:     "); m.display();
     println!();
 
     println!("Caso 3 - Eve renegociou: novo prazo = 90 dias");
-    st.update(4, LoanContract::new(5, "Eve", 1_500.00, 90));
+    let updated = LoanContract::new(5, "Eve", 1_500.00, 90);
+    contracts[4] = updated.clone();   // keep contracts in sync with the tree
+    st.update(4, updated);
     let r = st.query(0, st.len() - 1);
     print!("  Mais urgente agora:    "); r.display();
-    let m = st.data.iter().min_by_key(|x| x.days_remaining).unwrap();
+    let m = contracts.iter().min_by_key(|x| x.days_remaining).unwrap();
     print!("  Conferindo na mao:     "); m.display();
 
 
     // ------------------------------------------------------
     // Use case 2: MOST SLACK (max by days)
     // ------------------------------------------------------
-    let st = SegmentTree::new(init_contracts(), neutral_slack(), merge_slack);
+    let contracts = init_contracts();
+    let st = SegmentTree::new(contracts.clone(), neutral_slack(), merge_slack);
 
     println!();
     println!();
     println!("==============================================");
     println!("Use case 2: contrato MAIS FOLGADO (max por dias)");
     println!("==============================================");
-    print_portfolio(&st.data);
+    print_portfolio(&contracts);
 
     print!("Mais folgado da carteira toda: ");
     st.root().display();
@@ -297,21 +299,22 @@ fn main() {
     println!("Caso 1 - mais folgado entre contratos 1 e 4 (indices 0..3)");
     let r = st.query(0, 3);
     print!("  Segment tree responde: "); r.display();
-    let m = st.data[0..4].iter().max_by_key(|x| x.days_remaining).unwrap();
+    let m = contracts[0..4].iter().max_by_key(|x| x.days_remaining).unwrap();
     print!("  Conferindo na mao:     "); m.display();
 
 
     // ------------------------------------------------------
     // Use case 3: LOWEST BALANCE (min by amount)
     // ------------------------------------------------------
-    let st = SegmentTree::new(init_contracts(), neutral_lowest(), merge_lowest);
+    let contracts = init_contracts();
+    let st = SegmentTree::new(contracts.clone(), neutral_lowest(), merge_lowest);
 
     println!();
     println!();
     println!("==============================================");
     println!("Use case 3: MENOR SALDO devedor (min por valor)");
     println!("==============================================");
-    print_portfolio(&st.data);
+    print_portfolio(&contracts);
 
     print!("Menor saldo da carteira toda: ");
     st.root().display();
@@ -320,7 +323,7 @@ fn main() {
     println!("Caso 1 - menor saldo entre contratos 1 e 4 (indices 0..3)");
     let r = st.query(0, 3);
     print!("  Segment tree responde: "); r.display();
-    let m = st.data[0..4].iter()
+    let m = contracts[0..4].iter()
         .min_by(|a, b| a.amount.partial_cmp(&b.amount).unwrap()).unwrap();
     print!("  Conferindo na mao:     "); m.display();
 
@@ -328,14 +331,15 @@ fn main() {
     // ------------------------------------------------------
     // Use case 4: HIGHEST EXPOSURE (max by amount)
     // ------------------------------------------------------
-    let st = SegmentTree::new(init_contracts(), neutral_highest(), merge_highest);
+    let contracts = init_contracts();
+    let st = SegmentTree::new(contracts.clone(), neutral_highest(), merge_highest);
 
     println!();
     println!();
     println!("==============================================");
     println!("Use case 4: MAIOR EXPOSICAO individual (max por valor)");
     println!("==============================================");
-    print_portfolio(&st.data);
+    print_portfolio(&contracts);
 
     print!("Maior exposicao da carteira toda: ");
     st.root().display();
@@ -344,7 +348,7 @@ fn main() {
     println!("Caso 1 - maior exposicao entre contratos 5 e 8 (indices 4..7)");
     let r = st.query(4, 7);
     print!("  Segment tree responde: "); r.display();
-    let m = st.data[4..8].iter()
+    let m = contracts[4..8].iter()
         .max_by(|a, b| a.amount.partial_cmp(&b.amount).unwrap()).unwrap();
     print!("  Conferindo na mao:     "); m.display();
 
