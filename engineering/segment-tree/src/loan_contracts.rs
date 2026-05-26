@@ -140,8 +140,23 @@ fn merge_highest(a: &LoanContract, b: &LoanContract) -> LoanContract {
 fn merge_f64_sum(a: &f64, b: &f64) -> f64 { a + b }
 
 
-fn main() {
-    println!("SegmentTree — run `rustc --test loan-contracts.rs` to verify all use cases.");
+pub fn run() {
+    println!("Loan contracts module running");
+
+    let urgent_tree = SegmentTree::new(
+        init_contracts(),
+        neutral_urgent(),
+        merge_urgent,
+    );
+
+    let most_urgent = urgent_tree.root();
+
+    println!(
+        "Most urgent contract => id={}, borrower={}, days_remaining={}",
+        most_urgent.contract_id,
+        most_urgent.borrower,
+        most_urgent.days_remaining
+    );
 }
 
 
