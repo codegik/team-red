@@ -4,10 +4,10 @@
 
 // 1-indexed array of size 4*n: node 1 = root, children = 2*node and 2*node+1.
 struct SegmentTree<T: Clone> {
-    tree:    Vec<T>,
-    n:       usize,
-    neutral: T,                // identity for `merge`: combining with it leaves the result unchanged
-    merge:   fn(&T, &T) -> T,
+    tree: Vec<T>,
+    n: usize,
+    neutral: T, // identity for `merge`: combining with it leaves the result unchanged
+    merge: fn(&T, &T) -> T,
 }
 
 impl<T: Clone> SegmentTree<T> {
@@ -15,7 +15,12 @@ impl<T: Clone> SegmentTree<T> {
         let n = data.len();
         // pre-fill with the neutral so any node never written by build stays harmless to merges
         let tree = vec![neutral.clone(); 4 * n];
-        let mut st = SegmentTree { tree, n, neutral, merge };
+        let mut st = SegmentTree {
+            tree,
+            n,
+            neutral,
+            merge,
+        };
         if n > 0 {
             st.build(&data, 1, 0, n - 1);
         }
@@ -47,19 +52,23 @@ impl<T: Clone> SegmentTree<T> {
             return;
         }
         let mid = (start + end) / 2;
-        self.build(data, 2 * node,     start,   mid);
+        self.build(data, 2 * node, start, mid);
         self.build(data, 2 * node + 1, mid + 1, end);
         // clone children first: can't borrow self.tree mutably and immutably at once
-        let left  = self.tree[2 * node].clone();
+        let left = self.tree[2 * node].clone();
         let right = self.tree[2 * node + 1].clone();
         self.tree[node] = (self.merge)(&left, &right);
     }
 
     fn query_range(&self, node: usize, start: usize, end: usize, l: usize, r: usize) -> T {
-        if r < start || end < l { return self.neutral.clone(); }      // no overlap: return identity so this node doesn't affect the merge
-        if l <= start && end <= r { return self.tree[node].clone(); } // fully covered
-        let mid   = (start + end) / 2;                                // partial: split + merge
-        let left  = self.query_range(2 * node,     start,   mid, l, r);
+        if r < start || end < l {
+            return self.neutral.clone();
+        } // no overlap: return identity so this node doesn't affect the merge
+        if l <= start && end <= r {
+            return self.tree[node].clone();
+        } // fully covered
+        let mid = (start + end) / 2; // partial: split + merge
+        let left = self.query_range(2 * node, start, mid, l, r);
         let right = self.query_range(2 * node + 1, mid + 1, end, l, r);
         (self.merge)(&left, &right)
     }
@@ -71,94 +80,171 @@ impl<T: Clone> SegmentTree<T> {
         }
         let mid = (start + end) / 2;
         if pos <= mid {
-            self.update_range(2 * node,     start,   mid, pos, value);
+            self.update_range(2 * node, start, mid, pos, value);
         } else {
             self.update_range(2 * node + 1, mid + 1, end, pos, value);
         }
-        let left  = self.tree[2 * node].clone();
+        let left = self.tree[2 * node].clone();
         let right = self.tree[2 * node + 1].clone();
         self.tree[node] = (self.merge)(&left, &right);
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+struct SimpleDate {
+    year: i32,
+    month: u32,
+    day: u32,
+}
+
+impl SimpleDate {
+    fn new(year: i32, month: u32, day: u32) -> Self {
+        SimpleDate { year, month, day }
+    }
+
+    fn iso(&self) -> String {
+        format!("{:04}-{:02}-{:02}", self.year, self.month, self.day)
+    }
+}
 
 #[derive(Clone)]
 struct LoanContract {
-    contract_id:    u32,
-    borrower:       String,
-    amount:         f64,
+    contract_id: u32,
+    borrower: String,
+    amount: f64,
     days_remaining: i32,
+    due_date: SimpleDate,
 }
 
 impl LoanContract {
-    fn new(contract_id: u32, borrower: &str, amount: f64, days_remaining: i32) -> Self {
+    fn new(
+        contract_id: u32,
+        borrower: &str,
+        amount: f64,
+        days_remaining: i32,
+        due_date: SimpleDate,
+    ) -> Self {
         LoanContract {
             contract_id,
             borrower: borrower.to_string(),
             amount,
             days_remaining,
+            due_date,
         }
     }
 }
 
 fn init_contracts() -> Vec<LoanContract> {
     vec![
-        LoanContract::new(1, "Alice",  5_000.00, 30),
-        LoanContract::new(2, "Bob",   12_000.00,  7),
-        LoanContract::new(3, "Carol",  3_200.00, 45),
-        LoanContract::new(4, "David",  8_500.00, 14),
-        LoanContract::new(5, "Eve",    2_100.00,  2),
-        LoanContract::new(6, "Frank",  9_900.00, 21),
-        LoanContract::new(7, "Grace",  6_700.00, 60),
-        LoanContract::new(8, "Hank",   4_400.00,  9),
+        LoanContract::new(1, "Alice", 5_000.00, 30, SimpleDate::new(2026, 6, 27)),
+        LoanContract::new(2, "Bob", 12_000.00, 7, SimpleDate::new(2026, 6, 4)),
+        LoanContract::new(3, "Carol", 3_200.00, 45, SimpleDate::new(2026, 7, 12)),
+        LoanContract::new(4, "David", 8_500.00, 14, SimpleDate::new(2026, 6, 11)),
+        LoanContract::new(5, "Eve", 2_100.00, 2, SimpleDate::new(2026, 5, 30)),
+        LoanContract::new(6, "Frank", 9_900.00, 21, SimpleDate::new(2026, 6, 18)),
+        LoanContract::new(7, "Grace", 6_700.00, 60, SimpleDate::new(2026, 7, 27)),
+        LoanContract::new(8, "Hank", 4_400.00, 9, SimpleDate::new(2026, 6, 6)),
     ]
 }
 
-
 // Each neutral uses a sentinel that can never win its own merge, so it stays invisible to queries.
-fn neutral_urgent() -> LoanContract { LoanContract::new(0, "-", 0.0, i32::MAX) }
+fn neutral_urgent() -> LoanContract {
+    LoanContract::new(0, "-", 0.0, i32::MAX, SimpleDate::new(9999, 12, 31))
+}
 fn merge_urgent(a: &LoanContract, b: &LoanContract) -> LoanContract {
-    if a.days_remaining <= b.days_remaining { a.clone() } else { b.clone() }
+    if a.days_remaining <= b.days_remaining {
+        a.clone()
+    } else {
+        b.clone()
+    }
 }
 
-fn neutral_slack() -> LoanContract { LoanContract::new(0, "-", 0.0, i32::MIN) }
+fn neutral_slack() -> LoanContract {
+    LoanContract::new(0, "-", 0.0, i32::MIN, SimpleDate::new(0, 1, 1))
+}
 fn merge_slack(a: &LoanContract, b: &LoanContract) -> LoanContract {
-    if a.days_remaining >= b.days_remaining { a.clone() } else { b.clone() }
+    if a.days_remaining >= b.days_remaining {
+        a.clone()
+    } else {
+        b.clone()
+    }
 }
 
-fn neutral_lowest() -> LoanContract { LoanContract::new(0, "-", f64::INFINITY, 0) }
+fn neutral_lowest() -> LoanContract {
+    LoanContract::new(0, "-", f64::INFINITY, 0, SimpleDate::new(9999, 12, 31))
+}
 fn merge_lowest(a: &LoanContract, b: &LoanContract) -> LoanContract {
-    if a.amount <= b.amount { a.clone() } else { b.clone() }
+    if a.amount <= b.amount {
+        a.clone()
+    } else {
+        b.clone()
+    }
 }
 
-fn neutral_highest() -> LoanContract { LoanContract::new(0, "-", f64::NEG_INFINITY, 0) }
+fn neutral_highest() -> LoanContract {
+    LoanContract::new(0, "-", f64::NEG_INFINITY, 0, SimpleDate::new(0, 1, 1))
+}
 fn merge_highest(a: &LoanContract, b: &LoanContract) -> LoanContract {
-    if a.amount >= b.amount { a.clone() } else { b.clone() }
+    if a.amount >= b.amount {
+        a.clone()
+    } else {
+        b.clone()
+    }
+}
+
+fn neutral_earliest_due() -> LoanContract {
+    LoanContract::new(0, "-", 0.0, 0, SimpleDate::new(9999, 12, 31))
+}
+fn merge_earliest_due(a: &LoanContract, b: &LoanContract) -> LoanContract {
+    if a.due_date <= b.due_date {
+        a.clone()
+    } else {
+        b.clone()
+    }
+}
+
+fn neutral_latest_due() -> LoanContract {
+    LoanContract::new(0, "-", 0.0, 0, SimpleDate::new(0, 1, 1))
+}
+fn merge_latest_due(a: &LoanContract, b: &LoanContract) -> LoanContract {
+    if a.due_date >= b.due_date {
+        a.clone()
+    } else {
+        b.clone()
+    }
 }
 
 // Sum of two contracts is a scalar, not a contract — this tree stores f64 with neutral 0.0.
-fn merge_f64_sum(a: &f64, b: &f64) -> f64 { a + b }
-
+fn merge_f64_sum(a: &f64, b: &f64) -> f64 {
+    a + b
+}
 
 pub fn run() {
     println!("Loan contracts module running");
 
-    let urgent_tree = SegmentTree::new(
-        init_contracts(),
-        neutral_urgent(),
-        merge_urgent,
-    );
+    let urgent_tree = SegmentTree::new(init_contracts(), neutral_urgent(), merge_urgent);
 
     let most_urgent = urgent_tree.root();
 
     println!(
-        "Most urgent contract => id={}, borrower={}, days_remaining={}",
+        "Most urgent contract => id={}, borrower={}, days_remaining={}, due_date={}",
         most_urgent.contract_id,
         most_urgent.borrower,
-        most_urgent.days_remaining
+        most_urgent.days_remaining,
+        most_urgent.due_date.iso(),
+    );
+
+    let due_date_tree =
+        SegmentTree::new(init_contracts(), neutral_earliest_due(), merge_earliest_due);
+    let next_due = due_date_tree.root();
+
+    println!(
+        "Earliest due contract => id={}, borrower={}, due_date={}",
+        next_due.contract_id,
+        next_due.borrower,
+        next_due.due_date.iso(),
     );
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -193,7 +279,10 @@ mod tests {
     #[test]
     fn urgent_after_eve_renegotiation_bob_takes_over() {
         let mut st = make_urgent_tree();
-        st.update(4, LoanContract::new(5, "Eve", 1_500.00, 90));
+        st.update(
+            4,
+            LoanContract::new(5, "Eve", 1_500.00, 90, SimpleDate::new(2026, 8, 26)),
+        );
         let r = st.query(0, 7);
         assert_eq!(r.contract_id, 2);
         assert_eq!(r.days_remaining, 7);
@@ -250,6 +339,48 @@ mod tests {
         let st = make_highest_tree();
         let r = st.query(4, 7);
         assert_eq!(r.contract_id, 6);
+    }
+
+    fn make_earliest_due_tree() -> SegmentTree<LoanContract> {
+        SegmentTree::new(init_contracts(), neutral_earliest_due(), merge_earliest_due)
+    }
+
+    #[test]
+    fn earliest_due_root_is_eve() {
+        let st = make_earliest_due_tree();
+        assert_eq!(st.root().contract_id, 5);
+        assert_eq!(st.root().due_date, SimpleDate::new(2026, 5, 30));
+    }
+
+    #[test]
+    fn earliest_due_query_1_to_4_is_bob() {
+        let st = make_earliest_due_tree();
+        let r = st.query(0, 3);
+        assert_eq!(r.contract_id, 2);
+        assert_eq!(r.due_date, SimpleDate::new(2026, 6, 4));
+    }
+
+    fn make_latest_due_tree() -> SegmentTree<LoanContract> {
+        SegmentTree::new(init_contracts(), neutral_latest_due(), merge_latest_due)
+    }
+
+    #[test]
+    fn latest_due_root_is_grace() {
+        let st = make_latest_due_tree();
+        assert_eq!(st.root().contract_id, 7);
+        assert_eq!(st.root().due_date, SimpleDate::new(2026, 7, 27));
+    }
+
+    #[test]
+    fn earliest_due_after_eve_extension_bob_takes_over() {
+        let mut st = make_earliest_due_tree();
+        st.update(
+            4,
+            LoanContract::new(5, "Eve", 1_500.00, 90, SimpleDate::new(2026, 8, 26)),
+        );
+        let r = st.query(0, 7);
+        assert_eq!(r.contract_id, 2);
+        assert_eq!(r.due_date, SimpleDate::new(2026, 6, 4));
     }
 
     fn make_sum_tree() -> SegmentTree<f64> {
