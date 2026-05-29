@@ -1,22 +1,92 @@
 # Segment Tree Kata
 
-### Use Case
+This project demonstrates how the same Segment Tree implementation can solve
+different range-query problems by changing only two things:
 
-### Pros
+- `merge`: how two child nodes are combined.
+- `neutral`: the identity value returned when a node is outside the query range.
 
-### Cons
+## Use Case
 
-#### Usage
+The main example models a loan portfolio. Each array position stores a
+`LoanContract` with:
 
-##### Run
+- contract id
+- borrower
+- amount
+- days remaining
+- due date
+
+The Segment Tree can answer portfolio questions over the whole set or over any
+subrange:
+
+- Which contract is the most urgent by remaining days?
+- Which contract has the most slack by remaining days?
+- Which contract has the lowest or highest amount?
+- Which contract has the earliest or latest due date?
+- What is the total amount in a portfolio slice?
+
+The date example uses a small `SimpleDate` type instead of an external crate.
+Because it derives `Ord`, the tree can compare dates directly and return the
+contract with the earliest or latest due date.
+
+## Why This Version Is Useful
+
+This is not just a numeric sum/min/max tree. The tree can store domain objects
+and return the object that wins a business rule. For example, an operations
+dashboard can ask:
+
+> Among contracts 2000 through 4000, which contract is due first?
+
+Without a Segment Tree, this requires scanning every contract in that range.
+With this implementation, range queries and single-contract updates are both
+`O(log n)` after an `O(n)` build.
+
+## Pros
+
+- One generic tree supports several business rules.
+- Queries and updates are fast: `O(log n)`.
+- The returned value can be the full contract, not just the compared scalar.
+- Date-based queries work without adding third-party dependencies.
+
+## Cons
+
+- Each query rule needs its own `merge` and `neutral` pair.
+- If you need several query rules at the same time, you usually build one tree
+  per rule.
+- The included `SimpleDate` is intentionally minimal. Production code should
+  validate dates or use a proper date/time crate.
+
+## Usage
+
+### Run
+
 ```bash
 cargo run
-
-Loan contracts module running
-Most urgent contract => id=5, borrower=Eve, days_remaining=2
 ```
 
-##### Tests
+Expected output:
+
+```text
+Loan contracts module running
+Most urgent contract => id=5, borrower=Eve, days_remaining=2, due_date=2026-05-30
+Earliest due contract => id=5, borrower=Eve, due_date=2026-05-30
+```
+
+### Tests
+
+```bash
+cargo test
+```
+
+Current test coverage includes the original numeric examples plus the loan
+contract examples:
+
+```text
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+```
+
+
 ```bash
 cargo test
 
