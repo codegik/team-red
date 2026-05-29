@@ -228,6 +228,12 @@
     <button id="btn-pause" class="ghost" disabled>⏸ pausar</button>
     <button id="btn-reset" class="ghost">reset</button>
   </div>
+  <div class="group">
+    <label style="font-size:12px;color:var(--muted)">zoom</label>
+    <button id="btn-zoom-in">+</button>
+    <button id="btn-zoom-out">−</button>
+    <button id="btn-zoom-reset" class="ghost">fit</button>
+  </div>
 </div>
 <div id="error-msg"></div>
 
@@ -272,8 +278,13 @@ let ranges = {};
 
 const svg = d3.select("#canvas");
 const W = 1280, H = 720;           // dimensoes do viewBox SVG
+// scene group: everything rendered inside here will be transformed by zoom/pan
+let scene = svg.append("g").attr("id", "scene");
 const NODE_W = 84, NODE_H = 56;    // dimensoes dos nos internos (rect arredondado)
 const CELL_W = 100, CELL_H = 60;   // dimensoes das celulas do array no topo
+
+// zoom behavior (configured after render functions)
+let zoomBehavior = null;
 
 // ============================================================
 // Formatadores e descritores
@@ -369,12 +380,14 @@ function computeLayout(n) {
 // ============================================================
 function render(leafXs) {
   svg.selectAll("*").remove();
+  // recreate the scene group (zoom behavior transforms this group)
+  scene = svg.append("g").attr("id", "scene");
 
   const amountActive = treeConfig.field === "amount" ? " active" : "";
   const daysActive   = treeConfig.field === "days"   ? " active" : "";
 
   // array cells (3 linhas: nome / valor / dias) + idx abaixo
-  const arrG = svg.append("g").attr("class", "array");
+  const arrG = scene.append("g").attr("class", "array");
   contratos.forEach((c, i) => {
     const g = arrG.append("g")
       .attr("class", "array-cell")
@@ -393,7 +406,7 @@ function render(leafXs) {
   });
 
   // edges
-  const edgeG = svg.append("g").attr("class", "edges");
+  const edgeG = scene.append("g").attr("class", "edges");
   Object.keys(positions).map(Number).forEach(no => {
     [2 * no, 2 * no + 1].forEach(child => {
       if (positions[child]) {
@@ -407,7 +420,7 @@ function render(leafXs) {
   });
 
   // nodes - 3 text lines: name / amount / days, range below
-  const nodeG = svg.append("g").attr("class", "nodes");
+  const nodeG = scene.append("g").attr("class", "nodes");
   Object.keys(positions).map(Number).forEach(no => {
     const { x, y } = positions[no];
     const [lo, hi] = ranges[no];
@@ -427,6 +440,15 @@ function render(leafXs) {
       .attr("text-anchor", "middle").attr("y", 18).text("");
     g.append("text").attr("class", "range")
       .attr("text-anchor", "middle").attr("y", NODE_H / 2 + 14).text(`[${lo},${hi}]`);
+  });
+
+  // double-click a node to focus/zoom into it
+  nodeG.selectAll('.node').on('dblclick', function(event) {
+    const id = +d3.select(this).attr('id').split('-')[1];
+    if (!zoomBehavior || !positions[id]) return;
+    const k = 1.6;
+    svg.transition().duration(600).call(zoomBehavior.scaleTo, k);
+    svg.transition().duration(600).call(zoomBehavior.translateTo, positions[id].x, positions[id].y);
   });
 }
 
@@ -822,6 +844,24 @@ document.getElementById("log-toggle").addEventListener("click", () => {
   const btn = document.getElementById("log-toggle");
   const collapsed = panel.classList.toggle("collapsed");
   btn.textContent = collapsed ? "log ▶" : "log ◀";
+});
+
+// ----------------- zoom / pan setup -----------------
+zoomBehavior = d3.zoom()
+  .scaleExtent([0.6, 3])
+  .translateExtent([[-200, -200], [W + 200, H + 200]])
+  .on('zoom', (event) => { scene.attr('transform', event.transform); });
+
+svg.call(zoomBehavior).on('dblclick.zoom', null);
+
+document.getElementById('btn-zoom-in').addEventListener('click', () => {
+  svg.transition().duration(350).call(zoomBehavior.scaleBy, 1.25);
+});
+document.getElementById('btn-zoom-out').addEventListener('click', () => {
+  svg.transition().duration(350).call(zoomBehavior.scaleBy, 0.8);
+});
+document.getElementById('btn-zoom-reset').addEventListener('click', () => {
+  svg.transition().duration(350).call(zoomBehavior.transform, d3.zoomIdentity);
 });
 
 // executa build inicial para o usuario ver a arvore ao abrir a pagina
