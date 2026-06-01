@@ -1,7 +1,5 @@
 // Generic segment tree: swap the merge fn + neutral to get min / max / sum range queries. See operations.md.
 
-#![allow(dead_code)] // API is exercised by the tests module; main is only a stub
-
 // 1-indexed array of size 4*n: node 1 = root, children = 2*node and 2*node+1.
 struct SegmentTree<T: Clone> {
     tree:    Vec<T>,
