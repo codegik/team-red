@@ -4,6 +4,9 @@
 
 ### Pros
 
+* Range queries with O(log n) complexity.
+* Flexible aggregation operations across nodes and levels, allowing different algorithms to be applied to the tree (e.g., sum, min/max).
+
 ### Cons
 
 #### Usage
