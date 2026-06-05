@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // Generic segment tree: swap the merge fn + neutral to get min / max / sum range queries. See operations.md.
 
 // 1-indexed array of size 4*n: node 1 = root, children = 2*node and 2*node+1.
