@@ -20,18 +20,6 @@ The core structure is `SegmentTree<T>`, parameterized by the stored data type. T
 
 With this design, the same structure supports different aggregations: minimum by deadline, maximum by deadline, lowest amount, highest amount, and amount sum.
 
-## Solution Type
-
-This is an **online, indexed, binary range-tree solution**.
-
-It is a good fit when data changes over time and the application needs to alternate between point updates and frequent range queries. Instead of recomputing a full range on every query, the tree stores partial aggregate results in its internal nodes.
-
-Complexities:
-
-* Initial build: `O(n)`.
-* Range query: `O(log n)` on average for ranges that are well partitioned by the tree.
-* Point update: `O(log n)`.
-* Memory: `O(n)`, implemented as a `Vec<T>` allocated with `4 * n` slots.
 
 ## Algorithm
 
@@ -79,21 +67,6 @@ The key requirement is that `merge` must be associative and compatible with `neu
 * The tree size is static; inserting or removing contracts requires rebuilding the structure.
 * `SegmentTree<T>` is private inside the module, which limits reuse outside the example.
 
-## Improvement Points
-
-* Return `Option<T>` or `Result<T, SegmentTreeError>` for invalid queries and updates.
-* Handle empty trees explicitly.
-* Replace the `fn` pointer with a generic `F: Fn(&T, &T) -> T`, allowing closures and stateful strategies.
-* Reduce cloning by using references, `Copy` where applicable, or storing indexes for large objects.
-* Move the generic tree implementation into its own module and keep `loan_contracts` as a domain example.
-* Add an explicit tie-break policy for contracts with the same deadline or amount.
-* Replace `f64` with cents stored as `i64`, or use a decimal type in a real financial scenario.
-* Add lazy propagation for range updates.
-* Add tests for invalid indexes, empty input, and tie cases.
-* Consider an iterative implementation to reduce recursion and simplify boundary handling.
-
-## Usage
-
 ### Run
 
 ```bash
@@ -111,10 +84,35 @@ Most urgent contract => id=5, borrower=Eve, days_remaining=2
 
 ```bash
 cargo test
-```
 
-Current result:
+test loan_contracts::tests::highest_query_5_to_8_is_frank ... ok
+test loan_contracts::tests::highest_root_is_bob ... ok
+test loan_contracts::tests::lowest_query_1_to_4_is_carol ... ok
+test loan_contracts::tests::lowest_root_is_eve ... ok
+test loan_contracts::tests::len_reflects_element_count ... ok
+test loan_contracts::tests::query_single_index_returns_that_contract ... ok
+test loan_contracts::tests::slack_query_1_to_4_is_carol ... ok
+test loan_contracts::tests::sum_after_eve_partial_payment ... ok
+test loan_contracts::tests::slack_root_is_grace ... ok
+test loan_contracts::tests::sum_query_1_to_4 ... ok
+test loan_contracts::tests::sum_query_5_to_8 ... ok
+test loan_contracts::tests::sum_total_portfolio ... ok
+test loan_contracts::tests::urgent_after_eve_renegotiation_bob_takes_over ... ok
+test loan_contracts::tests::urgent_query_1_to_4_is_bob ... ok
+test loan_contracts::tests::urgent_query_5_to_8_is_eve ... ok
+test loan_contracts::tests::urgent_root_is_eve ... ok
+test simple_operations::tests::max_full_range ... ok
+test simple_operations::tests::max_single_element ... ok
+test simple_operations::tests::max_students_3_to_6 ... ok
+test simple_operations::tests::max_students_6_to_8 ... ok
+test simple_operations::tests::max_update_student5 ... ok
+test simple_operations::tests::min_10h_to_16h ... ok
+test simple_operations::tests::min_full_day ... ok
+test simple_operations::tests::min_single_element ... ok
+test simple_operations::tests::min_update_reading_10h ... ok
+test simple_operations::tests::sum_days_3_to_6 ... ok
+test simple_operations::tests::sum_full_range ... ok
+test simple_operations::tests::sum_update_day4 ... ok
 
-```text
-test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
