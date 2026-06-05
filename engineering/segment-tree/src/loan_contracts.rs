@@ -1,19 +1,15 @@
 #![allow(dead_code)]
 
-// Generic segment tree: swap the merge fn + neutral to get min / max / sum range queries. See operations.md.
-
-// 1-indexed array of size 4*n: node 1 = root, children = 2*node and 2*node+1.
 struct SegmentTree<T: Clone> {
     tree:    Vec<T>,
     n:       usize,
-    neutral: T,                // identity for `merge`: combining with it leaves the result unchanged
+    neutral: T,
     merge:   fn(&T, &T) -> T,
 }
 
 impl<T: Clone> SegmentTree<T> {
     fn new(data: Vec<T>, neutral: T, merge: fn(&T, &T) -> T) -> Self {
         let n = data.len();
-        // pre-fill with the neutral so any node never written by build stays harmless to merges
         let tree = vec![neutral.clone(); 4 * n];
         let mut st = SegmentTree { tree, n, neutral, merge };
         if n > 0 {
@@ -22,12 +18,10 @@ impl<T: Clone> SegmentTree<T> {
         st
     }
 
-    // Merge result over [l, r] in O(log n).
     fn query(&self, l: usize, r: usize) -> T {
         self.query_range(1, 0, self.n - 1, l, r)
     }
 
-    // Set position `pos` and recompute up to the root in O(log n).
     fn update(&mut self, pos: usize, value: T) {
         let n = self.n;
         self.update_range(1, 0, n - 1, pos, value);
@@ -49,16 +43,15 @@ impl<T: Clone> SegmentTree<T> {
         let mid = (start + end) / 2;
         self.build(data, 2 * node,     start,   mid);
         self.build(data, 2 * node + 1, mid + 1, end);
-        // clone children first: can't borrow self.tree mutably and immutably at once
         let left  = self.tree[2 * node].clone();
         let right = self.tree[2 * node + 1].clone();
         self.tree[node] = (self.merge)(&left, &right);
     }
 
     fn query_range(&self, node: usize, start: usize, end: usize, l: usize, r: usize) -> T {
-        if r < start || end < l { return self.neutral.clone(); }      // no overlap: return identity so this node doesn't affect the merge
-        if l <= start && end <= r { return self.tree[node].clone(); } // fully covered
-        let mid   = (start + end) / 2;                                // partial: split + merge
+        if r < start || end < l { return self.neutral.clone(); }
+        if l <= start && end <= r { return self.tree[node].clone(); }
+        let mid   = (start + end) / 2;
         let left  = self.query_range(2 * node,     start,   mid, l, r);
         let right = self.query_range(2 * node + 1, mid + 1, end, l, r);
         (self.merge)(&left, &right)
@@ -80,7 +73,6 @@ impl<T: Clone> SegmentTree<T> {
         self.tree[node] = (self.merge)(&left, &right);
     }
 }
-
 
 #[derive(Clone)]
 struct LoanContract {
@@ -114,8 +106,6 @@ fn init_contracts() -> Vec<LoanContract> {
     ]
 }
 
-
-// Each neutral uses a sentinel that can never win its own merge, so it stays invisible to queries.
 fn neutral_urgent() -> LoanContract { LoanContract::new(0, "-", 0.0, i32::MAX) }
 fn merge_urgent(a: &LoanContract, b: &LoanContract) -> LoanContract {
     if a.days_remaining <= b.days_remaining { a.clone() } else { b.clone() }
@@ -136,9 +126,7 @@ fn merge_highest(a: &LoanContract, b: &LoanContract) -> LoanContract {
     if a.amount >= b.amount { a.clone() } else { b.clone() }
 }
 
-// Sum of two contracts is a scalar, not a contract — this tree stores f64 with neutral 0.0.
 fn merge_f64_sum(a: &f64, b: &f64) -> f64 { a + b }
-
 
 pub fn run() {
     println!("Loan contracts module running");
@@ -158,7 +146,6 @@ pub fn run() {
         most_urgent.days_remaining
     );
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -281,7 +268,7 @@ mod tests {
     fn sum_after_eve_partial_payment() {
         let mut st = make_sum_tree();
         st.update(4, 500.00);
-        assert!((st.root() - 50_200.0).abs() < 0.01); // 51800 - 2100 + 500
+        assert!((st.root() - 50_200.0).abs() < 0.01);
     }
 
     #[test]
@@ -298,3 +285,4 @@ mod tests {
         assert_eq!(r.days_remaining, 14);
     }
 }
+

@@ -1,24 +1,5 @@
-# manim_segment_tree.py
-#
-# Animacoes das 3 operacoes de uma Segment Tree (MAX) usando Manim Community.
-#
-# Pre-requisitos:
-#   pip install manim
-#
-# Renderizar (uma cena por vez):
-#   manim -pql manim_segment_tree.py BuildScene
-#   manim -pql manim_segment_tree.py QueryScene
-#   manim -pql manim_segment_tree.py UpdateScene
-#
-# Flags:
-#   -pql  preview em qualidade baixa (rapido, bom pra iterar)
-#   -pqh  qualidade alta (mais lento)
-
 from manim import *
 
-# ---------------------------------------------------------------
-# Dados (mesmo array do simple-operations.py - use case 1: notas)
-# ---------------------------------------------------------------
 ARRAY = [7, 3, 9, 5, 8, 2, 6, 4]
 N = len(ARRAY)
 
@@ -31,22 +12,18 @@ UPDATE = BLUE
 
 NEUTRO = -1
 
-# ---------------------------------------------------------------
-# Layout: calcula (x, y) de cada nó da arvore
-# ---------------------------------------------------------------
 def compute_layout():
-    # posicoes das folhas: espalhadas de -6 a +6
     leaf_xs = [-6 + i * (12 / (N - 1)) for i in range(N)]
-    level_y = [2.5, 1.0, -0.5, -2.0]  # 4 niveis p/ N=8
-    positions = {}   # node_idx -> (x, y)
-    ranges = {}      # node_idx -> (inicio, fim)
+    level_y = [2.5, 1.0, -0.5, -2.0]
+    positions = {}
+    ranges = {}
 
     def rec(no, inicio, fim, depth):
         ranges[no] = (inicio, fim)
         if inicio == fim:
             positions[no] = (leaf_xs[inicio], level_y[depth])
             return
-        meio = (inicio + fim) // 2
+        meio = (inicio + fim) 
         rec(2 * no, inicio, meio, depth + 1)
         rec(2 * no + 1, meio + 1, fim, depth + 1)
         x = (positions[2 * no][0] + positions[2 * no + 1][0]) / 2
@@ -55,18 +32,14 @@ def compute_layout():
     rec(1, 0, N - 1, 0)
     return positions, ranges
 
-
-# ---------------------------------------------------------------
-# Factory que cria o VGroup da arvore (circulos, labels, arestas)
-# ---------------------------------------------------------------
 class TreeMobject:
     def __init__(self):
         self.positions, self.ranges = compute_layout()
-        self.circles = {}   # no -> Circle
-        self.labels = {}    # no -> Text (valor do no; comeca vazio)
-        self.range_lbl = {} # no -> Text (intervalo [l,r] abaixo do no)
-        self.edges = {}     # (pai, filho) -> Line
-        self.tree = {}      # no -> valor (neutro no inicio)
+        self.circles = {}
+        self.labels = {}
+        self.range_lbl = {}
+        self.edges = {}
+        self.tree = {}
 
         for no, (x, y) in self.positions.items():
             circle = Circle(radius=0.32, color=IDLE, stroke_width=2)
@@ -111,10 +84,6 @@ class TreeMobject:
     def reset_stroke(self, no):
         return self.circles[no].animate.set_stroke(IDLE, width=2)
 
-
-# ---------------------------------------------------------------
-# Helper: mostra o array do topo da tela
-# ---------------------------------------------------------------
 def make_array_row(values, highlight=None, color=VISIT):
     cells = VGroup()
     for i, v in enumerate(values):
@@ -130,10 +99,6 @@ def make_array_row(values, highlight=None, color=VISIT):
     cells.to_edge(UP, buff=0.3)
     return cells
 
-
-# ===============================================================
-# CENA 1 - BUILD
-# ===============================================================
 class BuildScene(Scene):
     def construct(self):
         title = Text("Segment Tree - BUILD (max)", font_size=30).to_edge(UP, buff=0.1)
@@ -142,7 +107,6 @@ class BuildScene(Scene):
         self.play(FadeIn(arr_row))
 
         tree = TreeMobject()
-        # desenha esqueleto (edges + circulos + labels [l,r])
         self.play(
             *[Create(e) for e in tree.edges.values()],
             *[Create(c) for c in tree.circles.values()],
@@ -158,7 +122,6 @@ class BuildScene(Scene):
             new = Text(msg, font_size=22).to_edge(DOWN, buff=0.3)
             self.play(Transform(caption, new), run_time=0.2)
 
-        # recursao do build
         def build(no, inicio, fim):
             if inicio == fim:
                 set_caption(f"folha [{inicio},{fim}] = {ARRAY[inicio]}")
@@ -167,7 +130,7 @@ class BuildScene(Scene):
                 self.play(tree.set_value(no, ARRAY[inicio]), run_time=0.35)
                 self.play(tree.reset_stroke(no), run_time=0.15)
                 return
-            meio = (inicio + fim) // 2
+            meio = (inicio + fim) 
             self.play(tree.flash(no, VISIT), run_time=0.2)
             build(2 * no, inicio, meio)
             build(2 * no + 1, meio + 1, fim)
@@ -184,10 +147,6 @@ class BuildScene(Scene):
         set_caption(f"arvore pronta. raiz = max geral = {tree.tree[1]}")
         self.wait(2)
 
-
-# ===============================================================
-# Helper: monta a arvore sem animar (pra Query/Update comecarem prontas)
-# ===============================================================
 def prebuild(tree_mob):
     def rec(no, inicio, fim):
         if inicio == fim:
@@ -195,7 +154,7 @@ def prebuild(tree_mob):
             tree_mob.labels[no] = Text(str(ARRAY[inicio]), font_size=22)\
                 .move_to(tree_mob.circles[no].get_center())
             return
-        meio = (inicio + fim) // 2
+        meio = (inicio + fim) 
         rec(2 * no, inicio, meio)
         rec(2 * no + 1, meio + 1, fim)
         v = max(tree_mob.tree[2 * no], tree_mob.tree[2 * no + 1])
@@ -204,10 +163,6 @@ def prebuild(tree_mob):
             .move_to(tree_mob.circles[no].get_center())
     rec(1, 0, N - 1)
 
-
-# ===============================================================
-# CENA 2 - QUERY (consulta_max no intervalo [2, 5])
-# ===============================================================
 class QueryScene(Scene):
     def construct(self):
         L, R = 2, 5
@@ -235,24 +190,21 @@ class QueryScene(Scene):
 
         def query(no, inicio, fim):
             self.play(tree.flash(no, VISIT), run_time=0.3)
-            # CASO 1: totalmente fora
             if R < inicio or fim < L:
                 set_caption(f"[{inicio},{fim}] fora de [{L},{R}] -> neutro (-1)")
                 self.play(tree.circles[no].animate.set_stroke(OUTSIDE, width=4),
                           run_time=0.3)
                 return NEUTRO
-            # CASO 2: totalmente dentro
             if L <= inicio and fim <= R:
                 v = tree.tree[no]
                 set_caption(f"[{inicio},{fim}] dentro de [{L},{R}] -> retorna {v}")
                 self.play(tree.circles[no].animate.set_stroke(INSIDE, width=4),
                           run_time=0.3)
                 return v
-            # CASO 3: parcial
             set_caption(f"[{inicio},{fim}] parcial -> desce nos dois filhos")
             self.play(tree.circles[no].animate.set_stroke(PARTIAL, width=4),
                       run_time=0.3)
-            meio = (inicio + fim) // 2
+            meio = (inicio + fim) 
             esq = query(2 * no, inicio, meio)
             dir_ = query(2 * no + 1, meio + 1, fim)
             v = max(esq, dir_)
@@ -263,15 +215,10 @@ class QueryScene(Scene):
         set_caption(f"resposta da query [{L},{R}] = {resp}")
         self.wait(2.5)
 
-
-# ===============================================================
-# CENA 3 - UPDATE (atualiza posicao 4 de 8 para 10)
-# ===============================================================
 class UpdateScene(Scene):
     def construct(self):
         POS, NEW = 4, 10
-        title = Text(f"Segment Tree - UPDATE pos={POS} -> {NEW}", font_size=30)\
-            .to_edge(UP, buff=0.1)
+        title = Text(f"Segment Tree - UPDATE pos={POS} -> {NEW}", font_size=30).to_edge(UP, buff=0.1)
         arr_row = make_array_row(ARRAY, highlight=(POS, POS), color=UPDATE)
         self.play(Write(title), FadeIn(arr_row))
 
@@ -299,7 +246,7 @@ class UpdateScene(Scene):
                 self.add(tree.labels[no])
                 self.play(tree.set_value(no, NEW), run_time=0.5)
                 return
-            meio = (inicio + fim) // 2
+            meio = (inicio + fim) 
             if POS <= meio:
                 set_caption(f"[{inicio},{fim}]: POS={POS} <= meio={meio}, desce esquerda")
                 update(2 * no, inicio, meio)
@@ -318,3 +265,4 @@ class UpdateScene(Scene):
         update(1, 0, N - 1)
         set_caption(f"update ok. nova raiz (max geral) = {tree.tree[1]}")
         self.wait(2.5)
+
