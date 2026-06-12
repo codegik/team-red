@@ -1,4 +1,21 @@
-#![allow(dead_code)]
+#[derive(Clone)]
+struct LoanContract {
+    contract_id:    u32,
+    borrower:       String,
+    amount:         f64,
+    days_remaining: i32,
+}
+
+impl LoanContract {
+    fn new(contract_id: u32, borrower: &str, amount: f64, days_remaining: i32) -> Self {
+        LoanContract {
+            contract_id,
+            borrower: borrower.to_string(),
+            amount,
+            days_remaining,
+        }
+    }
+}
 
 struct SegmentTree<T: Clone> {
     tree:    Vec<T>,
@@ -74,25 +91,6 @@ impl<T: Clone> SegmentTree<T> {
     }
 }
 
-#[derive(Clone)]
-struct LoanContract {
-    contract_id:    u32,
-    borrower:       String,
-    amount:         f64,
-    days_remaining: i32,
-}
-
-impl LoanContract {
-    fn new(contract_id: u32, borrower: &str, amount: f64, days_remaining: i32) -> Self {
-        LoanContract {
-            contract_id,
-            borrower: borrower.to_string(),
-            amount,
-            days_remaining,
-        }
-    }
-}
-
 fn init_contracts() -> Vec<LoanContract> {
     vec![
         LoanContract::new(1, "Alice",  5_000.00, 30),
@@ -131,19 +129,97 @@ fn merge_f64_sum(a: &f64, b: &f64) -> f64 { a + b }
 pub fn run() {
     println!("Loan contracts module running");
 
+    println!("\n--- Urgency Segment Tree ---");
     let urgent_tree = SegmentTree::new(
         init_contracts(),
         neutral_urgent(),
         merge_urgent,
     );
-
     let most_urgent = urgent_tree.root();
-
     println!(
         "Most urgent contract => id={}, borrower={}, days_remaining={}",
         most_urgent.contract_id,
         most_urgent.borrower,
         most_urgent.days_remaining
+    );
+
+    println!("\n--- Slack Segment Tree ---");
+    let slack_tree = SegmentTree::new(
+        init_contracts(),
+        neutral_slack(),
+        merge_slack,
+    );
+    let most_slack = slack_tree.root();
+    println!(
+        "Most slack contract => id={}, borrower={}, days_remaining={}",
+        most_slack.contract_id,
+        most_slack.borrower,
+        most_slack.days_remaining
+    );
+
+    println!("\n--- Lowest Amount Segment Tree ---");
+    let lowest_tree = SegmentTree::new(
+        init_contracts(),
+        neutral_lowest(),
+        merge_lowest,
+    );
+    let lowest = lowest_tree.root();
+    println!(
+        "Lowest amount contract => id={}, borrower={}, amount={}",
+        lowest.contract_id,
+        lowest.borrower,
+        lowest.amount
+    );
+
+    println!("\n--- Highest Amount Segment Tree ---");
+    let highest_tree = SegmentTree::new(
+        init_contracts(),
+        neutral_highest(),
+        merge_highest,
+    );
+    let highest = highest_tree.root();
+    println!(   
+        "Highest amount contract => id={}, borrower={}, amount={}",
+        highest.contract_id,
+        highest.borrower,
+        highest.amount
+    );
+
+    println!("\n--- Query Examples ---");
+    println!("Contract count = {}", urgent_tree.len());
+    let first_half = urgent_tree.query(0, 3);
+    println!(
+        "Most urgent in first half => id={}, borrower={}, days={}",
+        first_half.contract_id,
+        first_half.borrower,
+        first_half.days_remaining
+    );
+
+    println!("\n--- Update Example ---");
+    let mut urgent_tree = SegmentTree::new(
+        init_contracts(),
+        neutral_urgent(),
+        merge_urgent,
+    );
+    urgent_tree.update(4, LoanContract::new(5, "Eve", 1500.0, 90));
+    let root = urgent_tree.root();
+    println!(
+        "After renegotiation => id={}, borrower={}, days={}",
+        root.contract_id,
+        root.borrower,
+        root.days_remaining
+    );
+
+    println!("\n--- Portfolio Sum Tree ---");
+    let amounts: Vec<f64> =
+        init_contracts().iter().map(|c| c.amount).collect();
+    let mut sum_tree =
+        SegmentTree::new(amounts, 0.0, merge_f64_sum);
+    println!("Total portfolio = {}", sum_tree.root());
+    sum_tree.update(4, 500.0);
+    println!(
+        "Total after payment = {}",
+        sum_tree.root()
     );
 }
 
