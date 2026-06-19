@@ -284,5 +284,15 @@ mod tests {
         assert_eq!(r.contract_id, 4);
         assert_eq!(r.days_remaining, 14);
     }
+
+    #[test]
+    fn handles_non_power_of_two_size() {
+        let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let st = SegmentTree::new(data, 0.0, merge_f64_sum);
+        assert!((st.root() - 15.0).abs() < 0.01);
+        assert!((st.query(1, 3) - 9.0).abs() < 0.01);
+        assert!((st.query(0, 4) - 15.0).abs() < 0.01);
+        assert!((st.query(4, 4) - 5.0).abs() < 0.01);
+    }
 }
 
