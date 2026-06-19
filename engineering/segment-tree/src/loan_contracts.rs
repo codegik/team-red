@@ -21,14 +21,14 @@ struct SegmentTree<T: Clone> {
     tree:    Vec<T>,
     n:       usize,
     neutral: T,
-    merge:   fn(&T, &T) -> T,
+    compare: fn(&T, &T) -> T,
 }
 
 impl<T: Clone> SegmentTree<T> {
-    fn new(data: Vec<T>, neutral: T, merge: fn(&T, &T) -> T) -> Self {
+    fn new(data: Vec<T>, neutral: T, compare: fn(&T, &T) -> T) -> Self {
         let n = data.len();
         let tree = vec![neutral.clone(); 4 * n];
-        let mut st = SegmentTree { tree, n, neutral, merge };
+        let mut st = SegmentTree { tree, n, neutral, compare };
         if n > 0 {
             st.build(&data, 1, 0, n - 1);
         }
@@ -62,7 +62,7 @@ impl<T: Clone> SegmentTree<T> {
         self.build(data, 2 * node + 1, mid + 1, end);
         let left  = self.tree[2 * node].clone();
         let right = self.tree[2 * node + 1].clone();
-        self.tree[node] = (self.merge)(&left, &right);
+        self.tree[node] = (self.compare)(&left, &right);
     }
 
     fn query_range(&self, node: usize, start: usize, end: usize, l: usize, r: usize) -> T {
@@ -71,7 +71,7 @@ impl<T: Clone> SegmentTree<T> {
         let mid   = (start + end) / 2;
         let left  = self.query_range(2 * node,     start,   mid, l, r);
         let right = self.query_range(2 * node + 1, mid + 1, end, l, r);
-        (self.merge)(&left, &right)
+        (self.compare)(&left, &right)
     }
 
     fn update_range(&mut self, node: usize, start: usize, end: usize, pos: usize, value: T) {
@@ -87,7 +87,7 @@ impl<T: Clone> SegmentTree<T> {
         }
         let left  = self.tree[2 * node].clone();
         let right = self.tree[2 * node + 1].clone();
-        self.tree[node] = (self.merge)(&left, &right);
+        self.tree[node] = (self.compare)(&left, &right);
     }
 }
 
@@ -105,122 +105,27 @@ fn init_contracts() -> Vec<LoanContract> {
 }
 
 fn neutral_urgent() -> LoanContract { LoanContract::new(0, "-", 0.0, i32::MAX) }
-fn merge_urgent(a: &LoanContract, b: &LoanContract) -> LoanContract {
+fn compare_most_urgent(a: &LoanContract, b: &LoanContract) -> LoanContract {
     if a.days_remaining <= b.days_remaining { a.clone() } else { b.clone() }
 }
 
 fn neutral_slack() -> LoanContract { LoanContract::new(0, "-", 0.0, i32::MIN) }
-fn merge_slack(a: &LoanContract, b: &LoanContract) -> LoanContract {
+fn compare_least_urgent(a: &LoanContract, b: &LoanContract) -> LoanContract {
     if a.days_remaining >= b.days_remaining { a.clone() } else { b.clone() }
 }
 
 fn neutral_lowest() -> LoanContract { LoanContract::new(0, "-", f64::INFINITY, 0) }
-fn merge_lowest(a: &LoanContract, b: &LoanContract) -> LoanContract {
+fn compare_lowest(a: &LoanContract, b: &LoanContract) -> LoanContract {
     if a.amount <= b.amount { a.clone() } else { b.clone() }
 }
 
 fn neutral_highest() -> LoanContract { LoanContract::new(0, "-", f64::NEG_INFINITY, 0) }
-fn merge_highest(a: &LoanContract, b: &LoanContract) -> LoanContract {
+fn compare_highest(a: &LoanContract, b: &LoanContract) -> LoanContract {
     if a.amount >= b.amount { a.clone() } else { b.clone() }
 }
 
-fn merge_f64_sum(a: &f64, b: &f64) -> f64 { a + b }
-
 pub fn run() {
-    println!("Loan contracts module running");
-
-    println!("\n--- Urgency Segment Tree ---");
-    let urgent_tree = SegmentTree::new(
-        init_contracts(),
-        neutral_urgent(),
-        merge_urgent,
-    );
-    let most_urgent = urgent_tree.root();
-    println!(
-        "Most urgent contract => id={}, borrower={}, days_remaining={}",
-        most_urgent.contract_id,
-        most_urgent.borrower,
-        most_urgent.days_remaining
-    );
-
-    println!("\n--- Slack Segment Tree ---");
-    let slack_tree = SegmentTree::new(
-        init_contracts(),
-        neutral_slack(),
-        merge_slack,
-    );
-    let most_slack = slack_tree.root();
-    println!(
-        "Most slack contract => id={}, borrower={}, days_remaining={}",
-        most_slack.contract_id,
-        most_slack.borrower,
-        most_slack.days_remaining
-    );
-
-    println!("\n--- Lowest Amount Segment Tree ---");
-    let lowest_tree = SegmentTree::new(
-        init_contracts(),
-        neutral_lowest(),
-        merge_lowest,
-    );
-    let lowest = lowest_tree.root();
-    println!(
-        "Lowest amount contract => id={}, borrower={}, amount={}",
-        lowest.contract_id,
-        lowest.borrower,
-        lowest.amount
-    );
-
-    println!("\n--- Highest Amount Segment Tree ---");
-    let highest_tree = SegmentTree::new(
-        init_contracts(),
-        neutral_highest(),
-        merge_highest,
-    );
-    let highest = highest_tree.root();
-    println!(   
-        "Highest amount contract => id={}, borrower={}, amount={}",
-        highest.contract_id,
-        highest.borrower,
-        highest.amount
-    );
-
-    println!("\n--- Query Examples ---");
-    println!("Contract count = {}", urgent_tree.len());
-    let first_half = urgent_tree.query(0, 3);
-    println!(
-        "Most urgent in first half => id={}, borrower={}, days={}",
-        first_half.contract_id,
-        first_half.borrower,
-        first_half.days_remaining
-    );
-
-    println!("\n--- Update Example ---");
-    let mut urgent_tree = SegmentTree::new(
-        init_contracts(),
-        neutral_urgent(),
-        merge_urgent,
-    );
-    urgent_tree.update(4, LoanContract::new(5, "Eve", 1500.0, 90));
-    let root = urgent_tree.root();
-    println!(
-        "After renegotiation => id={}, borrower={}, days={}",
-        root.contract_id,
-        root.borrower,
-        root.days_remaining
-    );
-
-    println!("\n--- Portfolio Sum Tree ---");
-    let amounts: Vec<f64> =
-        init_contracts().iter().map(|c| c.amount).collect();
-    let mut sum_tree =
-        SegmentTree::new(amounts, 0.0, merge_f64_sum);
-    println!("Total portfolio = {}", sum_tree.root());
-    sum_tree.update(4, 500.0);
-    println!(
-        "Total after payment = {}",
-        sum_tree.root()
-    );
+    println!("Run `cargo test` to execute the tests for loan contract segment trees.");
 }
 
 #[cfg(test)]
@@ -228,7 +133,7 @@ mod tests {
     use super::*;
 
     fn make_urgent_tree() -> SegmentTree<LoanContract> {
-        SegmentTree::new(init_contracts(), neutral_urgent(), merge_urgent)
+        SegmentTree::new(init_contracts(), neutral_urgent(), compare_most_urgent)
     }
 
     #[test]
@@ -263,7 +168,7 @@ mod tests {
     }
 
     fn make_slack_tree() -> SegmentTree<LoanContract> {
-        SegmentTree::new(init_contracts(), neutral_slack(), merge_slack)
+        SegmentTree::new(init_contracts(), neutral_slack(), compare_least_urgent)
     }
 
     #[test]
@@ -282,7 +187,7 @@ mod tests {
     }
 
     fn make_lowest_tree() -> SegmentTree<LoanContract> {
-        SegmentTree::new(init_contracts(), neutral_lowest(), merge_lowest)
+        SegmentTree::new(init_contracts(), neutral_lowest(), compare_lowest)
     }
 
     #[test]
@@ -299,7 +204,7 @@ mod tests {
     }
 
     fn make_highest_tree() -> SegmentTree<LoanContract> {
-        SegmentTree::new(init_contracts(), neutral_highest(), merge_highest)
+        SegmentTree::new(init_contracts(), neutral_highest(), compare_highest)
     }
 
     #[test]
@@ -313,38 +218,6 @@ mod tests {
         let st = make_highest_tree();
         let r = st.query(4, 7);
         assert_eq!(r.contract_id, 6);
-    }
-
-    fn make_sum_tree() -> SegmentTree<f64> {
-        let amounts: Vec<f64> = init_contracts().iter().map(|c| c.amount).collect();
-        SegmentTree::new(amounts, 0.0, merge_f64_sum)
-    }
-
-    #[test]
-    fn sum_total_portfolio() {
-        let st = make_sum_tree();
-        assert!((st.root() - 51_800.0).abs() < 0.01);
-    }
-
-    #[test]
-    fn sum_query_1_to_4() {
-        let st = make_sum_tree();
-        let total = st.query(0, 3);
-        assert!((total - 28_700.0).abs() < 0.01);
-    }
-
-    #[test]
-    fn sum_query_5_to_8() {
-        let st = make_sum_tree();
-        let total = st.query(4, 7);
-        assert!((total - 23_100.0).abs() < 0.01);
-    }
-
-    #[test]
-    fn sum_after_eve_partial_payment() {
-        let mut st = make_sum_tree();
-        st.update(4, 500.00);
-        assert!((st.root() - 50_200.0).abs() < 0.01);
     }
 
     #[test]
